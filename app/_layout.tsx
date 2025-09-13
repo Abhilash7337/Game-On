@@ -1,23 +1,44 @@
-// In constants/Colors.ts
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import 'react-native-reanimated';
 
-import { DefaultTheme } from '@react-navigation/native';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { MyTheme } from '@/constants/Colors';
 
-// Your existing Colors object...
-export const Colors = {
-  light: {
-    // ... your existing light colors
-  },
-  dark: {
-    // ... your existing dark colors
-  },
-};
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
 
-// Add this new theme object to the file
-export const MyTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: '#208C4D', // Sets the default active color
-    card: '#FFFFFF',     // Sets the background for elements like tab bars and headers
-  },
-};
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+  const [loaded] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  });
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : MyTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="QuickBookScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="JoinGamesScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="JoinGameScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="VenueDetailsScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
