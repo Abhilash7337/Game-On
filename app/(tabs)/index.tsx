@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, Stack } from 'expo-router';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRouter, Stack, useFocusEffect } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { bookingStore, Booking } from '@/utils/bookingStore';
 
 
 export default function HomeScreen() {
@@ -11,7 +12,7 @@ export default function HomeScreen() {
   // Simulate backend data for user, location, notifications, and upcoming games
   const [user, setUser] = useState<{ name: string; location: string } | null>(null);
   const [notifications, setNotifications] = useState<number>(0);
-  const [upcomingGames, setUpcomingGames] = useState<Array<{ id: string; title: string; date: string }>>([]);
+  const [upcomingGames, setUpcomingGames] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,13 +20,48 @@ export default function HomeScreen() {
     setTimeout(() => {
       setUser({ name: 'GameOn', location: 'Hyderabad, India' });
       setNotifications(2); // Example: 2 notifications
-      setUpcomingGames([
-        // Example: [] for no games, or add objects for games
-        // { id: '1', title: 'Badminton at Mahindra Court', date: '2025-08-30 18:00' },
-      ]);
       setLoading(false);
     }, 700);
   }, []);
+
+  // Subscribe to booking updates
+  useFocusEffect(
+    React.useCallback(() => {
+      const updateUpcomingGames = () => {
+        setUpcomingGames(bookingStore.getUpcomingBookings());
+      };
+      
+      updateUpcomingGames();
+      const unsubscribe = bookingStore.subscribe(updateUpcomingGames);
+      
+      return unsubscribe;
+    }, [])
+  );
+
+  const formatGameTime = (date: Date, time: string) => {
+    const gameDate = new Date(date);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    let dateStr = '';
+    if (gameDate.toDateString() === today.toDateString()) {
+      dateStr = 'Today';
+    } else if (gameDate.toDateString() === tomorrow.toDateString()) {
+      dateStr = 'Tomorrow';
+    } else {
+      dateStr = gameDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+    
+    return `${dateStr} at ${time}`;
+  };
+
+  const getGameTypeIcon = (bookingType: string) => {
+    return bookingType === 'Open Game' ? 'people' : 'lock-closed';
+  };
 
   if (loading) {
     return (
@@ -77,19 +113,93 @@ export default function HomeScreen() {
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Your Upcoming Games</Text>
-        <View style={styles.upcomingGamesCard}>
-          {upcomingGames.length === 0 ? (
-            <Text style={styles.upcomingGamesText}>
-              No upcoming games. Join a game to get started!
+        
+        {upcomingGames.length === 0 ? (
+          <View style={styles.emptyGamesCard}>
+            <View style={styles.emptyGamesIcon}>
+              <Ionicons name="calendar-outline" size={32} color="#9CA3AF" />
+            </View>
+            <Text style={styles.emptyGamesTitle}>No upcoming games</Text>
+            <Text style={styles.emptyGamesText}>
+              Book a court or join a game to get started!
             </Text>
-          ) : (
-            upcomingGames.map(game => (
-              <Text key={game.id} style={styles.upcomingGamesText}>
-                {game.title} - {game.date}
-              </Text>
-            ))
-          )}
-        </View>
+            <TouchableOpacity 
+              style={styles.emptyGamesButton}
+              onPress={() => router.push('/QuickBookScreen')}
+            >
+              <Text style={styles.emptyGamesButtonText}>Book Now</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.gamesScrollContainer}
+          >
+            {upcomingGames.map((game) => (
+              <View key={game.id} style={styles.gameCard}>
+                <View style={styles.gameCardHeader}>
+                  <View style={styles.gameTypeContainer}>
+                    <Ionicons 
+                      name={getGameTypeIcon(game.bookingType)} 
+                      size={16} 
+                      color="#047857" 
+                    />
+                    <Text style={styles.gameType}>{game.bookingType}</Text>
+                  </View>
+                  <View style={styles.gamePriceTag}>
+                    <Text style={styles.gamePrice}>₹{game.price}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.gameVenueContainer}>
+                  <Ionicons name="location" size={18} color="#6B7280" />
+                  <Text style={styles.gameVenue}>{game.venue}</Text>
+                </View>
+                
+                <Text style={styles.gameCourt}>{game.court}</Text>
+                
+                <View style={styles.gameTimeContainer}>
+                  <Ionicons name="time" size={16} color="#6B7280" />
+                  <Text style={styles.gameTime}>{formatGameTime(game.date, game.time)}</Text>
+                </View>
+                
+                <View style={styles.gameDurationContainer}>
+                  <Ionicons name="hourglass" size={16} color="#6B7280" />
+                  <Text style={styles.gameDuration}>{game.duration}</Text>
+                </View>
+                
+                {game.bookingType === 'Open Game' && game.skillLevel && (
+                  <View style={styles.gameSkillContainer}>
+                    <View style={[
+                      styles.skillBadge,
+                      game.skillLevel === 'Beginner' && styles.skillBeginner,
+                      game.skillLevel === 'Intermediate' && styles.skillIntermediate,
+                      game.skillLevel === 'Advanced' && styles.skillAdvanced,
+                    ]}>
+                      <Text style={[
+                        styles.skillText,
+                        game.skillLevel === 'Beginner' && styles.skillTextBeginner,
+                        game.skillLevel === 'Intermediate' && styles.skillTextIntermediate,
+                        game.skillLevel === 'Advanced' && styles.skillTextAdvanced,
+                      ]}>
+                        {game.skillLevel}
+                      </Text>
+                    </View>
+                    {game.players && (
+                      <Text style={styles.playersNeeded}>{game.players} players needed</Text>
+                    )}
+                  </View>
+                )}
+                
+                <TouchableOpacity style={styles.gameDetailsButton}>
+                  <Text style={styles.gameDetailsButtonText}>View Details</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#047857" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -209,5 +319,188 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 16,
     textAlign: 'center',
+  },
+  emptyGamesCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyGamesIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyGamesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  emptyGamesText: {
+    color: '#6B7280',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  emptyGamesButton: {
+    backgroundColor: '#047857',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  emptyGamesButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  gamesScrollContainer: {
+    paddingLeft: 24,
+    paddingRight: 12,
+    paddingTop: 12,
+  },
+  gameCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginRight: 12,
+    width: 280,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  gameCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  gameTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  gameType: {
+    color: '#047857',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  gamePriceTag: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  gamePrice: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  gameVenueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  gameVenue: {
+    color: '#6B7280',
+    fontSize: 14,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  gameCourt: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  gameTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  gameTime: {
+    color: '#374151',
+    fontSize: 14,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  gameDurationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  gameDuration: {
+    color: '#374151',
+    fontSize: 14,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  gameSkillContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  skillBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  skillBeginner: {
+    backgroundColor: '#DCFCE7',
+  },
+  skillIntermediate: {
+    backgroundColor: '#FEF3C7',
+  },
+  skillAdvanced: {
+    backgroundColor: '#FEE2E2',
+  },
+  skillText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  skillTextBeginner: {
+    color: '#166534',
+  },
+  skillTextIntermediate: {
+    color: '#B45309',
+  },
+  skillTextAdvanced: {
+    color: '#991B1B',
+  },
+  playersNeeded: {
+    color: '#6B7280',
+    fontSize: 12,
+  },
+  gameDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingVertical: 8,
+  },
+  gameDetailsButtonText: {
+    color: '#047857',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginRight: 4,
   },
 });
