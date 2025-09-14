@@ -1,15 +1,13 @@
 // Home screen specific styles
-import { cardStyles, buttonStyles } from '../components/common';
+import { buttonStyles, cardStyles } from '../components/common';
 import { layoutStyles, textStyles } from '../components/layout';
 import { headerStyles } from '../components/ui';
 
-export { cardStyles, buttonStyles };
-export { layoutStyles, textStyles };
-export { headerStyles };
+export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
 
 // Home-specific styles
-import { StyleSheet } from 'react-native';
-import { colors, spacing, borderRadius, shadows, typography } from '../theme';
+    import { StyleSheet } from 'react-native';
+    import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export const homeStyles = StyleSheet.create({
   // Container styles

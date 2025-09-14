@@ -1,24 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
-import { View, Text, TouchableOpacity, ScrollView, Platform, Alert, Modal, FlatList } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { StatusBar } from 'expo-status-bar';
-import { Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { bookingStore } from '@/utils/bookingStore';
-import { 
-  cardStyles, 
-  buttonStyles, 
-  inputStyles,
-  headerStyles,
-  modalStyles,
-  chipStyles,
-  layoutStyles,
-  textStyles,
-  summaryStyles
+import {
+    buttonStyles,
+    cardStyles,
+    chipStyles,
+    headerStyles,
+    inputStyles,
+    layoutStyles,
+    modalStyles,
+    summaryStyles,
+    textStyles
 } from '@/styles/screens/QuickBookScreen';
 import { colors } from '@/styles/theme';
+import { bookingStore } from '@/utils/bookingStore';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { Alert, FlatList, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function QuickBookScreen() {
     const router = useRouter();

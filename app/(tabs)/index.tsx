@@ -1,19 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, Stack, useFocusEffect } from 'expo-router';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { bookingStore, Booking } from '@/utils/bookingStore';
 import AppHeader from '@/components/AppHeader';
-import { spacing } from '@/styles/theme';
-import { 
-  homeStyles, 
-  homeTextStyles, 
-  headerStyles,
+import {
   buttonStyles,
-  cardStyles 
+  homeStyles,
+  homeTextStyles
 } from '@/styles/screens/HomeScreen';
+import { spacing } from '@/styles/theme';
+import { Booking, bookingStore } from '@/utils/bookingStore';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 export default function HomeScreen() {

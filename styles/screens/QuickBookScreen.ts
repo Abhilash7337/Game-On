@@ -1,9 +1,9 @@
 import { StyleSheet } from 'react-native';
 
 // Re-export all the component styles for easy importing
-export { cardStyles, buttonStyles, inputStyles } from '../components/common';
-export { headerStyles, modalStyles, chipStyles } from '../components/ui';
-export { layoutStyles, textStyles, summaryStyles } from '../components/layout';
+export { buttonStyles, cardStyles, inputStyles } from '../components/common';
+export { layoutStyles, summaryStyles, textStyles } from '../components/layout';
+export { chipStyles, headerStyles, modalStyles } from '../components/ui';
 
 // Screen-specific styles if needed
 export const quickBookStyles = StyleSheet.create({

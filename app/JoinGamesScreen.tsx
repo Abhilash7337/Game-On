@@ -1,17 +1,14 @@
-import React, { useState } from "react";
-import { View, Text, Image, ScrollView, TouchableOpacity, Dimensions, Modal, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter, Stack } from "expo-router";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '@/components/AppHeader';
-import { 
-  joinGamesStyles, 
-  joinGamesTextStyles, 
-  headerStyles,
-  buttonStyles,
-  cardStyles 
+import {
+  joinGamesStyles,
+  joinGamesTextStyles
 } from '@/styles/screens/JoinGamesScreen';
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Stack, useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Dimensions, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get("window");
 

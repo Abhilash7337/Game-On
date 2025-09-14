@@ -1,8 +1,7 @@
+import { colors, spacing, typography } from '@/styles/theme';
 import React from 'react';
-import { View, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet } from 'react-native';
-import { colors, spacing, borderRadius, typography } from '@/styles/theme';
 
 interface AppHeaderProps {
   title: string;

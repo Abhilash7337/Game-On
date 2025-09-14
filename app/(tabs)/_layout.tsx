@@ -1,8 +1,8 @@
 // In app/(tabs)/_layout.tsx
 
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';

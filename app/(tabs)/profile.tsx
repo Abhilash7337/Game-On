@@ -1,10 +1,10 @@
 
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { bookingStore, Booking } from '../../utils/bookingStore';
 import AppHeader from '@/components/AppHeader';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Booking, bookingStore } from '../../utils/bookingStore';
 
 // Responsive font size utility
 function responsiveFontSize(base: number) {
