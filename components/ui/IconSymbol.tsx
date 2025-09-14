@@ -20,6 +20,13 @@ const MAPPING: Record<string, string> = {
   'chevron.right': 'chevron-right',
   'tennisball': 'sports-tennis',
   'people': 'people',
+  'person': 'person',
+  'group': 'group-add',
+  'chat': 'forum',
+  'users': 'supervised-user-circle',
+  'social': 'people-outline',
+  'network': 'public',
+  'test': 'star',
 };
 
 /**

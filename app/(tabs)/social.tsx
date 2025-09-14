@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppHeader from '@/components/AppHeader';
 
 
 
@@ -42,11 +43,10 @@ export default function SocialScreen() {
             {/* Make status bar icons (time, battery) white */}
             <StatusBar style="light" />
 
-            {/* Header with dynamic padding */}
-            <View style={[styles.header, { paddingTop: insets.top + 32 }]}> 
-                <Text style={styles.headerTitle}>Social Hub</Text>
-                <Text style={styles.headerSubtitle}>Connect with players and join games</Text>
-            </View>
+            <AppHeader 
+                title="Social Hub" 
+                subtitle="Connect with players and join games"
+            />
 
             {/* Tab Switcher */}
             <View style={styles.tabSwitcher}>

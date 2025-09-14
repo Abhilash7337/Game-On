@@ -37,7 +37,19 @@ class BookingStore {
   }
 
   getAllBookings(): Booking[] {
-    return [...this.bookings];
+    return [...this.bookings].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  getCompletedBookings(): Booking[] {
+    return this.bookings
+      .filter(booking => booking.status === 'completed')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  getBookingsByStatus(status: 'upcoming' | 'completed' | 'cancelled'): Booking[] {
+    return this.bookings
+      .filter(booking => booking.status === status)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
   subscribe(listener: () => void) {

@@ -1,8 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Modal, Platform } from "react-native";
+import { View, Text, Image, ScrollView, TouchableOpacity, Dimensions, Modal, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppHeader from '@/components/AppHeader';
+import { 
+  joinGamesStyles, 
+  joinGamesTextStyles, 
+  headerStyles,
+  buttonStyles,
+  cardStyles 
+} from '@/styles/screens/JoinGamesScreen';
 
 const { width } = Dimensions.get("window");
 
@@ -33,21 +42,22 @@ export default function JoinGamesScreen() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const sports = ['Badminton', 'Tennis', 'Table Tennis', 'Squash', 'Football', 'Basketball'];
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#ffffffff' }}>
+    <View style={joinGamesStyles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Join Games</Text>
-        <Text style={styles.headerSubtitle}>Find and join available games</Text>
-      </View>
+      
+      <AppHeader 
+        title="Join Games" 
+        subtitle="Find and join available games"
+      />
       {/* Filter Button */}
-      <View style={{ paddingHorizontal: 20, marginTop: 8, marginBottom: 10 }}>
-        <TouchableOpacity style={styles.dropdown} onPress={() => setFilterModalVisible(true)}>
-          <Text style={styles.dropdownText}>Filter</Text>
+      <View style={joinGamesStyles.filterContainer}>
+        <TouchableOpacity style={joinGamesStyles.filterDropdown} onPress={() => setFilterModalVisible(true)}>
+          <Text style={joinGamesTextStyles.filterDropdownText}>Filter</Text>
           <Ionicons name="options-outline" size={18} color="#6B7280" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </View>
@@ -152,30 +162,30 @@ export default function JoinGamesScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 0 }}>
         {/* Game Cards */}
         {games.map((game) => (
-          <View key={game.id} style={styles.card}>
-            <Image source={{ uri: game.image }} style={styles.cardImage} />
-            <View style={styles.cardInfo}>
-              <View style={styles.cardTopRow}>
-                <Text style={styles.venueName}>{game.venue}</Text>
-                <TouchableOpacity style={styles.joinBtn}>
-                  <Text style={styles.joinBtnText}>Join</Text>
+          <View key={game.id} style={joinGamesStyles.gameCard}>
+            <Image source={{ uri: game.image }} style={joinGamesStyles.gameCardImage} />
+            <View style={joinGamesStyles.gameCardInfo}>
+              <View style={joinGamesStyles.gameCardTopRow}>
+                <Text style={joinGamesTextStyles.venueName}>{game.venue}</Text>
+                <TouchableOpacity style={joinGamesStyles.gameJoinButton}>
+                  <Text style={joinGamesTextStyles.joinButtonText}>Join</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.gameDetails}>At {game.court} | 17/8/2025 at 08:47 pm</Text>
-              <View style={styles.playerStatusRow}>
-                <Text style={styles.playerCount}>{game.players}/{game.maxPlayers} players</Text>
-                <View style={styles.statusChip}>
-                  <Text style={styles.statusChipText}>{game.status}</Text>
+              <Text style={joinGamesTextStyles.gameDetails}>At {game.court} | 17/8/2025 at 08:47 pm</Text>
+              <View style={joinGamesStyles.playerStatusRow}>
+                <Text style={joinGamesTextStyles.playerCount}>{game.players}/{game.maxPlayers} players</Text>
+                <View style={joinGamesStyles.statusChip}>
+                  <Text style={joinGamesTextStyles.statusChipText}>{game.status}</Text>
                 </View>
               </View>
-              <Text style={styles.priceText}>₹{game.price}/player</Text>
-              <View style={styles.divider} />
-              <View style={styles.organizerRow}>
-                <Text style={styles.organizerLabel}>Organised by:</Text>
+              <Text style={joinGamesTextStyles.priceText}>₹{game.price}/player</Text>
+              <View style={joinGamesStyles.divider} />
+              <View style={joinGamesStyles.organizerRow}>
+                <Text style={joinGamesTextStyles.organizerLabel}>Organised by:</Text>
                 <Ionicons name="person" size={16} color="#374151" style={{ marginHorizontal: 4 }} />
-                <Text style={styles.organizerName}>{game.organizer}</Text>
+                <Text style={joinGamesTextStyles.organizerName}>{game.organizer}</Text>
                 <TouchableOpacity style={{ marginLeft: 'auto' }}>
-                  <Text style={styles.detailsLink}>Details</Text>
+                  <Text style={joinGamesTextStyles.detailsLink}>Details</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -185,142 +195,3 @@ export default function JoinGamesScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    backgroundColor: '#047857',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 32,
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '400',
-  },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    marginBottom: 18,
-    width: '100%',
-  },
-  dropdownText: {
-    color: '#111827',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  cardImage: {
-    width: '100%',
-    height: 160,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    resizeMode: 'cover',
-  },
-  cardInfo: {
-    padding: 16,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  venueName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    flex: 1,
-  },
-  joinBtn: {
-    backgroundColor: '#EA580C',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  joinBtnText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  gameDetails: {
-    color: '#6B7280',
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  playerStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  playerCount: {
-    color: '#6B7280',
-    fontSize: 14,
-    marginRight: 10,
-  },
-  statusChip: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  statusChipText: {
-    color: '#B45309',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  priceText: {
-    color: '#047857',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 8,
-  },
-  organizerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  organizerLabel: {
-    color: '#6B7280',
-    fontSize: 12,
-    marginRight: 2,
-  },
-  organizerName: {
-    color: '#374151',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  detailsLink: {
-    color: '#047857',
-    fontWeight: 'bold',
-    fontSize: 13,
-    textDecorationLine: 'underline',
-  },
-});
