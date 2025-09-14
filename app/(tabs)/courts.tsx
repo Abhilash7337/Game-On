@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Image, ActivityIndicator } from 'react-native';
+import AppHeader from '@/components/AppHeader';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
@@ -56,13 +57,17 @@ export default function CourtsScreen() {
 
 	return (
 		<View style={styles.container}>
-			{/* Header */}
-			<View style={[styles.header, { paddingTop: insets.top + 20 }]}> {/* 48 is your original paddingTop */}
-				<Text style={styles.headerTitle}>Venues</Text>
+			<AppHeader 
+				title="Venues" 
+				subtitle="Find courts near you"
+			/>
+
+			{/* Search and Filter Section */}
+			<View style={styles.searchSection}>
 				<TextInput
 					style={styles.searchInput}
 					placeholder="Search for venues..."
-					placeholderTextColor="#fff"
+					placeholderTextColor="#666"
 					value={search}
 					onChangeText={setSearch}
 				/>
@@ -70,7 +75,7 @@ export default function CourtsScreen() {
 					<Text style={styles.radiusLabel}>Radius:</Text>
 					<TouchableOpacity style={styles.radiusChip}>
 						<Text style={styles.radiusChipText}>{radius}</Text>
-						<Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 4 }} />
+						<Ionicons name="chevron-down" size={16} color="#047857" style={{ marginLeft: 4 }} />
 					</TouchableOpacity>
 				</View>
 			</View>
@@ -116,51 +121,50 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: '#F9FAFB',
 	},
-		header: {
-			backgroundColor: '#047857',
-			// borderBottomLeftRadius: 32,
-			// borderBottomRightRadius: 32,
-			paddingHorizontal: 24,
-			// paddingTop is set dynamically
-			paddingBottom: 24,
-			marginBottom: 8,
-		},
-	headerTitle: {
-		color: '#fff',
-		fontSize: 32,
-		fontWeight: 'bold',
+	searchSection: {
+		backgroundColor: '#fff',
+		paddingHorizontal: 24,
+		paddingVertical: 16,
+		marginHorizontal: 16,
 		marginBottom: 16,
+		borderRadius: 16,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.07,
+		shadowRadius: 6,
+		elevation: 4,
 	},
 	searchInput: {
-		backgroundColor: '#10B981',
-		borderRadius: 16,
+		backgroundColor: '#F3F4F6',
+		borderRadius: 12,
 		paddingHorizontal: 16,
-		paddingVertical: 10,
-		color: '#fff',
+		paddingVertical: 12,
+		color: '#111827',
 		fontSize: 16,
 		marginBottom: 12,
+		borderWidth: 1,
+		borderColor: '#E5E7EB',
 	},
 	radiusRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginBottom: 8,
 	},
 	radiusLabel: {
-		color: '#fff',
+		color: '#111827',
 		fontSize: 16,
 		marginRight: 8,
 	},
 	radiusChip: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: '#10B981',
-		borderRadius: 16,
+		backgroundColor: '#047857',
+		borderRadius: 12,
 		paddingHorizontal: 12,
 		paddingVertical: 6,
 	},
 	radiusChipText: {
 		color: '#fff',
-		fontSize: 16,
+		fontSize: 14,
 	},
 	venueCard: {
 		backgroundColor: '#fff',

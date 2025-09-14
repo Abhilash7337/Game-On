@@ -1,8 +1,10 @@
 
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import AppHeader from '@/components/AppHeader';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Booking, bookingStore } from '../../utils/bookingStore';
 
 // Responsive font size utility
 function responsiveFontSize(base: number) {
@@ -37,10 +39,7 @@ const demoGames = [
 	{ id: 'g2', sport: 'tennis', status: 'completed', startTime: '2025-08-10T10:00:00', endTime: '2025-08-10T11:00:00', court: { name: 'Court 2', venue: { name: 'Venue B' } }, currentPlayers: 2, maxPlayers: 4 },
 	{ id: 'g3', sport: 'badminton', status: 'upcoming', startTime: '2025-09-01T10:00:00', endTime: '2025-09-01T11:00:00', court: { name: 'Court 1', venue: { name: 'Mahindra Court' } }, currentPlayers: 3, maxPlayers: 6 },
 ];
-const demoBookings = [
-	{ id: 'b1', court: { name: 'Court 1', venue: { name: 'Mahindra Court' } }, startTime: '2025-08-01T10:00:00', totalAmount: 200, status: 'confirmed' },
-	{ id: 'b2', court: { name: 'Court 2', venue: { name: 'Venue B' } }, startTime: '2025-08-10T10:00:00', totalAmount: 150, status: 'completed' },
-];
+
 const demoRatings = [4, 5, 5, 4, 5];
 
 const achievements = [
@@ -69,13 +68,23 @@ export default function ProfileScreen() {
 	const [user, setUser] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 	const [tab, setTab] = useState('Stats');
-
+	const [userBookings, setUserBookings] = useState<Booking[]>([]);
 
 	useEffect(() => {
 		setTimeout(() => {
 			setUser(demoUser);
 			setLoading(false);
 		}, 700);
+
+		// Subscribe to booking updates
+		const updateBookings = () => {
+			setUserBookings(bookingStore.getAllBookings());
+		};
+
+		updateBookings();
+		const unsubscribe = bookingStore.subscribe(updateBookings);
+
+		return () => unsubscribe();
 	}, []);
 
 	if (loading || !user) {
@@ -86,15 +95,21 @@ export default function ProfileScreen() {
 		);
 	}
 
-	const completedGames = demoGames.filter((g) => g.status === 'completed');
-	const upcomingGames = demoGames.filter((g) => g.status === 'upcoming');
+	const completedBookings = userBookings.filter((booking) => booking.status === 'completed');
+	const upcomingBookings = userBookings.filter((booking) => booking.status === 'upcoming');
 	const averageRating = demoRatings.length > 0 ? (demoRatings.reduce((a, b) => a + b, 0) / demoRatings.length).toFixed(1) : 'N/A';
 	const levelProgress = Math.min(((user.gamesPlayed || 0) * 10) % 100, 100);
 	const currentLevel = Math.floor((user.gamesPlayed || 0) / 10) + 1;
 
 	return (
 		<ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ paddingBottom: 32 }}>
-			<View style={[styles.header, { paddingTop: insets.top + 24 }]}> 
+			<AppHeader 
+				title="Profile" 
+				subtitle="Your game stats and bookings"
+			/>
+			
+			{/* User Info Section */}
+			<View style={styles.userInfoSection}>
 				<View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
 					<Image
 						source={{ uri: user.profileImageUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&w=80&h=80&fit=crop&crop=face' }}
@@ -166,13 +181,13 @@ export default function ProfileScreen() {
 					</View>
 					<View style={styles.sectionCard}>
 						<Text style={[styles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Recent Activity</Text>
-						{completedGames.length > 0 ? (
-							completedGames.slice(0, 3).map((game) => (
-								<View key={game.id} style={styles.activityRow}>
+						{completedBookings.length > 0 ? (
+							completedBookings.slice(0, 3).map((booking) => (
+								<View key={booking.id} style={styles.activityRow}>
 														<View style={styles.activityIcon}><Text style={{ color: '#047857', fontSize: responsiveFontSize(16) }}>✓</Text></View>
 														<View style={{ flex: 1 }}>
-															<Text style={[styles.activityTitle, { fontSize: responsiveFontSize(14) }]}>Completed {game.sport} game</Text>
-															<Text style={[styles.activityDate, { fontSize: responsiveFontSize(12) }]}>{new Date(game.endTime).toLocaleDateString()}</Text>
+															<Text style={[styles.activityTitle, { fontSize: responsiveFontSize(14) }]}>Completed {booking.bookingType} at {booking.venue}</Text>
+															<Text style={[styles.activityDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()}</Text>
 									</View>
 								</View>
 							))
@@ -185,16 +200,16 @@ export default function ProfileScreen() {
 			{tab === 'Games' && (
 				<View style={{ padding: 16 }}>
 					<View style={styles.sectionCard}>
-						<Text style={[styles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Upcoming Games ({upcomingGames.length})</Text>
-						{upcomingGames.length > 0 ? (
-							upcomingGames.map((game) => (
-								<View key={game.id} style={styles.gameRow}>
+						<Text style={[styles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Upcoming Games ({upcomingBookings.length})</Text>
+						{upcomingBookings.length > 0 ? (
+							upcomingBookings.map((booking) => (
+								<View key={booking.id} style={styles.gameRow}>
 									<View>
-										<Text style={[styles.gameTitle, { fontSize: responsiveFontSize(14) }]}>{game.sport} at {game.court.venue.name}</Text>
-										<Text style={[styles.gameDate, { fontSize: responsiveFontSize(12) }]}>{new Date(game.startTime).toLocaleDateString()} at {new Date(game.startTime).toLocaleTimeString()}</Text>
+										<Text style={[styles.gameTitle, { fontSize: responsiveFontSize(14) }]}>{booking.bookingType} at {booking.venue}</Text>
+										<Text style={[styles.gameDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()} at {booking.time}</Text>
 									</View>
 									<View style={styles.playersBadge}>
-										<Text style={[styles.playersBadgeText, { fontSize: responsiveFontSize(13) }]}>{game.currentPlayers}/{game.maxPlayers}</Text>
+										<Text style={[styles.playersBadgeText, { fontSize: responsiveFontSize(13) }]}>{booking.court}</Text>
 									</View>
 								</View>
 							))
@@ -203,13 +218,13 @@ export default function ProfileScreen() {
 						)}
 					</View>
 					<View style={styles.sectionCard}>
-						<Text style={[styles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Game History ({completedGames.length})</Text>
-						{completedGames.length > 0 ? (
-							completedGames.slice(0, 5).map((game) => (
-								<View key={game.id} style={styles.gameRow}>
+						<Text style={[styles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Game History ({completedBookings.length})</Text>
+						{completedBookings.length > 0 ? (
+							completedBookings.slice(0, 5).map((booking) => (
+								<View key={booking.id} style={styles.gameRow}>
 									<View>
-										<Text style={[styles.gameTitle, { fontSize: responsiveFontSize(14) }]}>{game.sport} at {game.court.venue.name}</Text>
-										<Text style={[styles.gameDate, { fontSize: responsiveFontSize(12) }]}>{new Date(game.endTime).toLocaleDateString()}</Text>
+										<Text style={[styles.gameTitle, { fontSize: responsiveFontSize(14) }]}>{booking.bookingType} at {booking.venue}</Text>
+										<Text style={[styles.gameDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()}</Text>
 									</View>
 									<View style={[styles.playersBadge, { backgroundColor: '#e5e7eb' }] }>
 										<Text style={[styles.playersBadgeText, { color: '#374151', fontSize: responsiveFontSize(13) }]}>Completed</Text>
@@ -226,15 +241,15 @@ export default function ProfileScreen() {
 				<View style={{ padding: 16 }}>
 					<View style={styles.sectionCard}>
 						<Text style={[styles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Booking History</Text>
-						{demoBookings.length > 0 ? (
-							demoBookings.map((booking) => (
+						{userBookings.length > 0 ? (
+							userBookings.map((booking) => (
 								<View key={booking.id} style={styles.bookingRow}>
 									<View style={{ flex: 1 }}>
-										<Text style={[styles.bookingTitle, { fontSize: responsiveFontSize(14) }]}>{booking.court.name} at {booking.court.venue.name}</Text>
-										<Text style={[styles.bookingDate, { fontSize: responsiveFontSize(12) }]}>{new Date(booking.startTime).toLocaleDateString()} at {new Date(booking.startTime).toLocaleTimeString()}</Text>
-										<Text style={[styles.bookingAmount, { fontSize: responsiveFontSize(13) }]}>${booking.totalAmount}</Text>
+										<Text style={[styles.bookingTitle, { fontSize: responsiveFontSize(14) }]}>{booking.court} at {booking.venue}</Text>
+										<Text style={[styles.bookingDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()} at {booking.time}</Text>
+										<Text style={[styles.bookingAmount, { fontSize: responsiveFontSize(13) }]}>₹{booking.price}</Text>
 									</View>
-									<View style={[styles.bookingStatus, booking.status === 'confirmed' ? { backgroundColor: '#bbf7d0' } : booking.status === 'completed' ? { backgroundColor: '#dbeafe' } : { backgroundColor: '#e5e7eb' }] }>
+									<View style={[styles.bookingStatus, booking.status === 'upcoming' ? { backgroundColor: '#bbf7d0' } : booking.status === 'completed' ? { backgroundColor: '#dbeafe' } : { backgroundColor: '#e5e7eb' }] }>
 										<Text style={[styles.bookingStatusText, { fontSize: responsiveFontSize(13) }]}>{booking.status}</Text>
 									</View>
 								</View>
@@ -250,6 +265,14 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+	userInfoSection: {
+		backgroundColor: '#047857',
+		paddingHorizontal: 20,
+		paddingVertical: 20,
+		marginHorizontal: 16,
+		marginBottom: 16,
+		borderRadius: 16,
+	},
 	header: {
 		backgroundColor: '#047857',
 		paddingHorizontal: 20,

@@ -1,18 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Modal, FlatList } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { StatusBar } from 'expo-status-bar';
-import { Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+    buttonStyles,
+    cardStyles,
+    chipStyles,
+    headerStyles,
+    inputStyles,
+    layoutStyles,
+    modalStyles,
+    summaryStyles,
+    textStyles
+} from '@/styles/screens/QuickBookScreen';
+import { colors } from '@/styles/theme';
 import { bookingStore } from '@/utils/bookingStore';
-
-const PRIMARY_GREEN = '#047857';
-const ORANGE_COLOR = '#EA580C';
-const COMPONENT_GRAY = '#F3F4F6';
-const TEXT_GRAY = '#6B7280';
-const DARK_TEXT = '#111827';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { Alert, FlatList, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function QuickBookScreen() {
     const router = useRouter();
@@ -60,48 +65,6 @@ export default function QuickBookScreen() {
         bookingType !== '' &&
         (bookingType === 'Private Game' || (skillLevel !== '' && players !== ''));
 
-    const handleConfirmBooking = () => {
-        if (isFormValid) {
-            // Save booking to store
-            bookingStore.addBooking({
-                venue,
-                court,
-                date,
-                time,
-                duration,
-                bookingType: bookingType as 'Open Game' | 'Private Game',
-                skillLevel: bookingType === 'Open Game' ? skillLevel : undefined,
-                players: bookingType === 'Open Game' ? players : undefined,
-                price: 500
-            });
-
-            Alert.alert(
-                'Booking Confirmed! 🎉',
-                `Your booking at ${venue} - ${court} on ${date.toDateString()} at ${time} for ${duration} has been confirmed.\n\nYou can view it in your upcoming games.`,
-                [
-                    {
-                        text: 'View Home',
-                        onPress: () => router.push('/(tabs)')
-                    },
-                    {
-                        text: 'Book Another',
-                        onPress: () => {
-                            // Reset form
-                            setVenue('');
-                            setCourt('');
-                            setDate(new Date());
-                            setTime('');
-                            setDuration('');
-                            setBookingType('');
-                            setSkillLevel('');
-                            setPlayers('');
-                        }
-                    }
-                ]
-            );
-        }
-    };
-
     // Custom Dropdown Component
     const CustomDropdown = ({ 
         title, 
@@ -121,12 +84,12 @@ export default function QuickBookScreen() {
         onClose: () => void;
     }) => (
         <Modal visible={visible} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{title}</Text>
+            <View style={modalStyles.overlay}>
+                <View style={modalStyles.content}>
+                    <View style={modalStyles.header}>
+                        <Text style={modalStyles.title}>{title}</Text>
                         <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close" size={24} color={DARK_TEXT} />
+                            <Ionicons name="close" size={24} color={colors.textSecondary} />
                         </TouchableOpacity>
                     </View>
                     <FlatList
@@ -135,8 +98,8 @@ export default function QuickBookScreen() {
                         renderItem={({ item }) => (
                             <TouchableOpacity
                                 style={[
-                                    styles.modalOption,
-                                    value === item && styles.modalOptionSelected
+                                    modalStyles.option,
+                                    value === item && modalStyles.optionSelected
                                 ]}
                                 onPress={() => {
                                     onSelect(item);
@@ -144,13 +107,13 @@ export default function QuickBookScreen() {
                                 }}
                             >
                                 <Text style={[
-                                    styles.modalOptionText,
-                                    value === item && styles.modalOptionTextSelected
+                                    modalStyles.optionText,
+                                    value === item && modalStyles.optionTextSelected
                                 ]}>
                                     {item}
                                 </Text>
                                 {value === item && (
-                                    <Ionicons name="checkmark" size={20} color={PRIMARY_GREEN} />
+                                    <Ionicons name="checkmark" size={20} color={colors.primary} />
                                 )}
                             </TouchableOpacity>
                         )}
@@ -160,98 +123,127 @@ export default function QuickBookScreen() {
         </Modal>
     );
 
+    const handleBooking = () => {
+        const newBooking = {
+            venue,
+            court,
+            date,
+            time,
+            duration,
+            bookingType: bookingType as 'Open Game' | 'Private Game',
+            price: 500,
+            ...(bookingType === 'Open Game' && { 
+                skillLevel, 
+                players 
+            })
+        };
+        
+        bookingStore.addBooking(newBooking);
+        
+        Alert.alert(
+            'Booking Confirmed! 🎉',
+            `Your booking at ${venue} - ${court} on ${date.toDateString()} at ${time} for ${duration} has been confirmed.\n\nYou can view it in your upcoming games.`,
+            [
+                {
+                    text: 'View Home',
+                    onPress: () => router.push('/(tabs)')
+                },
+                {
+                    text: 'Book Another',
+                    onPress: () => {
+                        // Reset form
+                        setVenue('');
+                        setCourt('');
+                        setDate(new Date());
+                        setTime('');
+                        setDuration('');
+                        setBookingType('');
+                        setSkillLevel('');
+                        setPlayers('');
+                    }
+                }
+            ]
+        );
+    };
+
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style="light" />
             
-            <View style={{ flex: 1, backgroundColor: '#fff' }}>
+            <View style={layoutStyles.container}>
                 {/* Header */}
-                <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12, padding: 4 }}>
-                            <Ionicons name="arrow-back" size={24} color="#fff" />
+                <View style={[headerStyles.container, { paddingTop: insets.top + 20 }]}>
+                    <View style={headerStyles.content}>
+                        <TouchableOpacity onPress={() => router.back()} style={headerStyles.backButton}>
+                            <Ionicons name="arrow-back" size={24} color="#ffffff" />
                         </TouchableOpacity>
                         <View>
-                            <Text style={styles.headerTitle}>Book a Court</Text>
-                            <Text style={styles.headerSubtitle}>Schedule your next game</Text>
+                            <Text style={headerStyles.title}>
+                                Book a Court
+                            </Text>
+                            <Text style={headerStyles.subtitle}>
+                                Schedule your next game
+                            </Text>
                         </View>
                     </View>
                 </View>
 
-                <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
+                <ScrollView 
+                    style={{ flex: 1 }}
+                    contentContainerStyle={layoutStyles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Venue Selection */}
-                    <View style={styles.card}>
-                        <Text style={styles.label}>Select Venue</Text>
+                    <View style={cardStyles.flat}>
+                        <Text style={textStyles.label}>
+                            Select Venue
+                        </Text>
                         <TouchableOpacity 
-                            style={styles.dropdownButton}
+                            style={inputStyles.dropdown}
                             onPress={() => setShowVenueModal(true)}
                         >
-                            <Text style={[
-                                styles.dropdownText,
-                                venue === '' && styles.dropdownPlaceholder
-                            ]}>
+                            <Text style={venue === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
                                 {venue || 'Choose a venue...'}
                             </Text>
-                            <Ionicons name="chevron-down" size={20} color={TEXT_GRAY} />
+                            <Ionicons name="chevron-down" size={20} color="#6b7280" />
                         </TouchableOpacity>
                     </View>
 
-                    {/* Custom Dropdowns */}
-                    <CustomDropdown
-                        title="Select Venue"
-                        value={venue}
-                        placeholder="Choose a venue..."
-                        options={venues}
-                        onSelect={(value) => {
-                            setVenue(value);
-                            setCourt(''); // Reset court when venue changes
-                        }}
-                        visible={showVenueModal}
-                        onClose={() => setShowVenueModal(false)}
-                    />
-
-                    {/* Court Selection */}
+                    {/* Court Selection - Only show when venue is selected */}
                     {venue !== '' && (
-                        <View style={styles.card}>
-                            <Text style={styles.label}>Select Court</Text>
+                        <View style={cardStyles.flat}>
+                            <Text style={textStyles.label}>
+                                Select Court
+                            </Text>
                             <TouchableOpacity 
-                                style={styles.dropdownButton}
+                                style={inputStyles.dropdown}
                                 onPress={() => setShowCourtModal(true)}
                             >
-                                <Text style={[
-                                    styles.dropdownText,
-                                    court === '' && styles.dropdownPlaceholder
-                                ]}>
+                                <Text style={court === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
                                     {court || 'Choose a court...'}
                                 </Text>
-                                <Ionicons name="chevron-down" size={20} color={TEXT_GRAY} />
+                                <Ionicons name="chevron-down" size={20} color="#6b7280" />
                             </TouchableOpacity>
                         </View>
                     )}
 
-                    <CustomDropdown
-                        title="Select Court"
-                        value={court}
-                        placeholder="Choose a court..."
-                        options={courts}
-                        onSelect={setCourt}
-                        visible={showCourtModal}
-                        onClose={() => setShowCourtModal(false)}
-                    />
-
-                    {/* Date & Time */}
+                    {/* Date & Time - Only show when court is selected */}
                     {court !== '' && (
-                        <View style={styles.card}>
-                            <Text style={styles.label}>Date & Time</Text>
+                        <View style={cardStyles.flat}>
+                            <Text style={textStyles.label}>
+                                Date & Time
+                            </Text>
+                            
+                            {/* Date Picker */}
                             <TouchableOpacity 
                                 onPress={() => setShowDate(true)} 
-                                style={styles.dateBtn}
+                                style={inputStyles.dateButton}
                             >
-                                <Text style={styles.dateBtnText}>
+                                <Text style={inputStyles.dateButtonText}>
                                     {date.toDateString()}
                                 </Text>
-                                <Ionicons name="calendar-outline" size={20} color={TEXT_GRAY} />
+                                <Ionicons name="calendar-outline" size={20} color="#6b7280" />
                             </TouchableOpacity>
                             
                             {showDate && (
@@ -267,101 +259,71 @@ export default function QuickBookScreen() {
                                 />
                             )}
                             
-                            <View style={styles.timeRow}>
-                                <View style={styles.timePickerContainer}>
-                                    <Text style={styles.subLabel}>Time</Text>
+                            {/* Time and Duration Row */}
+                            <View style={layoutStyles.timeRow}>
+                                <View style={layoutStyles.timePickerContainer}>
+                                    <Text style={textStyles.subLabel}>
+                                        Time
+                                    </Text>
                                     <TouchableOpacity 
-                                        style={styles.dropdownButton}
+                                        style={inputStyles.dropdown}
                                         onPress={() => setShowTimeModal(true)}
                                     >
-                                        <Text style={[
-                                            styles.dropdownText,
-                                            time === '' && styles.dropdownPlaceholder
-                                        ]}>
+                                        <Text style={time === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
                                             {time || 'Select time'}
                                         </Text>
-                                        <Ionicons name="chevron-down" size={20} color={TEXT_GRAY} />
+                                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
                                     </TouchableOpacity>
                                 </View>
                                 
-                                <View style={styles.timePickerContainer}>
-                                    <Text style={styles.subLabel}>Duration</Text>
+                                <View style={layoutStyles.timePickerContainer}>
+                                    <Text style={textStyles.subLabel}>
+                                        Duration
+                                    </Text>
                                     <TouchableOpacity 
-                                        style={styles.dropdownButton}
+                                        style={inputStyles.dropdown}
                                         onPress={() => setShowDurationModal(true)}
                                     >
-                                        <Text style={[
-                                            styles.dropdownText,
-                                            duration === '' && styles.dropdownPlaceholder
-                                        ]}>
+                                        <Text style={duration === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
                                             {duration || 'Select duration'}
                                         </Text>
-                                        <Ionicons name="chevron-down" size={20} color={TEXT_GRAY} />
+                                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
                                     </TouchableOpacity>
                                 </View>
                             </View>
-
-                            <CustomDropdown
-                                title="Select Time"
-                                value={time}
-                                placeholder="Select time"
-                                options={times}
-                                onSelect={setTime}
-                                visible={showTimeModal}
-                                onClose={() => setShowTimeModal(false)}
-                            />
-
-                            <CustomDropdown
-                                title="Select Duration"
-                                value={duration}
-                                placeholder="Select duration"
-                                options={durations}
-                                onSelect={setDuration}
-                                visible={showDurationModal}
-                                onClose={() => setShowDurationModal(false)}
-                            />
                         </View>
                     )}
 
-                    {/* Booking Type */}
+                    {/* Booking Type - Only show when time and duration are selected */}
                     {time !== '' && duration !== '' && (
-                        <View style={styles.card}>
-                            <Text style={styles.label}>Booking Type</Text>
-                            <View style={styles.chipRow}>
+                        <View style={cardStyles.flat}>
+                            <Text style={textStyles.label}>
+                                Booking Type
+                            </Text>
+                            
+                            <View style={chipStyles.row}>
                                 <TouchableOpacity
-                                    style={[
-                                        styles.chip,
-                                        bookingType === 'Open Game' && styles.chipSelected
-                                    ]}
+                                    style={[chipStyles.base, bookingType === 'Open Game' && chipStyles.selected]}
                                     onPress={() => {
                                         setBookingType('Open Game');
                                         setSkillLevel('');
                                         setPlayers('');
                                     }}
                                 >
-                                    <Text style={[
-                                        styles.chipText,
-                                        bookingType === 'Open Game' && styles.chipTextSelected
-                                    ]}>
+                                    <Text style={[chipStyles.text, bookingType === 'Open Game' && chipStyles.textSelected]}>
                                         Open Game
                                     </Text>
                                 </TouchableOpacity>
                                 
                                 <TouchableOpacity
-                                    style={[
-                                        styles.chip,
-                                        bookingType === 'Private Game' && styles.chipSelected
-                                    ]}
+                                    style={[chipStyles.base, bookingType === 'Private Game' && chipStyles.selected]}
                                     onPress={() => {
                                         setBookingType('Private Game');
                                         setSkillLevel('');
                                         setPlayers('');
                                     }}
                                 >
-                                    <Text style={[
-                                        styles.chipText,
-                                        bookingType === 'Private Game' && styles.chipTextSelected
-                                    ]}>
+                                    <Text style={[chipStyles.text, bookingType === 'Private Game' && chipStyles.textSelected]}>
                                         Private Game
                                     </Text>
                                 </TouchableOpacity>
@@ -369,125 +331,167 @@ export default function QuickBookScreen() {
 
                             {/* Open Game Options */}
                             {bookingType === 'Open Game' && (
-                                <View style={styles.gameOptionsContainer}>
-                                    <View style={styles.gameOptionRow}>
-                                        <View style={styles.gameOptionContainer}>
-                                            <Text style={styles.subLabel}>Skill Level</Text>
+                                <View style={layoutStyles.gameOptionsContainer}>
+                                    <View style={layoutStyles.gameOptionRow}>
+                                        <View style={layoutStyles.gameOptionContainer}>
+                                            <Text style={textStyles.subLabel}>
+                                                Skill Level
+                                            </Text>
                                             <TouchableOpacity 
-                                                style={styles.dropdownButton}
+                                                style={inputStyles.dropdown}
                                                 onPress={() => setShowSkillModal(true)}
                                             >
-                                                <Text style={[
-                                                    styles.dropdownText,
-                                                    skillLevel === '' && styles.dropdownPlaceholder
-                                                ]}>
+                                                <Text style={skillLevel === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
                                                     {skillLevel || 'Choose level'}
                                                 </Text>
-                                                <Ionicons name="chevron-down" size={20} color={TEXT_GRAY} />
+                                                <Ionicons name="chevron-down" size={20} color="#6b7280" />
                                             </TouchableOpacity>
                                         </View>
-                                        
-                                        <View style={styles.gameOptionContainer}>
-                                            <Text style={styles.subLabel}>Players Needed</Text>
+                                        <View style={layoutStyles.gameOptionContainer}>
+                                            <Text style={textStyles.subLabel}>
+                                                Players Needed
+                                            </Text>
                                             <TouchableOpacity 
-                                                style={styles.dropdownButton}
+                                                style={inputStyles.dropdown}
                                                 onPress={() => setShowPlayersModal(true)}
                                             >
-                                                <Text style={[
-                                                    styles.dropdownText,
-                                                    players === '' && styles.dropdownPlaceholder
-                                                ]}>
+                                                <Text style={players === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
                                                     {players || 'Select number'}
                                                 </Text>
-                                                <Ionicons name="chevron-down" size={20} color={TEXT_GRAY} />
+                                                <Ionicons name="chevron-down" size={20} color="#6b7280" />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-
-                                    <CustomDropdown
-                                        title="Select Skill Level"
-                                        value={skillLevel}
-                                        placeholder="Choose level"
-                                        options={skillLevels}
-                                        onSelect={setSkillLevel}
-                                        visible={showSkillModal}
-                                        onClose={() => setShowSkillModal(false)}
-                                    />
-
-                                    <CustomDropdown
-                                        title="Select Players Needed"
-                                        value={players}
-                                        placeholder="Select number"
-                                        options={playersRequired}
-                                        onSelect={setPlayers}
-                                        visible={showPlayersModal}
-                                        onClose={() => setShowPlayersModal(false)}
-                                    />
                                 </View>
                             )}
                         </View>
                     )}
 
-                    {/* Booking Summary */}
+                    {/* Booking Summary - Only show when form is valid */}
                     {isFormValid && (
-                        <View style={styles.summaryCard}>
-                            <Text style={styles.summaryTitle}>Booking Summary</Text>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Venue:</Text>
-                                <Text style={styles.summaryValue}>{venue}</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Court:</Text>
-                                <Text style={styles.summaryValue}>{court}</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Date:</Text>
-                                <Text style={styles.summaryValue}>{date.toDateString()}</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Time:</Text>
-                                <Text style={styles.summaryValue}>{time}</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Duration:</Text>
-                                <Text style={styles.summaryValue}>{duration}</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Type:</Text>
-                                <Text style={styles.summaryValue}>{bookingType}</Text>
-                            </View>
-                            {bookingType === 'Open Game' && skillLevel && players && (
-                                <>
-                                    <View style={styles.summaryRow}>
-                                        <Text style={styles.summaryLabel}>Skill Level:</Text>
-                                        <Text style={styles.summaryValue}>{skillLevel}</Text>
-                                    </View>
-                                    <View style={styles.summaryRow}>
-                                        <Text style={styles.summaryLabel}>Players Needed:</Text>
-                                        <Text style={styles.summaryValue}>{players}</Text>
-                                    </View>
-                                </>
-                            )}
-                            <View style={styles.priceRow}>
-                                <Text style={styles.priceLabel}>Total Cost:</Text>
-                                <Text style={styles.priceValue}>₹500</Text>
+                        <View style={cardStyles.summary}>
+                            <Text style={textStyles.summaryTitle}>
+                                Booking Summary
+                            </Text>
+                            <View>
+                                <View style={summaryStyles.row}>
+                                    <Text style={textStyles.summaryLabel}>Venue:</Text>
+                                    <Text style={textStyles.summaryValue}>{venue}</Text>
+                                </View>
+                                <View style={summaryStyles.row}>
+                                    <Text style={textStyles.summaryLabel}>Court:</Text>
+                                    <Text style={textStyles.summaryValue}>{court}</Text>
+                                </View>
+                                <View style={summaryStyles.row}>
+                                    <Text style={textStyles.summaryLabel}>Date:</Text>
+                                    <Text style={textStyles.summaryValue}>{date.toDateString()}</Text>
+                                </View>
+                                <View style={summaryStyles.row}>
+                                    <Text style={textStyles.summaryLabel}>Time:</Text>
+                                    <Text style={textStyles.summaryValue}>{time}</Text>
+                                </View>
+                                <View style={summaryStyles.row}>
+                                    <Text style={textStyles.summaryLabel}>Duration:</Text>
+                                    <Text style={textStyles.summaryValue}>{duration}</Text>
+                                </View>
+                                <View style={summaryStyles.row}>
+                                    <Text style={textStyles.summaryLabel}>Type:</Text>
+                                    <Text style={textStyles.summaryValue}>{bookingType}</Text>
+                                </View>
+                                {bookingType === 'Open Game' && skillLevel && players && (
+                                    <>
+                                        <View style={summaryStyles.row}>
+                                            <Text style={textStyles.summaryLabel}>Skill Level:</Text>
+                                            <Text style={textStyles.summaryValue}>{skillLevel}</Text>
+                                        </View>
+                                        <View style={summaryStyles.row}>
+                                            <Text style={textStyles.summaryLabel}>Players Needed:</Text>
+                                            <Text style={textStyles.summaryValue}>{players}</Text>
+                                        </View>
+                                    </>
+                                )}
+                                <View style={summaryStyles.priceRow}>
+                                    <Text style={textStyles.priceLabel}>Total Cost:</Text>
+                                    <Text style={textStyles.priceValue}>₹500</Text>
+                                </View>
                             </View>
                         </View>
                     )}
                 </ScrollView>
 
+                {/* All Custom Dropdowns */}
+                <CustomDropdown
+                    title="Select Venue"
+                    value={venue}
+                    placeholder="Choose a venue..."
+                    options={venues}
+                    onSelect={(value) => {
+                        setVenue(value);
+                        setCourt(''); // Reset court when venue changes
+                    }}
+                    visible={showVenueModal}
+                    onClose={() => setShowVenueModal(false)}
+                />
+
+                <CustomDropdown
+                    title="Select Court"
+                    value={court}
+                    placeholder="Choose a court..."
+                    options={courts}
+                    onSelect={setCourt}
+                    visible={showCourtModal}
+                    onClose={() => setShowCourtModal(false)}
+                />
+
+                <CustomDropdown
+                    title="Select Time"
+                    value={time}
+                    placeholder="Select time"
+                    options={times}
+                    onSelect={setTime}
+                    visible={showTimeModal}
+                    onClose={() => setShowTimeModal(false)}
+                />
+
+                <CustomDropdown
+                    title="Select Duration"
+                    value={duration}
+                    placeholder="Select duration"
+                    options={durations}
+                    onSelect={setDuration}
+                    visible={showDurationModal}
+                    onClose={() => setShowDurationModal(false)}
+                />
+
+                <CustomDropdown
+                    title="Select Skill Level"
+                    value={skillLevel}
+                    placeholder="Choose level"
+                    options={skillLevels}
+                    onSelect={setSkillLevel}
+                    visible={showSkillModal}
+                    onClose={() => setShowSkillModal(false)}
+                />
+
+                <CustomDropdown
+                    title="Select Players Needed"
+                    value={players}
+                    placeholder="Select number"
+                    options={playersRequired}
+                    onSelect={setPlayers}
+                    visible={showPlayersModal}
+                    onClose={() => setShowPlayersModal(false)}
+                />
+
                 {/* Footer Button */}
-                <View style={styles.footer}>
+                <View style={layoutStyles.footer}>
                     <TouchableOpacity
-                        style={[
-                            styles.confirmBtn,
-                            { backgroundColor: isFormValid ? PRIMARY_GREEN : '#D1D5DB' }
-                        ]}
+                        style={[buttonStyles.primary, !isFormValid && buttonStyles.disabled]}
                         disabled={!isFormValid}
-                        onPress={handleConfirmBooking}
+                        onPress={handleBooking}
                     >
-                        <Text style={styles.confirmBtnText}>
-                            {isFormValid ? 'Confirm Booking' : 'Complete Form to Continue'}
+                        <Text style={[buttonStyles.primaryText, !isFormValid && buttonStyles.disabledText]}>
+                            Confirm Booking
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -495,256 +499,3 @@ export default function QuickBookScreen() {
         </>
     );
 }
-
-const styles = StyleSheet.create({
-    header: {
-        backgroundColor: PRIMARY_GREEN,
-        paddingBottom: 30,
-        paddingHorizontal: 20,
-    },
-    headerTitle: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 2,
-    },
-    headerSubtitle: {
-        color: '#fff',
-        fontSize: 14,
-    },
-    card: {
-        backgroundColor: COMPONENT_GRAY,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 18,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    label: {
-        fontWeight: 'bold',
-        fontSize: 16,
-        marginBottom: 12,
-        color: DARK_TEXT,
-    },
-    subLabel: {
-        fontWeight: '600',
-        fontSize: 14,
-        marginBottom: 8,
-        color: DARK_TEXT,
-    },
-    pickerContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    picker: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-    },
-    dropdownButton: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    dropdownText: {
-        color: DARK_TEXT,
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    dropdownPlaceholder: {
-        color: TEXT_GRAY,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 20,
-        width: '85%',
-        maxHeight: '70%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: DARK_TEXT,
-    },
-    modalOption: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 15,
-        paddingHorizontal: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-    },
-    modalOptionSelected: {
-        backgroundColor: '#D1FAE5',
-    },
-    modalOptionText: {
-        fontSize: 16,
-        color: DARK_TEXT,
-    },
-    modalOptionTextSelected: {
-        color: PRIMARY_GREEN,
-        fontWeight: '600',
-    },
-    dateBtn: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    dateBtnText: {
-        color: DARK_TEXT,
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    timeRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 12,
-    },
-    timePickerContainer: {
-        flex: 1,
-    },
-    chipRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 8,
-        marginBottom: 16,
-    },
-    chip: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        flex: 1,
-        alignItems: 'center',
-    },
-    chipSelected: {
-        borderColor: PRIMARY_GREEN,
-        backgroundColor: '#D1FAE5',
-    },
-    chipText: {
-        color: DARK_TEXT,
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    chipTextSelected: {
-        color: PRIMARY_GREEN,
-    },
-    gameOptionsContainer: {
-        marginTop: 16,
-    },
-    gameOptionRow: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    gameOptionContainer: {
-        flex: 1,
-    },
-    summaryCard: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 18,
-        borderWidth: 1,
-        borderColor: '#D1FAE5',
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    summaryTitle: {
-        fontWeight: 'bold',
-        fontSize: 18,
-        marginBottom: 12,
-        color: PRIMARY_GREEN,
-    },
-    summaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    summaryLabel: {
-        color: TEXT_GRAY,
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    summaryValue: {
-        color: DARK_TEXT,
-        fontSize: 14,
-        fontWeight: 'bold',
-        flex: 1,
-        textAlign: 'right',
-    },
-    priceRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    priceLabel: {
-        color: DARK_TEXT,
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    priceValue: {
-        color: ORANGE_COLOR,
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    footer: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: '#fff',
-        padding: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-    },
-    confirmBtn: {
-        borderRadius: 16,
-        paddingVertical: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    confirmBtnText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-});
