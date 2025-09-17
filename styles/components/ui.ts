@@ -74,7 +74,7 @@ export const modalStyles = StyleSheet.create({
   },
   
   optionSelected: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: colors.primary + '20',
   },
   
   optionText: {
@@ -109,7 +109,7 @@ export const chipStyles = StyleSheet.create({
   
   selected: {
     borderColor: colors.primary,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: colors.primary + '20',
   },
   
   text: {
