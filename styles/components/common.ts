@@ -19,10 +19,11 @@ export const cardStyles = StyleSheet.create({
   },
   
   flat: {
-    backgroundColor: colors.backgroundTertiary,
+    backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   
   summary: {
@@ -31,7 +32,7 @@ export const cardStyles = StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
+    borderColor: colors.primary + '40',
     ...shadows.md,
   },
 });
@@ -93,6 +94,7 @@ export const inputStyles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.gray200,
+    ...shadows.sm,
   },
   
   dropdownText: {
@@ -115,6 +117,7 @@ export const inputStyles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.gray200,
+    ...shadows.sm,
   },
   
   dateButtonText: {

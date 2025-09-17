@@ -1,8 +1,8 @@
+import AppHeader from '@/components/AppHeader';
 import {
     buttonStyles,
     cardStyles,
     chipStyles,
-    headerStyles,
     inputStyles,
     layoutStyles,
     modalStyles,
@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function QuickBookScreen() {
@@ -85,9 +85,9 @@ export default function QuickBookScreen() {
     }) => (
         <Modal visible={visible} transparent animationType="slide">
             <View style={modalStyles.overlay}>
-                <View style={modalStyles.content}>
-                    <View style={modalStyles.header}>
-                        <Text style={modalStyles.title}>{title}</Text>
+                <View style={[modalStyles.content, { backgroundColor: colors.background }]}>
+                    <View style={[modalStyles.header, { borderBottomColor: colors.gray200 }]}>
+                        <Text style={[modalStyles.title, { color: colors.textPrimary }]}>{title}</Text>
                         <TouchableOpacity onPress={onClose}>
                             <Ionicons name="close" size={24} color={colors.textSecondary} />
                         </TouchableOpacity>
@@ -99,7 +99,7 @@ export default function QuickBookScreen() {
                             <TouchableOpacity
                                 style={[
                                     modalStyles.option,
-                                    value === item && modalStyles.optionSelected
+                                    value === item && { backgroundColor: colors.primary + '20' }
                                 ]}
                                 onPress={() => {
                                     onSelect(item);
@@ -108,7 +108,8 @@ export default function QuickBookScreen() {
                             >
                                 <Text style={[
                                     modalStyles.optionText,
-                                    value === item && modalStyles.optionTextSelected
+                                    { color: colors.textPrimary },
+                                    value === item && { color: colors.primary }
                                 ]}>
                                     {item}
                                 </Text>
@@ -171,23 +172,26 @@ export default function QuickBookScreen() {
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style="light" />
             
-            <View style={layoutStyles.container}>
-                {/* Header */}
-                <View style={[headerStyles.container, { paddingTop: insets.top + 20 }]}>
-                    <View style={headerStyles.content}>
-                        <TouchableOpacity onPress={() => router.back()} style={headerStyles.backButton}>
-                            <Ionicons name="arrow-back" size={24} color="#ffffff" />
-                        </TouchableOpacity>
-                        <View>
-                            <Text style={headerStyles.title}>
-                                Book a Court
-                            </Text>
-                            <Text style={headerStyles.subtitle}>
-                                Schedule your next game
-                            </Text>
-                        </View>
-                    </View>
-                </View>
+            <View style={[layoutStyles.container, { backgroundColor: colors.backgroundSecondary }]}>
+                <AppHeader 
+                    title="Book a Court" 
+                    subtitle="Schedule your next game"
+                    backgroundColor={colors.primary}
+                >
+                    <TouchableOpacity onPress={() => router.back()} style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <Ionicons name="arrow-back" size={24} color={colors.textInverse} />
+                    </TouchableOpacity>
+                </AppHeader>
 
                 <ScrollView 
                     style={{ flex: 1 }}
@@ -200,13 +204,20 @@ export default function QuickBookScreen() {
                             Select Venue
                         </Text>
                         <TouchableOpacity 
-                            style={inputStyles.dropdown}
+                            style={[inputStyles.dropdown, {
+                                backgroundColor: colors.background,
+                                borderColor: colors.gray200,
+                                borderWidth: 1,
+                            }]}
                             onPress={() => setShowVenueModal(true)}
                         >
-                            <Text style={venue === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
+                            <Text style={venue === '' ? 
+                                [inputStyles.dropdownPlaceholder, { color: colors.textSecondary }] : 
+                                [inputStyles.dropdownText, { color: colors.textPrimary }]
+                            }>
                                 {venue || 'Choose a venue...'}
                             </Text>
-                            <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                            <Ionicons name="chevron-down" size={20} color={colors.primary} />
                         </TouchableOpacity>
                     </View>
 
@@ -217,13 +228,20 @@ export default function QuickBookScreen() {
                                 Select Court
                             </Text>
                             <TouchableOpacity 
-                                style={inputStyles.dropdown}
+                                style={[inputStyles.dropdown, {
+                                    backgroundColor: colors.background,
+                                    borderColor: colors.gray200,
+                                    borderWidth: 1,
+                                }]}
                                 onPress={() => setShowCourtModal(true)}
                             >
-                                <Text style={court === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
+                                <Text style={court === '' ? 
+                                    [inputStyles.dropdownPlaceholder, { color: colors.textSecondary }] : 
+                                    [inputStyles.dropdownText, { color: colors.textPrimary }]
+                                }>
                                     {court || 'Choose a court...'}
                                 </Text>
-                                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                                <Ionicons name="chevron-down" size={20} color={colors.primary} />
                             </TouchableOpacity>
                         </View>
                     )}
@@ -238,25 +256,52 @@ export default function QuickBookScreen() {
                             {/* Date Picker */}
                             <TouchableOpacity 
                                 onPress={() => setShowDate(true)} 
-                                style={inputStyles.dateButton}
+                                style={[inputStyles.dateButton, {
+                                    backgroundColor: colors.background,
+                                    borderColor: colors.gray200,
+                                    borderWidth: 1,
+                                    borderRadius: 12,
+                                }]}
                             >
-                                <Text style={inputStyles.dateButtonText}>
+                                <Text style={[inputStyles.dateButtonText, { color: colors.textPrimary }]}>
                                     {date.toDateString()}
                                 </Text>
-                                <Ionicons name="calendar-outline" size={20} color="#6b7280" />
+                                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                             </TouchableOpacity>
                             
+                            {/* Date Picker Modal */}
                             {showDate && (
-                                <DateTimePicker
-                                    value={date}
-                                    mode="date"
-                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                    minimumDate={new Date()}
-                                    onChange={(event, selectedDate) => {
-                                        setShowDate(false);
-                                        if (selectedDate) setDate(selectedDate);
-                                    }}
-                                />
+                                <Modal visible={showDate} transparent animationType="slide">
+                                    <View style={modalStyles.overlay}>
+                                        <View style={[modalStyles.content, { backgroundColor: colors.background }]}>
+                                            <View style={[modalStyles.header, { borderBottomColor: colors.gray200 }]}>
+                                                <Text style={[modalStyles.title, { color: colors.textPrimary }]}>Select Date</Text>
+                                                <TouchableOpacity 
+                                                    onPress={() => setShowDate(false)}
+                                                    style={{
+                                                        backgroundColor: colors.primary,
+                                                        paddingHorizontal: 16,
+                                                        paddingVertical: 8,
+                                                        borderRadius: 20,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: colors.textInverse, fontWeight: '600' }}>Done</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <DateTimePicker
+                                                value={date}
+                                                mode="date"
+                                                display="spinner"
+                                                minimumDate={new Date()}
+                                                onChange={(event, selectedDate) => {
+                                                    if (selectedDate) setDate(selectedDate);
+                                                }}
+                                                style={{ backgroundColor: colors.background }}
+                                                textColor={colors.textPrimary}
+                                            />
+                                        </View>
+                                    </View>
+                                </Modal>
                             )}
                             
                             {/* Time and Duration Row */}
@@ -266,13 +311,20 @@ export default function QuickBookScreen() {
                                         Time
                                     </Text>
                                     <TouchableOpacity 
-                                        style={inputStyles.dropdown}
+                                        style={[inputStyles.dropdown, {
+                                            backgroundColor: colors.background,
+                                            borderColor: colors.gray200,
+                                            borderWidth: 1,
+                                        }]}
                                         onPress={() => setShowTimeModal(true)}
                                     >
-                                        <Text style={time === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
+                                        <Text style={time === '' ? 
+                                            [inputStyles.dropdownPlaceholder, { color: colors.textSecondary }] : 
+                                            [inputStyles.dropdownText, { color: colors.textPrimary }]
+                                        }>
                                             {time || 'Select time'}
                                         </Text>
-                                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                                        <Ionicons name="chevron-down" size={20} color={colors.primary} />
                                     </TouchableOpacity>
                                 </View>
                                 
@@ -281,13 +333,20 @@ export default function QuickBookScreen() {
                                         Duration
                                     </Text>
                                     <TouchableOpacity 
-                                        style={inputStyles.dropdown}
+                                        style={[inputStyles.dropdown, {
+                                            backgroundColor: colors.background,
+                                            borderColor: colors.gray200,
+                                            borderWidth: 1,
+                                        }]}
                                         onPress={() => setShowDurationModal(true)}
                                     >
-                                        <Text style={duration === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
+                                        <Text style={duration === '' ? 
+                                            [inputStyles.dropdownPlaceholder, { color: colors.textSecondary }] : 
+                                            [inputStyles.dropdownText, { color: colors.textPrimary }]
+                                        }>
                                             {duration || 'Select duration'}
                                         </Text>
-                                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                                        <Ionicons name="chevron-down" size={20} color={colors.primary} />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -338,13 +397,20 @@ export default function QuickBookScreen() {
                                                 Skill Level
                                             </Text>
                                             <TouchableOpacity 
-                                                style={inputStyles.dropdown}
+                                                style={[inputStyles.dropdown, {
+                                                    backgroundColor: colors.background,
+                                                    borderColor: colors.gray200,
+                                                    borderWidth: 1,
+                                                }]}
                                                 onPress={() => setShowSkillModal(true)}
                                             >
-                                                <Text style={skillLevel === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
+                                                <Text style={skillLevel === '' ? 
+                                                    [inputStyles.dropdownPlaceholder, { color: colors.textSecondary }] : 
+                                                    [inputStyles.dropdownText, { color: colors.textPrimary }]
+                                                }>
                                                     {skillLevel || 'Choose level'}
                                                 </Text>
-                                                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                                                <Ionicons name="chevron-down" size={20} color={colors.primary} />
                                             </TouchableOpacity>
                                         </View>
                                         <View style={layoutStyles.gameOptionContainer}>
@@ -352,13 +418,20 @@ export default function QuickBookScreen() {
                                                 Players Needed
                                             </Text>
                                             <TouchableOpacity 
-                                                style={inputStyles.dropdown}
+                                                style={[inputStyles.dropdown, {
+                                                    backgroundColor: colors.background,
+                                                    borderColor: colors.gray200,
+                                                    borderWidth: 1,
+                                                }]}
                                                 onPress={() => setShowPlayersModal(true)}
                                             >
-                                                <Text style={players === '' ? inputStyles.dropdownPlaceholder : inputStyles.dropdownText}>
+                                                <Text style={players === '' ? 
+                                                    [inputStyles.dropdownPlaceholder, { color: colors.textSecondary }] : 
+                                                    [inputStyles.dropdownText, { color: colors.textPrimary }]
+                                                }>
                                                     {players || 'Select number'}
                                                 </Text>
-                                                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                                                <Ionicons name="chevron-down" size={20} color={colors.primary} />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
