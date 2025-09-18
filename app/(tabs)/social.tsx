@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 // 1. Import StatusBar and useSafeAreaInsets
 import AppHeader from '@/components/AppHeader';
-import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { bookingStore, Booking } from '@/utils/bookingStore';
 import { colors } from '@/styles/theme';
+import { Booking, bookingStore } from '@/utils/bookingStore';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
