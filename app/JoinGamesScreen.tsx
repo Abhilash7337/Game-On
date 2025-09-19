@@ -1,4 +1,4 @@
-import AppHeader from '@/components/AppHeader';
+import AppHeader from '@/src/common/components/AppHeader';
 import {
   joinGamesStyles,
   joinGamesTextStyles

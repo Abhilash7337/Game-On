@@ -1,4 +1,3 @@
-
 import AppHeader from '@/src/common/components/AppHeader';
 import {
     buttonStyles,
