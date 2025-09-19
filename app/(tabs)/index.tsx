@@ -1,9 +1,9 @@
 
 import AppHeader from '@/src/common/components/AppHeader';
 import {
-  buttonStyles,
-  homeStyles,
-  homeTextStyles
+    buttonStyles,
+    homeStyles,
+    homeTextStyles
 } from '@/styles/screens/HomeScreen';
 import { spacing } from '@/styles/theme';
 import { Booking, bookingStore } from '@/utils/bookingStore';
