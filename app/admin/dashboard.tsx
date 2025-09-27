@@ -2,11 +2,17 @@ import { AdminService } from '@/src/admin/services/adminApi';
 import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { User, Venue } from '@/src/common/types';
+import {
+    buttonStyles,
+    cardStyles,
+    adminDashboardStyles,
+    adminDashboardTextStyles
+} from '@/styles/screens/AdminDashboardScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AdminDashboard() {
@@ -58,53 +64,53 @@ export default function AdminDashboard() {
     icon: keyof typeof Ionicons.glyphMap;
     color?: string;
   }) => (
-    <View style={styles.statCard}>
-      <View style={[styles.statIcon, { backgroundColor: color + '20' }]}>
+    <View style={adminDashboardStyles.statCard}>
+      <View style={[adminDashboardStyles.statIcon, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
+      <Text style={adminDashboardStyles.statValue}>{value}</Text>
+      <Text style={adminDashboardStyles.statTitle}>{title}</Text>
     </View>
   );
 
   const UserItem = ({ user }: { user: User }) => (
-    <View style={styles.listItem}>
-      <View style={styles.userAvatar}>
-        <Text style={styles.avatarText}>{user.name.charAt(0).toUpperCase()}</Text>
+    <View style={adminDashboardStyles.listItem}>
+      <View style={adminDashboardStyles.userAvatar}>
+        <Text style={adminDashboardStyles.avatarText}>{user.name.charAt(0).toUpperCase()}</Text>
       </View>
-      <View style={styles.itemContent}>
-        <Text style={styles.itemTitle}>{user.name}</Text>
-        <Text style={styles.itemSubtitle}>{user.email}</Text>
-        <Text style={styles.itemRole}>{user.role.toUpperCase()}</Text>
+      <View style={adminDashboardStyles.itemContent}>
+        <Text style={adminDashboardStyles.itemTitle}>{user.name}</Text>
+        <Text style={adminDashboardStyles.itemSubtitle}>{user.email}</Text>
+        <Text style={adminDashboardStyles.itemRole}>{user.role.toUpperCase()}</Text>
       </View>
-      <TouchableOpacity style={styles.actionButton}>
+      <TouchableOpacity style={adminDashboardStyles.actionButton}>
         <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     </View>
   );
 
   const VenueItem = ({ venue }: { venue: Venue }) => (
-    <View style={styles.listItem}>
-      <View style={[styles.venueIcon, { backgroundColor: venue.isActive ? colors.success + '20' : colors.error + '20' }]}>
+    <View style={adminDashboardStyles.listItem}>
+      <View style={[adminDashboardStyles.venueIcon, { backgroundColor: venue.isActive ? colors.success + '20' : colors.error + '20' }]}>
         <Ionicons 
           name="location" 
           size={20} 
           color={venue.isActive ? colors.success : colors.error} 
         />
       </View>
-      <View style={styles.itemContent}>
-        <Text style={styles.itemTitle}>{venue.name}</Text>
-        <Text style={styles.itemSubtitle}>{venue.address}</Text>
-        <Text style={styles.itemRole}>{venue.courts.length} courts</Text>
+      <View style={adminDashboardStyles.itemContent}>
+        <Text style={adminDashboardStyles.itemTitle}>{venue.name}</Text>
+        <Text style={adminDashboardStyles.itemSubtitle}>{venue.address}</Text>
+        <Text style={adminDashboardStyles.itemRole}>{venue.courts.length} courts</Text>
       </View>
-      <TouchableOpacity style={styles.actionButton}>
+      <TouchableOpacity style={adminDashboardStyles.actionButton}>
         <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={adminDashboardStyles.container} edges={['left', 'right', 'bottom']}>
       {/* Disable Expo Router default header */}
       <Stack.Screen options={{ headerShown: false }} />
       
@@ -113,15 +119,15 @@ export default function AdminDashboard() {
         subtitle="System overview and management"
       >
         {/* Notification button positioned absolutely in top right */}
-        <TouchableOpacity style={styles.headerNotificationButton}>
+        <TouchableOpacity style={adminDashboardStyles.headerNotificationButton}>
           <Ionicons name="notifications-outline" size={24} color="#fff" />
         </TouchableOpacity>
       </AppHeader>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={adminDashboardStyles.content} showsVerticalScrollIndicator={false}>
 
         {/* Stats Overview */}
-        <View style={styles.statsContainer}>
+        <View style={adminDashboardStyles.statsContainer}>
           <StatCard
             title="Total Users"
             value={stats.totalUsers.toLocaleString()}
@@ -149,50 +155,50 @@ export default function AdminDashboard() {
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
+        <View style={adminDashboardStyles.section}>
+          <Text style={adminDashboardStyles.sectionTitle}>Quick Actions</Text>
+          <View style={adminDashboardStyles.quickActions}>
             <Button
               title="Manage Users"
               onPress={() => Alert.alert('Users', 'User management functionality coming soon!')}
               variant="primary"
-              style={styles.actionButtonWide}
+              style={adminDashboardStyles.actionButtonWide}
             />
             <Button
               title="Venue Approvals"
               onPress={() => Alert.alert('Venues', 'Venue approval functionality coming soon!')}
               variant="outline"
-              style={styles.actionButtonWide}
+              style={adminDashboardStyles.actionButtonWide}
             />
           </View>
-          <View style={styles.quickActions}>
+          <View style={adminDashboardStyles.quickActions}>
             <Button
               title="System Reports"
               onPress={() => Alert.alert('Reports', 'System reports functionality coming soon!')}
               variant="secondary"
-              style={styles.actionButtonWide}
+              style={adminDashboardStyles.actionButtonWide}
             />
             <Button
               title="Settings"
               onPress={() => Alert.alert('Settings', 'Admin settings functionality coming soon!')}
               variant="outline"
-              style={styles.actionButtonWide}
+              style={adminDashboardStyles.actionButtonWide}
             />
           </View>
         </View>
 
         {/* Recent Users */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Users</Text>
+        <View style={adminDashboardStyles.section}>
+          <View style={adminDashboardStyles.sectionHeader}>
+            <Text style={adminDashboardStyles.sectionTitle}>Recent Users</Text>
             <TouchableOpacity onPress={() => Alert.alert('Users', 'View all users functionality coming soon!')}>
-              <Text style={styles.seeAll}>View All</Text>
+              <Text style={adminDashboardStyles.seeAll}>View All</Text>
             </TouchableOpacity>
           </View>
           {recentUsers.length === 0 ? (
-            <View style={styles.emptyState}>
+            <View style={adminDashboardStyles.emptyState}>
               <Ionicons name="people-outline" size={48} color={colors.textTertiary} />
-              <Text style={styles.emptyText}>No recent users</Text>
+              <Text style={adminDashboardStyles.emptyText}>No recent users</Text>
             </View>
           ) : (
             recentUsers.map((user) => (
@@ -202,17 +208,17 @@ export default function AdminDashboard() {
         </View>
 
         {/* Recent Venues */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Venues</Text>
+        <View style={adminDashboardStyles.section}>
+          <View style={adminDashboardStyles.sectionHeader}>
+            <Text style={adminDashboardStyles.sectionTitle}>Recent Venues</Text>
             <TouchableOpacity onPress={() => Alert.alert('Venues', 'View all venues functionality coming soon!')}>
-              <Text style={styles.seeAll}>View All</Text>
+              <Text style={adminDashboardStyles.seeAll}>View All</Text>
             </TouchableOpacity>
           </View>
           {recentVenues.length === 0 ? (
-            <View style={styles.emptyState}>
+            <View style={adminDashboardStyles.emptyState}>
               <Ionicons name="location-outline" size={48} color={colors.textTertiary} />
-              <Text style={styles.emptyText}>No recent venues</Text>
+              <Text style={adminDashboardStyles.emptyText}>No recent venues</Text>
             </View>
           ) : (
             recentVenues.map((venue) => (
@@ -224,187 +230,3 @@ export default function AdminDashboard() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 12,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  notificationButton: {
-    padding: 8,
-  },
-  headerBackButton: {
-    position: 'absolute',
-    left: 20,
-    top: 20,
-    padding: 8,
-    zIndex: 10,
-  },
-  headerNotificationButton: {
-    position: 'absolute',
-    right: 20,
-    top: 20,
-    padding: 8,
-    zIndex: 10,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  statCard: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: 16,
-    width: '48%',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    alignItems: 'center',
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  statTitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  seeAll: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  actionButtonWide: {
-    flex: 1,
-  },
-  listItem: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    color: colors.textInverse,
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  venueIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  itemContent: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  itemSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  itemRole: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    fontWeight: '500',
-  },
-  actionButton: {
-    padding: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.textTertiary,
-    marginTop: 12,
-  },
-});
