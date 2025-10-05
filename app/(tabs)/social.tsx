@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-// 1. Import StatusBar and useSafeAreaInsets
-import AppHeader from '@/src/common/components/AppHeader';
+import { Stack } from 'expo-router';
 import {
     buttonStyles,
     cardStyles,
@@ -10,199 +9,136 @@ import {
 import { colors } from '@/styles/theme';
 import { Booking, bookingStore } from '@/utils/bookingStore';
 import { Ionicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
 
 export default function SocialScreen() {
-    const [activeTab, setActiveTab] = useState('Players');
+    const [activeTab, setActiveTab] = useState('Friends');
     const [tabList, setTabList] = useState<string[]>([]);
-    const [players, setPlayers] = useState<Array<{ id: string; name: string }>>([]);
-    const [userOpenGames, setUserOpenGames] = useState<Booking[]>([]);
-    const [availableGames, setAvailableGames] = useState<Booking[]>([]);
-    const [friends, setFriends] = useState<Array<{ id: string; name: string }>>([]);
+    const [friends, setFriends] = useState<Array<{ id: string; name: string; isOnline: boolean; lastActive: string; rating: number }>>([]);
+    const [currentCity, setCurrentCity] = useState<{ id: string; name: string; memberCount: number }>({ id: '1', name: 'Hyderabad', memberCount: 1250 });
+    const [globalSportGroups, setGlobalSportGroups] = useState<Array<{ id: string; name: string; sport: string; memberCount: number; isJoined: boolean }>>([]);
+    const [citySportGroups, setCitySportGroups] = useState<Array<{ id: string; name: string; sport: string; memberCount: number; isJoined: boolean }>>([]);
+    const [gameChats, setGameChats] = useState<Array<{ id: string; venue: string; court: string; date: string; time: string; duration: string; memberCount: number; isHost: boolean }>>([]);
+    const [showCityGroups, setShowCityGroups] = useState(false);
     const [loading, setLoading] = useState(true);
     const insets = useSafeAreaInsets();
 
-    const refreshGamesData = () => {
-        // Get user's own open games and available games separately
-        const userGames = bookingStore.getUserUpcomingOpenGames();
-        const availableGames = bookingStore.getAvailableOpenGames();
-        
-        console.log('Refreshing games data:');
-        console.log('User games:', userGames.length);
-        console.log('Available games:', availableGames.length);
-        console.log('All bookings:', bookingStore.getAllBookings().length);
-        
-        setUserOpenGames(userGames);
-        setAvailableGames(availableGames);
+    const refreshSocialData = () => {
+        // Refresh friends, city chat, and sport groups data
+        // This would typically make API calls to get updated data
+        console.log('Refreshing social data...');
     };
 
     useEffect(() => {
         // Simulate fetching tabs and data from backend
         setTimeout(() => {
-            setTabList(['Players', 'Games', 'Friends']);
-            setPlayers([]); // [] for no players, or add objects for players
+            setTabList(['Friends', 'Global', 'Game Chats']);
             
-            // Add some sample games from other users for demonstration
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            // Sample friends data
+            setFriends([
+                { id: '1', name: 'Alex Johnson', isOnline: true, lastActive: '', rating: 4.8 },
+                { id: '2', name: 'Sarah Wilson', isOnline: false, lastActive: '2h ago', rating: 4.5 },
+                { id: '3', name: 'Mike Chen', isOnline: true, lastActive: '', rating: 4.9 },
+            ]);
             
-            const dayAfterTomorrow = new Date();
-            dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+            // Sample global sport groups data (All India)
+            setGlobalSportGroups([
+                { id: 'global-1', name: 'Global/Football', sport: 'Football', memberCount: 12500, isJoined: true },
+                { id: 'global-2', name: 'Global/Badminton', sport: 'Badminton', memberCount: 8900, isJoined: false },
+                { id: 'global-3', name: 'Global/Table Tennis', sport: 'Table Tennis', memberCount: 6700, isJoined: true },
+                { id: 'global-4', name: 'Global/Tennis', sport: 'Tennis', memberCount: 9800, isJoined: false },
+                { id: 'global-5', name: 'Global/Basketball', sport: 'Basketball', memberCount: 11200, isJoined: true },
+            ]);
 
-            // Only add if no games exist yet
-            if (bookingStore.getAllBookings().length === 0) {
-                bookingStore.addOtherUserGame({
-                    venue: 'Elite Sports Club',
-                    court: 'Court B1',
-                    date: tomorrow,
-                    time: '7:00 AM',
-                    duration: '1 hr',
-                    bookingType: 'Open Game',
-                    skillLevel: 'Beginner',
-                    players: '4',
-                    price: 400,
-                });
-
-                bookingStore.addOtherUserGame({
-                    venue: 'Champion Courts',
-                    court: 'Court A3',
-                    date: dayAfterTomorrow,
-                    time: '6:00 PM',
-                    duration: '1.5 hr',
-                    bookingType: 'Open Game',
-                    skillLevel: 'Advanced',
-                    players: '2',
-                    price: 600,
-                });
-            }
+            // Sample city sport groups data (Hyderabad only)
+            setCitySportGroups([
+                { id: 'city-1', name: 'Hyderabad/Football', sport: 'Football', memberCount: 450, isJoined: true },
+                { id: 'city-2', name: 'Hyderabad/Badminton', sport: 'Badminton', memberCount: 320, isJoined: false },
+                { id: 'city-3', name: 'Hyderabad/Table Tennis', sport: 'Table Tennis', memberCount: 280, isJoined: true },
+                { id: 'city-4', name: 'Hyderabad/Tennis', sport: 'Tennis', memberCount: 380, isJoined: false },
+                { id: 'city-5', name: 'Hyderabad/Basketball', sport: 'Basketball', memberCount: 290, isJoined: true },
+            ]);
             
-            refreshGamesData(); // Load games data
-            setFriends([]); // [] for no friends, or add objects for friends
+            // Sample game chats data
+            setGameChats([
+                { 
+                    id: '1', 
+                    venue: 'Sports Complex', 
+                    court: 'Court 1', 
+                    date: 'Today', 
+                    time: '6:00 PM', 
+                    duration: '2 hours',
+                    memberCount: 4, 
+                    isHost: true 
+                },
+                { 
+                    id: '2', 
+                    venue: 'Tennis Academy', 
+                    court: 'Court 2', 
+                    date: 'Tomorrow', 
+                    time: '7:00 AM', 
+                    duration: '1.5 hours',
+                    memberCount: 2, 
+                    isHost: false 
+                },
+            ]);
+            
+            refreshSocialData(); // Load social data
             setLoading(false);
         }, 700);
 
-        // Subscribe to booking store changes
+        // Subscribe to social data changes
         const unsubscribe = bookingStore.subscribe(() => {
-            refreshGamesData();
+            refreshSocialData();
         });
 
         return unsubscribe;
     }, []);
 
-    const handleJoinGame = (gameId: string) => {
+    const handleCityClick = () => {
+        setShowCityGroups(!showCityGroups);
+    };
+
+    const handleSportGroupClick = (groupId: string, groupName: string) => {
         Alert.alert(
-            'Join Game',
-            'Are you sure you want to join this game?',
+            'Enter Chat Room',
+            `Join ${groupName} chat room?`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 { 
-                    text: 'Join', 
+                    text: 'Join Chat', 
                     onPress: () => {
-                        // Here you would implement the actual join logic
-                        // For now, we'll just show a success message
-                        Alert.alert(
-                            'Success! 🎉', 
-                            'You have successfully joined the game! Check your upcoming games for details.',
-                            [
-                                { text: 'OK', onPress: () => refreshGamesData() }
-                            ]
-                        );
+                        // Here you would navigate to the specific group chat room
+                        console.log('Entering chat room:', groupId, groupName);
+                        // router.push(`/chat/group/${groupId}`);
                     }
                 }
             ]
         );
     };
 
-    const GameCard = ({ game, isUserGame = false }: { game: Booking; isUserGame?: boolean }) => {
-        const formatDate = (date: Date) => {
-            const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            
-            if (date.toDateString() === today.toDateString()) {
-                return 'Today';
-            } else if (date.toDateString() === tomorrow.toDateString()) {
-                return 'Tomorrow';
-            } else {
-                return date.toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    month: 'short', 
-                    day: 'numeric' 
-                });
-            }
-        };
-
-        return (
-            <View style={socialStyles.gameCard}>
-                <View style={socialStyles.gameCardHeader}>
-                    <View style={socialStyles.gameVenue}>
-                        <Ionicons name="location" size={16} color={colors.primary} />
-                        <Text style={socialStyles.gameVenueText}>{game.venue}</Text>
-                    </View>
-                    <View style={[socialStyles.gameTypeBadge, { backgroundColor: colors.primary + '20' }]}>
-                        <Text style={[socialStyles.gameTypeText, { color: colors.primary }]}>
-                            {game.bookingType}
-                        </Text>
-                    </View>
-                </View>
-                
-                <Text style={socialStyles.gameCourtText}>{game.court}</Text>
-                
-                <View style={socialStyles.gameDetails}>
-                    <View style={socialStyles.gameDetailRow}>
-                        <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
-                        <Text style={socialStyles.gameDetailText}>
-                            {formatDate(game.date)}
-                        </Text>
-                    </View>
-                    <View style={socialStyles.gameDetailRow}>
-                        <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-                        <Text style={socialStyles.gameDetailText}>
-                            {game.time} • {game.duration}
-                        </Text>
-                    </View>
-                    {game.skillLevel && (
-                        <View style={socialStyles.gameDetailRow}>
-                            <Ionicons name="trophy-outline" size={16} color={colors.textSecondary} />
-                            <Text style={socialStyles.gameDetailText}>
-                                {game.skillLevel}
-                            </Text>
-                        </View>
-                    )}
-                    {game.players && (
-                        <View style={socialStyles.gameDetailRow}>
-                            <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
-                            <Text style={socialStyles.gameDetailText}>
-                                {game.players} players needed
-                            </Text>
-                        </View>
-                    )}
-                </View>
-
-                <View style={socialStyles.gameCardFooter}>
-                    <Text style={socialStyles.gamePriceText}>₹{game.price}</Text>
-                    {!isUserGame && (
-                        <TouchableOpacity
-                            style={socialStyles.joinButton}
-                            onPress={() => handleJoinGame(game.id)}
-                        >
-                            <Text style={socialStyles.joinButtonText}>Join Game</Text>
-                        </TouchableOpacity>
-                    )}
-                    {isUserGame && (
-                        <View style={socialStyles.statusBadge}>
-                            <Text style={socialStyles.statusText}>Your Game</Text>
-                        </View>
-                    )}
-                </View>
-            </View>
+    const handleGameChatClick = (chatId: string, venue: string, court: string) => {
+        Alert.alert(
+            'Enter Game Chat',
+            `Join ${venue} - ${court} chat room?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                    text: 'Join Chat', 
+                    onPress: () => {
+                        // Here you would navigate to the specific game chat room
+                        console.log('Entering game chat:', chatId, venue, court);
+                        // router.push(`/chat/game/${chatId}`);
+                    }
+                }
+            ]
         );
     };
+
 
     if (loading) {
         return (
@@ -215,13 +151,20 @@ export default function SocialScreen() {
     }
 
     return (
-        <View style={socialStyles.container}>
-            {/* Make status bar icons (time, battery) white */}
-            <StatusBar style="light" />
-
-            <AppHeader 
-                title="Social Hub" 
-                subtitle="Connect with players and join games"
+        <SafeAreaView style={socialStyles.container} edges={['left', 'right', 'bottom']}>
+            <Stack.Screen
+                options={{
+                    headerShown: true,
+                    title: 'Social Hub',
+                    headerStyle: {
+                        backgroundColor: colors.background,
+                    },
+                    headerTitleStyle: {
+                        fontSize: 20,
+                        fontWeight: '700' as const,
+                        color: colors.textPrimary,
+                    },
+                }}
             />
 
             {/* Tab Switcher */}
@@ -238,84 +181,139 @@ export default function SocialScreen() {
             </View>
 
             {/* Tab Content */}
-            {activeTab === 'Players' && (
+            {activeTab === 'Friends' && (
                 <>
                     <View style={socialStyles.playersHeader}>
-                        <Text style={socialStyles.playersTitle}>Players Online</Text>
-                        <Text style={socialStyles.playersCount}>{players.length} players</Text>
+                        <Text style={socialStyles.playersTitle}>Your Friends</Text>
+                        <Text style={socialStyles.playersCount}>{friends.length} friends</Text>
                     </View>
-                    {players.length === 0 ? (
+                    {friends.length === 0 ? (
                         <View style={socialStyles.playersPlaceholder}>
-                            <Text style={socialStyles.placeholderText}>No players online</Text>
+                            <Text style={socialStyles.placeholderText}>No friends yet</Text>
                         </View>
                     ) : (
-                        players.map(player => (
-                            <View key={player.id} style={socialStyles.playersPlaceholder}>
-                                <Text style={socialStyles.placeholderText}>{player.name}</Text>
+                        friends.map(friend => (
+                            <View key={friend.id} style={socialStyles.friendCard}>
+                                <View style={socialStyles.friendAvatar}>
+                                    <Text style={socialStyles.friendAvatarText}>
+                                        {friend.name.split(' ').map(n => n[0]).join('')}
+                                    </Text>
+                                    {friend.isOnline && <View style={socialStyles.onlineIndicator} />}
+                                </View>
+                                <View style={socialStyles.friendInfo}>
+                                    <Text style={socialStyles.friendName}>{friend.name}</Text>
+                                    <Text style={socialStyles.friendRating}>⭐ {friend.rating}</Text>
+                                    {friend.isOnline ? (
+                                        <Text style={socialStyles.onlineStatus}>Online</Text>
+                                    ) : (
+                                        <Text style={socialStyles.offlineStatus}>Last seen {friend.lastActive}</Text>
+                                    )}
+                                </View>
                             </View>
                         ))
                     )}
                 </>
             )}
-            {activeTab === 'Games' && (
+            {activeTab === 'Global' && (
                 <ScrollView style={socialStyles.gamesContainer} showsVerticalScrollIndicator={false}>
-                    {/* Your Games Section */}
+                    {/* Global Sport Groups Section */}
                     <View style={socialStyles.gamesSection}>
                         <View style={socialStyles.gamesSectionHeader}>
-                            <Text style={socialStyles.gamesSectionTitle}>Your Games</Text>
-                            <Text style={socialStyles.gamesSectionCount}>{userOpenGames.length} games</Text>
+                            <Text style={socialStyles.gamesSectionTitle}>Global Sport Groups</Text>
+                            <Text style={socialStyles.gamesSectionCount}>{globalSportGroups.length} groups</Text>
                         </View>
                         
-                        {userOpenGames.length === 0 ? (
-                            <View style={socialStyles.emptyState}>
-                                <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
-                                <Text style={socialStyles.emptyStateText}>No upcoming games</Text>
-                                <Text style={socialStyles.emptyStateSubtext}>Create an open game to get started</Text>
-                            </View>
-                        ) : (
-                            userOpenGames.map(game => (
-                                <GameCard key={game.id} game={game} isUserGame={true} />
-                            ))
-                        )}
+                        {globalSportGroups.map(group => (
+                            <TouchableOpacity 
+                                key={group.id} 
+                                style={socialStyles.sportGroupCard}
+                                onPress={() => handleSportGroupClick(group.id, group.name)}
+                            >
+                                <View style={socialStyles.sportGroupContent}>
+                                    <Text style={socialStyles.sportGroupName}>{group.name}</Text>
+                                    <Text style={socialStyles.sportGroupMembers}>{group.memberCount.toLocaleString()} members</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        ))}
                     </View>
 
-                    {/* Available Games Section */}
+                    {/* Current City Section */}
                     <View style={socialStyles.gamesSection}>
                         <View style={socialStyles.gamesSectionHeader}>
-                            <Text style={socialStyles.gamesSectionTitle}>Available Games</Text>
-                            <Text style={socialStyles.gamesSectionCount}>{availableGames.length} games</Text>
+                            <Text style={socialStyles.gamesSectionTitle}>Your City</Text>
+                            <Text style={socialStyles.gamesSectionCount}>{currentCity.memberCount.toLocaleString()} members</Text>
                         </View>
                         
-                        {availableGames.length === 0 ? (
-                            <View style={socialStyles.emptyState}>
-                                <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
-                                <Text style={socialStyles.emptyStateText}>No games available</Text>
-                                <Text style={socialStyles.emptyStateSubtext}>Check back later for new games</Text>
+                        <TouchableOpacity 
+                            style={socialStyles.cityCard}
+                            onPress={handleCityClick}
+                        >
+                            <View style={socialStyles.cityCardContent}>
+                                <Text style={socialStyles.cityName}>{currentCity.name}</Text>
+                                <Text style={socialStyles.cityMembers}>{currentCity.memberCount.toLocaleString()} members</Text>
+                                <Ionicons 
+                                    name={showCityGroups ? "chevron-up" : "chevron-down"} 
+                                    size={20} 
+                                    color={colors.primary} 
+                                />
                             </View>
-                        ) : (
-                            availableGames.map(game => (
-                                <GameCard key={game.id} game={game} isUserGame={false} />
-                            ))
+                        </TouchableOpacity>
+
+                        {/* Sport Groups for Current City */}
+                        {showCityGroups && (
+                            <View style={socialStyles.sportGroupsContainer}>
+                                <Text style={socialStyles.sportGroupsTitle}>Sport Groups in {currentCity.name}</Text>
+                                {citySportGroups.map(group => (
+                                    <TouchableOpacity 
+                                        key={group.id} 
+                                        style={socialStyles.sportGroupCard}
+                                        onPress={() => handleSportGroupClick(group.id, group.name)}
+                                    >
+                                        <View style={socialStyles.sportGroupContent}>
+                                            <Text style={socialStyles.sportGroupName}>{group.name}</Text>
+                                            <Text style={socialStyles.sportGroupMembers}>{group.memberCount} members</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         )}
                     </View>
                 </ScrollView>
             )}
-            {activeTab === 'Friends' && (
+            {activeTab === 'Game Chats' && (
                 <>
-                    {friends.length === 0 ? (
+                    <View style={socialStyles.playersHeader}>
+                        <Text style={socialStyles.playersTitle}>Game Chats</Text>
+                        <Text style={socialStyles.playersCount}>{gameChats.length} active chats</Text>
+                    </View>
+                    {gameChats.length === 0 ? (
                         <View style={socialStyles.playersPlaceholder}>
-                            <Text style={socialStyles.placeholderText}>No friends online</Text>
+                            <Text style={socialStyles.placeholderText}>No active game chats</Text>
                         </View>
                     ) : (
-                        friends.map(friend => (
-                            <View key={friend.id} style={socialStyles.playersPlaceholder}>
-                                <Text style={socialStyles.placeholderText}>{friend.name}</Text>
-                            </View>
+                        gameChats.map(chat => (
+                            <TouchableOpacity 
+                                key={chat.id} 
+                                style={socialStyles.gameChatCard}
+                                onPress={() => handleGameChatClick(chat.id, chat.venue, chat.court)}
+                            >
+                                <View style={socialStyles.gameChatContent}>
+                                    <View style={socialStyles.gameChatHeader}>
+                                        <Text style={socialStyles.gameChatVenue}>{chat.venue} - {chat.court}</Text>
+                                        {chat.isHost && <Text style={socialStyles.hostBadge}>Host</Text>}
+                                    </View>
+                                    <Text style={socialStyles.gameChatTiming}>{chat.date} • {chat.time} • {chat.duration}</Text>
+                                    <Text style={socialStyles.gameChatMembers}>{chat.memberCount} players</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                            </TouchableOpacity>
                         ))
                     )}
                 </>
             )}
-        </View>
+        </SafeAreaView>
     );
 }
 

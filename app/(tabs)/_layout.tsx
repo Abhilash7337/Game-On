@@ -16,14 +16,13 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
 
-        // 1. Set the active icon color directly to your green
-        tabBarActiveTintColor: '#208C4D',
+        // 1. Set the active icon color to design system primary (hsl(220 70% 25%))
+        tabBarActiveTintColor: '#1E3A8A',
 
-        // 2. Set an inactive color so the other icons are visible
-        tabBarInactiveTintColor: '#8e8e93', // A standard grey color
+        // 2. Set inactive color to muted foreground (hsl(220 10% 45%))
+        tabBarInactiveTintColor: '#6B7280',
 
-        // 3. Set the background color directly. This replaces the need
-        //    for your custom TabBarBackground component and complex styling.
+        // 3. Set the background color to white
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
         },
