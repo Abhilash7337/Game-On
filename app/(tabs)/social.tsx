@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
 // 1. Import StatusBar and useSafeAreaInsets
 import AppHeader from '@/src/common/components/AppHeader';
+import {
+    buttonStyles,
+    cardStyles,
+    socialStyles,
+    socialTextStyles
+} from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
 import { Booking, bookingStore } from '@/utils/bookingStore';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -132,65 +138,65 @@ export default function SocialScreen() {
         };
 
         return (
-            <View style={styles.gameCard}>
-                <View style={styles.gameCardHeader}>
-                    <View style={styles.gameVenue}>
+            <View style={socialStyles.gameCard}>
+                <View style={socialStyles.gameCardHeader}>
+                    <View style={socialStyles.gameVenue}>
                         <Ionicons name="location" size={16} color={colors.primary} />
-                        <Text style={styles.gameVenueText}>{game.venue}</Text>
+                        <Text style={socialStyles.gameVenueText}>{game.venue}</Text>
                     </View>
-                    <View style={[styles.gameTypeBadge, { backgroundColor: colors.primary + '20' }]}>
-                        <Text style={[styles.gameTypeText, { color: colors.primary }]}>
+                    <View style={[socialStyles.gameTypeBadge, { backgroundColor: colors.primary + '20' }]}>
+                        <Text style={[socialStyles.gameTypeText, { color: colors.primary }]}>
                             {game.bookingType}
                         </Text>
                     </View>
                 </View>
                 
-                <Text style={styles.gameCourtText}>{game.court}</Text>
+                <Text style={socialStyles.gameCourtText}>{game.court}</Text>
                 
-                <View style={styles.gameDetails}>
-                    <View style={styles.gameDetailRow}>
+                <View style={socialStyles.gameDetails}>
+                    <View style={socialStyles.gameDetailRow}>
                         <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
-                        <Text style={styles.gameDetailText}>
+                        <Text style={socialStyles.gameDetailText}>
                             {formatDate(game.date)}
                         </Text>
                     </View>
-                    <View style={styles.gameDetailRow}>
+                    <View style={socialStyles.gameDetailRow}>
                         <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-                        <Text style={styles.gameDetailText}>
+                        <Text style={socialStyles.gameDetailText}>
                             {game.time} • {game.duration}
                         </Text>
                     </View>
                     {game.skillLevel && (
-                        <View style={styles.gameDetailRow}>
+                        <View style={socialStyles.gameDetailRow}>
                             <Ionicons name="trophy-outline" size={16} color={colors.textSecondary} />
-                            <Text style={styles.gameDetailText}>
+                            <Text style={socialStyles.gameDetailText}>
                                 {game.skillLevel}
                             </Text>
                         </View>
                     )}
                     {game.players && (
-                        <View style={styles.gameDetailRow}>
+                        <View style={socialStyles.gameDetailRow}>
                             <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
-                            <Text style={styles.gameDetailText}>
+                            <Text style={socialStyles.gameDetailText}>
                                 {game.players} players needed
                             </Text>
                         </View>
                     )}
                 </View>
 
-                <View style={styles.gameCardFooter}>
-                    <Text style={styles.gamePriceText}>₹{game.price}</Text>
+                <View style={socialStyles.gameCardFooter}>
+                    <Text style={socialStyles.gamePriceText}>₹{game.price}</Text>
                     {!isUserGame && (
                         <TouchableOpacity
-                            style={styles.joinButton}
+                            style={socialStyles.joinButton}
                             onPress={() => handleJoinGame(game.id)}
                         >
-                            <Text style={styles.joinButtonText}>Join Game</Text>
+                            <Text style={socialStyles.joinButtonText}>Join Game</Text>
                         </TouchableOpacity>
                     )}
                     {isUserGame && (
-                        <View style={styles.statusBadge}>
-                            <Text style={styles.statusText}>Your Game</Text>
+                        <View style={socialStyles.statusBadge}>
+                            <Text style={socialStyles.statusText}>Your Game</Text>
                         </View>
                     )}
                 </View>
@@ -200,7 +206,7 @@ export default function SocialScreen() {
 
     if (loading) {
         return (
-            <View style={styles.container}>
+            <View style={socialStyles.container}>
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color="#047857" />
                 </View>
@@ -209,7 +215,7 @@ export default function SocialScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={socialStyles.container}>
             {/* Make status bar icons (time, battery) white */}
             <StatusBar style="light" />
 
@@ -219,14 +225,14 @@ export default function SocialScreen() {
             />
 
             {/* Tab Switcher */}
-            <View style={styles.tabSwitcher}>
+            <View style={socialStyles.tabSwitcher}>
                 {tabList.map(tab => (
                     <TouchableOpacity
                         key={tab}
-                        style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
+                        style={[socialStyles.tabButton, activeTab === tab && socialStyles.tabButtonActive]}
                         onPress={() => setActiveTab(tab)}
                     >
-                        <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+                        <Text style={[socialStyles.tabText, activeTab === tab && socialStyles.tabTextActive]}>{tab}</Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -234,37 +240,37 @@ export default function SocialScreen() {
             {/* Tab Content */}
             {activeTab === 'Players' && (
                 <>
-                    <View style={styles.playersHeader}>
-                        <Text style={styles.playersTitle}>Players Online</Text>
-                        <Text style={styles.playersCount}>{players.length} players</Text>
+                    <View style={socialStyles.playersHeader}>
+                        <Text style={socialStyles.playersTitle}>Players Online</Text>
+                        <Text style={socialStyles.playersCount}>{players.length} players</Text>
                     </View>
                     {players.length === 0 ? (
-                        <View style={styles.playersPlaceholder}>
-                            <Text style={styles.placeholderText}>No players online</Text>
+                        <View style={socialStyles.playersPlaceholder}>
+                            <Text style={socialStyles.placeholderText}>No players online</Text>
                         </View>
                     ) : (
                         players.map(player => (
-                            <View key={player.id} style={styles.playersPlaceholder}>
-                                <Text style={styles.placeholderText}>{player.name}</Text>
+                            <View key={player.id} style={socialStyles.playersPlaceholder}>
+                                <Text style={socialStyles.placeholderText}>{player.name}</Text>
                             </View>
                         ))
                     )}
                 </>
             )}
             {activeTab === 'Games' && (
-                <ScrollView style={styles.gamesContainer} showsVerticalScrollIndicator={false}>
+                <ScrollView style={socialStyles.gamesContainer} showsVerticalScrollIndicator={false}>
                     {/* Your Games Section */}
-                    <View style={styles.gamesSection}>
-                        <View style={styles.gamesSectionHeader}>
-                            <Text style={styles.gamesSectionTitle}>Your Games</Text>
-                            <Text style={styles.gamesSectionCount}>{userOpenGames.length} games</Text>
+                    <View style={socialStyles.gamesSection}>
+                        <View style={socialStyles.gamesSectionHeader}>
+                            <Text style={socialStyles.gamesSectionTitle}>Your Games</Text>
+                            <Text style={socialStyles.gamesSectionCount}>{userOpenGames.length} games</Text>
                         </View>
                         
                         {userOpenGames.length === 0 ? (
-                            <View style={styles.emptyState}>
+                            <View style={socialStyles.emptyState}>
                                 <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
-                                <Text style={styles.emptyStateText}>No upcoming games</Text>
-                                <Text style={styles.emptyStateSubtext}>Create an open game to get started</Text>
+                                <Text style={socialStyles.emptyStateText}>No upcoming games</Text>
+                                <Text style={socialStyles.emptyStateSubtext}>Create an open game to get started</Text>
                             </View>
                         ) : (
                             userOpenGames.map(game => (
@@ -274,17 +280,17 @@ export default function SocialScreen() {
                     </View>
 
                     {/* Available Games Section */}
-                    <View style={styles.gamesSection}>
-                        <View style={styles.gamesSectionHeader}>
-                            <Text style={styles.gamesSectionTitle}>Available Games</Text>
-                            <Text style={styles.gamesSectionCount}>{availableGames.length} games</Text>
+                    <View style={socialStyles.gamesSection}>
+                        <View style={socialStyles.gamesSectionHeader}>
+                            <Text style={socialStyles.gamesSectionTitle}>Available Games</Text>
+                            <Text style={socialStyles.gamesSectionCount}>{availableGames.length} games</Text>
                         </View>
                         
                         {availableGames.length === 0 ? (
-                            <View style={styles.emptyState}>
+                            <View style={socialStyles.emptyState}>
                                 <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
-                                <Text style={styles.emptyStateText}>No games available</Text>
-                                <Text style={styles.emptyStateSubtext}>Check back later for new games</Text>
+                                <Text style={socialStyles.emptyStateText}>No games available</Text>
+                                <Text style={socialStyles.emptyStateSubtext}>Check back later for new games</Text>
                             </View>
                         ) : (
                             availableGames.map(game => (
@@ -297,13 +303,13 @@ export default function SocialScreen() {
             {activeTab === 'Friends' && (
                 <>
                     {friends.length === 0 ? (
-                        <View style={styles.playersPlaceholder}>
-                            <Text style={styles.placeholderText}>No friends online</Text>
+                        <View style={socialStyles.playersPlaceholder}>
+                            <Text style={socialStyles.placeholderText}>No friends online</Text>
                         </View>
                     ) : (
                         friends.map(friend => (
-                            <View key={friend.id} style={styles.playersPlaceholder}>
-                                <Text style={styles.placeholderText}>{friend.name}</Text>
+                            <View key={friend.id} style={socialStyles.playersPlaceholder}>
+                                <Text style={socialStyles.placeholderText}>{friend.name}</Text>
                             </View>
                         ))
                     )}
@@ -314,230 +320,3 @@ export default function SocialScreen() {
 }
 
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.backgroundSecondary,
-    },
-    header: {
-        backgroundColor: colors.primary,
-        paddingHorizontal: 24,
-        paddingBottom: 28,
-        marginBottom: 8,
-    },
-    headerTitle: {
-        color: '#fff',
-        fontSize: 32,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    headerSubtitle: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '400',
-        marginBottom: 8,
-    },
-    tabSwitcher: {
-        flexDirection: 'row',
-        backgroundColor: colors.backgroundTertiary,
-        borderRadius: 24,
-        marginHorizontal: 24,
-        marginTop: 8,
-        marginBottom: 16,
-        padding: 4,
-        justifyContent: 'space-between',
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: 16,
-        alignItems: 'center',
-        marginHorizontal: 2,
-    },
-    tabButtonActive: {
-        backgroundColor: colors.background,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.07,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    tabText: {
-        color: colors.textSecondary,
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    tabTextActive: {
-        color: colors.textPrimary,
-        fontWeight: 'bold',
-    },
-    playersHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginHorizontal: 24,
-        marginBottom: 8,
-    },
-    playersTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.textPrimary,
-    },
-    playersCount: {
-        fontSize: 16,
-        color: colors.textSecondary,
-    },
-    playersPlaceholder: {
-        backgroundColor: colors.backgroundTertiary,
-        borderRadius: 16,
-        marginHorizontal: 24,
-        marginTop: 16,
-        padding: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    placeholderText: {
-        color: colors.textSecondary,
-        fontSize: 16,
-        textAlign: 'center',
-    },
-    // Games Section Styles
-    gamesContainer: {
-        flex: 1,
-        paddingHorizontal: 24,
-    },
-    gamesSection: {
-        marginBottom: 32,
-    },
-    gamesSectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    gamesSectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: colors.textPrimary,
-    },
-    gamesSectionCount: {
-        fontSize: 16,
-        color: colors.textSecondary,
-    },
-    emptyState: {
-        backgroundColor: colors.background,
-        borderRadius: 16,
-        padding: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: colors.gray200,
-        borderStyle: 'dashed',
-    },
-    emptyStateText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: colors.textSecondary,
-        marginTop: 16,
-        marginBottom: 4,
-    },
-    emptyStateSubtext: {
-        fontSize: 14,
-        color: colors.textTertiary,
-        textAlign: 'center',
-    },
-    // Game Card Styles
-    gameCard: {
-        backgroundColor: colors.background,
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: colors.gray200,
-    },
-    gameCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    gameVenue: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    gameVenueText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.textPrimary,
-        marginLeft: 6,
-    },
-    gameTypeBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    gameTypeText: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    gameCourtText: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        marginBottom: 16,
-        marginLeft: 22,
-    },
-    gameDetails: {
-        marginBottom: 16,
-    },
-    gameDetailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    gameDetailText: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        marginLeft: 8,
-    },
-    gameCardFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: colors.gray200,
-    },
-    gamePriceText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.primary,
-    },
-    joinButton: {
-        backgroundColor: colors.primary,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
-    },
-    joinButtonText: {
-        color: colors.textInverse,
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    statusBadge: {
-        backgroundColor: colors.gray200,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-    },
-    statusText: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        fontWeight: '600',
-    },
-});
