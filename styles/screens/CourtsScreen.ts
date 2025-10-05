@@ -54,91 +54,63 @@ export const courtsStyles = StyleSheet.create({
   radiusChipText: {
     color: colors.textInverse,
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
   },
   venueCard: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.lg,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.gray100,
+    marginBottom: spacing.xxl,
+    ...shadows.md,
   },
-  venueCardContent: {
+  venueImage: {
+    width: '100%',
+    height: 160,
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
+    resizeMode: 'cover',
+  },
+  venueInfo: {
     padding: spacing.lg,
   },
-  venueHeader: {
+  venueTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  venueMainInfo: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  venueName: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  venueRatingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  venueRating: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  venueReviews: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  venuePriceContainer: {
-    alignItems: 'flex-end',
-  },
-  venuePrice: {
-    fontSize: typography.fontSize.lg,
+  venueName: {
+    fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
-  venuePriceUnit: {
-    fontSize: typography.fontSize.sm,
+  venueRating: {
+    fontSize: typography.fontSize.base,
     color: colors.textSecondary,
-  },
-  venueLocationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.xs,
   },
   venueLocation: {
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
-    flex: 1,
+    marginBottom: spacing.md,
   },
-  venueFooter: {
+  venueBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  venueAmenities: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  bookButtonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  bookButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
+  venuePrice: {
+    fontSize: typography.fontSize.lg,
     color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  bookBtn: {
+    backgroundColor: colors.secondary,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+  },
+  bookBtnText: {
+    color: colors.textInverse,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
   },
 });
 

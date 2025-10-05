@@ -1,14 +1,11 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import {
-    buttonStyles,
-    cardStyles,
-    courtsStyles,
-    courtsTextStyles
+	courtsStyles
 } from '@/styles/screens/CourtsScreen';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, RefreshControl, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -24,14 +21,42 @@ export default function CourtsScreen() {
 		reviews: number;
 		location: string;
 		price: number;
-		image: any;
+		image: string | any;
 	}>>([]);
 	const [loading, setLoading] = useState(true);
+	const [refreshing, setRefreshing] = useState(false);
 	const insets = useSafeAreaInsets();
 
 	useEffect(() => {
-		// Simulate fetching venues from backend
-		setTimeout(() => {
+		loadVenues();
+	}, []);
+
+	// Refresh venues when screen comes into focus
+	useFocusEffect(
+		useCallback(() => {
+			loadVenues();
+		}, [])
+	);
+
+	const loadVenues = async (isRefresh = false) => {
+		if (isRefresh) {
+			setRefreshing(true);
+		}
+		
+		try {
+			const { VenueStorageService } = await import('@/src/common/services/venueStorage');
+			const venuesData = await VenueStorageService.getPublicVenues();
+			
+			// Transform the data to match the expected format
+			const transformedVenues = venuesData.map(venue => ({
+				...venue,
+				image: venue.image || require('../../assets/images/partial-react-logo.png'),
+			}));
+			
+			setVenues(transformedVenues);
+		} catch (error) {
+			console.error('Error loading venues:', error);
+			// Fallback to default venue if error
 			setVenues([
 				{
 					id: '1',
@@ -42,11 +67,16 @@ export default function CourtsScreen() {
 					price: 170,
 					image: require('../../assets/images/partial-react-logo.png'),
 				},
-				// Add more venues here or leave empty for no venues
 			]);
+		} finally {
 			setLoading(false);
-		}, 700);
-	}, []);
+			setRefreshing(false);
+		}
+	};
+
+	const onRefresh = () => {
+		loadVenues(true);
+	};
 
 	const filteredVenues = venues.filter((v) => v.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -90,53 +120,48 @@ export default function CourtsScreen() {
 				data={filteredVenues}
 				keyExtractor={item => item.id}
 				contentContainerStyle={{ padding: 24, paddingBottom: 24 }}
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						colors={['#047857']}
+						tintColor="#047857"
+					/>
+				}
 				ListEmptyComponent={
 					<View style={{ alignItems: 'center', marginTop: 32 }}>
-						<Text style={{ color: '#6B7280', fontSize: 16 }}>No venues found.</Text>
+						<Ionicons name="location-outline" size={48} color="#9CA3AF" style={{ marginBottom: 16 }} />
+						<Text style={{ color: '#6B7280', fontSize: 16, textAlign: 'center' }}>
+							{search ? 'No venues match your search.' : 'No venues found.'}
+						</Text>
+						<Text style={{ color: '#9CA3AF', fontSize: 14, textAlign: 'center', marginTop: 8 }}>
+							Pull down to refresh or try a different search term.
+						</Text>
 					</View>
 				}
 				renderItem={({ item }) => (
-					<TouchableOpacity 
-						style={courtsStyles.venueCard}
-						onPress={() => router.push({ pathname: '/VenueDetailsScreen', params: { venueId: item.id } })}
-						activeOpacity={0.7}
-					>
-						<View style={courtsStyles.venueCardContent}>
-							<View style={courtsStyles.venueHeader}>
-								<View style={courtsStyles.venueMainInfo}>
-									<Text style={courtsStyles.venueName}>{item.name}</Text>
-									<View style={courtsStyles.venueRatingContainer}>
-										<Ionicons name="star" size={14} color="#F59E0B" />
-										<Text style={courtsStyles.venueRating}>{item.rating}</Text>
-										<Text style={courtsStyles.venueReviews}>({item.reviews})</Text>
-									</View>
-								</View>
-								<View style={courtsStyles.venuePriceContainer}>
-									<Text style={courtsStyles.venuePrice}>₹{item.price}</Text>
-									<Text style={courtsStyles.venuePriceUnit}>/hr</Text>
-								</View>
+					<View style={courtsStyles.venueCard}>
+						<Image 
+							source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
+							style={courtsStyles.venueImage} 
+						/>
+						<View style={courtsStyles.venueInfo}>
+							<View style={courtsStyles.venueTopRow}>
+								<Text style={courtsStyles.venueName}>{item.name}</Text>
+								<Text style={courtsStyles.venueRating}>{item.rating.toFixed(1)} ({item.reviews})</Text>
 							</View>
-							
-							<View style={courtsStyles.venueLocationContainer}>
-								<Ionicons name="location-outline" size={14} color="#6B7280" />
-								<Text style={courtsStyles.venueLocation} numberOfLines={1}>
-									{item.location}
-								</Text>
-							</View>
-							
-							<View style={courtsStyles.venueFooter}>
-								<View style={courtsStyles.venueAmenities}>
-									<Ionicons name="car-outline" size={14} color="#6B7280" />
-									<Ionicons name="sunny-outline" size={14} color="#6B7280" />
-									<Ionicons name="water-outline" size={14} color="#6B7280" />
-								</View>
-								<View style={courtsStyles.bookButtonContainer}>
-									<Text style={courtsStyles.bookButtonText}>View Details</Text>
-									<Ionicons name="chevron-forward" size={16} color="#059669" />
-								</View>
+							<Text style={courtsStyles.venueLocation}>{item.location}</Text>
+							<View style={courtsStyles.venueBottomRow}>
+								<Text style={courtsStyles.venuePrice}>From ₹{item.price}/hour</Text>
+								<TouchableOpacity
+									style={courtsStyles.bookBtn}
+									onPress={() => router.push({ pathname: '/VenueDetailsScreen', params: { venueId: item.id } })}
+								>
+									<Text style={courtsStyles.bookBtnText}>Book Now</Text>
+								</TouchableOpacity>
 							</View>
 						</View>
-					</TouchableOpacity>
+					</View>
 				)}
 			/>
 		</View>

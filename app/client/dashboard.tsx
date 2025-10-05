@@ -3,10 +3,7 @@ import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Booking, Venue } from '@/src/common/types';
 import {
-    buttonStyles,
-    cardStyles,
-    clientDashboardStyles,
-    clientDashboardTextStyles
+  clientDashboardStyles
 } from '@/styles/screens/ClientDashboardScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,8 +24,22 @@ export default function ClientDashboardScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    initializeClientSession();
     loadDashboardData();
   }, []);
+
+  const initializeClientSession = async () => {
+    // Initialize demo session if not already set
+    const { ClientSessionManager } = await import('@/src/client/services/clientSession');
+    if (!ClientSessionManager.isAuthenticated()) {
+      ClientSessionManager.setSession({
+        clientId: 'current-client',
+        name: 'Demo Venue Owner',
+        email: 'demo@gameon.com',
+        isAuthenticated: true,
+      });
+    }
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -93,10 +104,7 @@ export default function ClientDashboardScreen() {
         <Text style={clientDashboardStyles.venueRating}>
           ⭐ {venue.rating.toFixed(1)}
         </Text>
-        <TouchableOpacity 
-          style={clientDashboardStyles.manageButton}
-          onPress={() => router.push('/client/BookingManagementScreen')}
-        >
+        <TouchableOpacity style={clientDashboardStyles.manageButton}>
           <Text style={clientDashboardStyles.manageButtonText}>Manage</Text>
         </TouchableOpacity>
       </View>
@@ -151,13 +159,19 @@ export default function ClientDashboardScreen() {
           <View style={clientDashboardStyles.quickActions}>
             <Button
               title="Add Venue"
-              onPress={() => router.push('/client/AddVenueScreen')}
+              onPress={() => router.push('/add-venue')}
               variant="primary"
               style={clientDashboardStyles.actionButton}
             />
             <Button
+              title="Booking Requests"
+              onPress={() => router.push('/client/BookingRequestsScreen')}
+              variant="outline"
+              style={clientDashboardStyles.actionButton}
+            />
+            <Button
               title="View Analytics"
-              onPress={() => router.push('/client/AnalyticsScreen')}
+              onPress={() => Alert.alert('Analytics', 'Analytics functionality coming soon!')}
               variant="outline"
               style={clientDashboardStyles.actionButton}
             />
@@ -179,12 +193,7 @@ export default function ClientDashboardScreen() {
 
         {/* Recent Bookings */}
         <View style={clientDashboardStyles.section}>
-          <View style={clientDashboardStyles.sectionHeader}>
-            <Text style={clientDashboardStyles.sectionTitle}>Today's Bookings</Text>
-            <TouchableOpacity onPress={() => router.push('/client/BookingManagementScreen')}>
-              <Text style={clientDashboardStyles.seeAll}>Manage All</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={clientDashboardStyles.sectionTitle}>Today's Bookings</Text>
           {todayBookings.length === 0 ? (
             <View style={clientDashboardStyles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
