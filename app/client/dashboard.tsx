@@ -93,7 +93,10 @@ export default function ClientDashboardScreen() {
         <Text style={clientDashboardStyles.venueRating}>
           ⭐ {venue.rating.toFixed(1)}
         </Text>
-        <TouchableOpacity style={clientDashboardStyles.manageButton}>
+        <TouchableOpacity 
+          style={clientDashboardStyles.manageButton}
+          onPress={() => router.push('/client/BookingManagementScreen')}
+        >
           <Text style={clientDashboardStyles.manageButtonText}>Manage</Text>
         </TouchableOpacity>
       </View>
@@ -148,13 +151,13 @@ export default function ClientDashboardScreen() {
           <View style={clientDashboardStyles.quickActions}>
             <Button
               title="Add Venue"
-              onPress={() => Alert.alert('Add Venue', 'Add venue functionality coming soon!')}
+              onPress={() => router.push('/client/AddVenueScreen')}
               variant="primary"
               style={clientDashboardStyles.actionButton}
             />
             <Button
               title="View Analytics"
-              onPress={() => Alert.alert('Analytics', 'Analytics functionality coming soon!')}
+              onPress={() => router.push('/client/AnalyticsScreen')}
               variant="outline"
               style={clientDashboardStyles.actionButton}
             />
@@ -176,7 +179,12 @@ export default function ClientDashboardScreen() {
 
         {/* Recent Bookings */}
         <View style={clientDashboardStyles.section}>
-          <Text style={clientDashboardStyles.sectionTitle}>Today's Bookings</Text>
+          <View style={clientDashboardStyles.sectionHeader}>
+            <Text style={clientDashboardStyles.sectionTitle}>Today's Bookings</Text>
+            <TouchableOpacity onPress={() => router.push('/client/BookingManagementScreen')}>
+              <Text style={clientDashboardStyles.seeAll}>Manage All</Text>
+            </TouchableOpacity>
+          </View>
           {todayBookings.length === 0 ? (
             <View style={clientDashboardStyles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />

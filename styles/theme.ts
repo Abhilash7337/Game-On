@@ -1,10 +1,10 @@
 // Main theme configuration file
 export const colors = {
-  primary: '#047857',
-  primaryLight: '#10b981',
-  primaryDark: '#065f46',
-  secondary: '#EA580C',
-  secondaryLight: '#fb923c',
+  primary: '#059669',
+  primaryLight: '#10B981',
+  primaryDark: '#047857',
+  secondary: '#F59E0B',
+  secondaryLight: '#FBBF24',
   
   // Grays
   gray50: '#F9FAFB',

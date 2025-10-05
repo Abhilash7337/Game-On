@@ -1,9 +1,12 @@
 import AppHeader from '@/src/common/components/AppHeader';
-import { colors, spacing } from '@/styles/theme';
+import {
+  roleSelectionStyles,
+  roleSelectionTextStyles
+} from '@/styles/screens/RoleSelectionScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export type UserRole = 'user' | 'client' | 'admin';
@@ -65,31 +68,31 @@ export default function RoleSelectionScreen() {
   const RoleCard = ({ option }: { option: RoleOption }) => (
     <TouchableOpacity
       style={[
-        styles.roleCard,
-        selectedRole === option.role && styles.selectedCard
+        roleSelectionStyles.roleCard,
+        selectedRole === option.role && roleSelectionStyles.selectedCard
       ]}
       onPress={() => handleRoleSelect(option.role)}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor: option.color + '20' }]}>
+      <View style={[roleSelectionStyles.iconContainer, { backgroundColor: option.color + '20' }]}>
         <Ionicons name={option.icon} size={32} color={option.color} />
       </View>
       
-      <View style={styles.roleContent}>
-        <Text style={styles.roleTitle}>{option.title}</Text>
-        <Text style={styles.roleDescription}>{option.description}</Text>
+      <View style={roleSelectionStyles.roleContent}>
+        <Text style={roleSelectionStyles.roleTitle}>{option.title}</Text>
+        <Text style={roleSelectionStyles.roleDescription}>{option.description}</Text>
       </View>
       
       <Ionicons 
         name="chevron-forward" 
         size={24} 
-        color={selectedRole === option.role ? option.color : colors.textSecondary} 
+        color={selectedRole === option.role ? option.color : '#6B7280'} 
       />
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={roleSelectionStyles.container} edges={['left', 'right', 'bottom']}>
       {/* Disable Expo Router default header */}
       <Stack.Screen options={{ headerShown: false }} />
       
@@ -98,96 +101,17 @@ export default function RoleSelectionScreen() {
         subtitle="Choose your role to get started"
       />
 
-      <View style={styles.rolesContainer}>
+      <View style={roleSelectionStyles.rolesContainer}>
         {roleOptions.map((option) => (
           <RoleCard key={option.role} option={option} />
         ))}
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
+      <View style={roleSelectionStyles.footer}>
+        <Text style={roleSelectionStyles.footerText}>
           You can change your role anytime in the settings
         </Text>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  rolesContainer: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-  },
-  roleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  selectedCard: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  roleContent: {
-    flex: 1,
-  },
-  roleTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  roleDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  footer: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-});

@@ -96,25 +96,47 @@ export default function CourtsScreen() {
 					</View>
 				}
 				renderItem={({ item }) => (
-					<View style={courtsStyles.venueCard}>
-						<Image source={item.image} style={courtsStyles.venueImage} />
-						<View style={courtsStyles.venueInfo}>
-							<View style={courtsStyles.venueTopRow}>
-								<Text style={courtsStyles.venueName}>{item.name}</Text>
-								<Text style={courtsStyles.venueRating}>{item.rating} ({item.reviews})</Text>
+					<TouchableOpacity 
+						style={courtsStyles.venueCard}
+						onPress={() => router.push({ pathname: '/VenueDetailsScreen', params: { venueId: item.id } })}
+						activeOpacity={0.7}
+					>
+						<View style={courtsStyles.venueCardContent}>
+							<View style={courtsStyles.venueHeader}>
+								<View style={courtsStyles.venueMainInfo}>
+									<Text style={courtsStyles.venueName}>{item.name}</Text>
+									<View style={courtsStyles.venueRatingContainer}>
+										<Ionicons name="star" size={14} color="#F59E0B" />
+										<Text style={courtsStyles.venueRating}>{item.rating}</Text>
+										<Text style={courtsStyles.venueReviews}>({item.reviews})</Text>
+									</View>
+								</View>
+								<View style={courtsStyles.venuePriceContainer}>
+									<Text style={courtsStyles.venuePrice}>₹{item.price}</Text>
+									<Text style={courtsStyles.venuePriceUnit}>/hr</Text>
+								</View>
 							</View>
-							<Text style={courtsStyles.venueLocation}>{item.location}</Text>
-							<View style={courtsStyles.venueBottomRow}>
-								<Text style={courtsStyles.venuePrice}>From ₹{item.price}/hour</Text>
-														<TouchableOpacity
-															style={courtsStyles.bookBtn}
-															onPress={() => router.push({ pathname: '/VenueDetailsScreen', params: { venueId: item.id } })}
-														>
-															<Text style={courtsStyles.bookBtnText}>Book Now</Text>
-														</TouchableOpacity>
+							
+							<View style={courtsStyles.venueLocationContainer}>
+								<Ionicons name="location-outline" size={14} color="#6B7280" />
+								<Text style={courtsStyles.venueLocation} numberOfLines={1}>
+									{item.location}
+								</Text>
+							</View>
+							
+							<View style={courtsStyles.venueFooter}>
+								<View style={courtsStyles.venueAmenities}>
+									<Ionicons name="car-outline" size={14} color="#6B7280" />
+									<Ionicons name="sunny-outline" size={14} color="#6B7280" />
+									<Ionicons name="water-outline" size={14} color="#6B7280" />
+								</View>
+								<View style={courtsStyles.bookButtonContainer}>
+									<Text style={courtsStyles.bookButtonText}>View Details</Text>
+									<Ionicons name="chevron-forward" size={16} color="#059669" />
+								</View>
 							</View>
 						</View>
-					</View>
+					</TouchableOpacity>
 				)}
 			/>
 		</View>

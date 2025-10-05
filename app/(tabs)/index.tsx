@@ -154,58 +154,60 @@ export default function HomeScreen() {
           >
             {upcomingGames.map((game) => (
               <View key={game.id} style={homeStyles.gameCard}>
-                <View style={homeStyles.gameCardHeader}>
-                  <View style={homeStyles.gameTypeContainer}>
-                    <Ionicons 
-                      name={getGameTypeIcon(game.bookingType)} 
-                      size={14} 
-                      color="#047857" 
-                    />
-                    <Text style={homeTextStyles.gameType}>{game.bookingType}</Text>
-                  </View>
-                  <View style={homeStyles.gamePriceTag}>
-                    <Text style={homeTextStyles.gamePrice}>₹{game.price}</Text>
-                  </View>
-                </View>
-                
-                <Text style={homeTextStyles.gameCourt}>{game.court}</Text>
-                <View style={homeStyles.gameVenueContainer}>
-                  <Ionicons name="location" size={16} color="#6B7280" />
-                  <Text style={homeTextStyles.gameVenue}>{game.venue}</Text>
-                </View>
-                
-                <View style={homeStyles.gameTimeContainer}>
-                  <Ionicons name="time" size={16} color="#6B7280" />
-                  <Text style={homeTextStyles.gameTime}>{formatGameTime(game.date, game.time)}</Text>
-                  <Text style={homeTextStyles.gameDuration}>• {game.duration}</Text>
-                </View>
-                
-                {game.bookingType === 'Open Game' && game.skillLevel && (
-                  <View style={homeStyles.gameSkillContainer}>
-                    <View style={[
-                      homeStyles.skillBadge,
-                      game.skillLevel === 'Beginner' && homeStyles.skillBeginner,
-                      game.skillLevel === 'Intermediate' && homeStyles.skillIntermediate,
-                      game.skillLevel === 'Advanced' && homeStyles.skillAdvanced,
-                    ]}>
-                      <Text style={[
-                        homeTextStyles.skillText,
-                        game.skillLevel === 'Beginner' && homeTextStyles.skillTextBeginner,
-                        game.skillLevel === 'Intermediate' && homeTextStyles.skillTextIntermediate,
-                        game.skillLevel === 'Advanced' && homeTextStyles.skillTextAdvanced,
-                      ]}>
-                        {game.skillLevel}
-                      </Text>
+                <View style={homeStyles.gameCardContent}>
+                  <View style={homeStyles.gameCardHeader}>
+                    <View style={homeStyles.gameTypeContainer}>
+                      <Ionicons 
+                        name={getGameTypeIcon(game.bookingType)} 
+                        size={14} 
+                        color="#047857" 
+                      />
+                      <Text style={homeTextStyles.gameType}>{game.bookingType}</Text>
                     </View>
-                    {game.players && (
-                      <Text style={homeTextStyles.playersNeeded}>{game.players} needed</Text>
-                    )}
+                    <View style={homeStyles.gamePriceTag}>
+                      <Text style={homeTextStyles.gamePrice}>₹{game.price}</Text>
+                    </View>
                   </View>
-                )}
+                  
+                  <Text style={homeTextStyles.gameCourt}>{game.court}</Text>
+                  <View style={homeStyles.gameVenueContainer}>
+                    <Ionicons name="location" size={16} color="#6B7280" />
+                    <Text style={homeTextStyles.gameVenue}>{game.venue}</Text>
+                  </View>
+                  
+                  <View style={homeStyles.gameTimeContainer}>
+                    <Ionicons name="time" size={16} color="#6B7280" />
+                    <Text style={homeTextStyles.gameTime}>{formatGameTime(game.date, game.time)}</Text>
+                    <Text style={homeTextStyles.gameDuration}>• {game.duration}</Text>
+                  </View>
+                  
+                  {game.bookingType === 'Open Game' && game.skillLevel && (
+                    <View style={homeStyles.gameSkillContainer}>
+                      <View style={[
+                        homeStyles.skillBadge,
+                        game.skillLevel === 'Beginner' && homeStyles.skillBeginner,
+                        game.skillLevel === 'Intermediate' && homeStyles.skillIntermediate,
+                        game.skillLevel === 'Advanced' && homeStyles.skillAdvanced,
+                      ]}>
+                        <Text style={[
+                          homeTextStyles.skillText,
+                          game.skillLevel === 'Beginner' && homeTextStyles.skillTextBeginner,
+                          game.skillLevel === 'Intermediate' && homeTextStyles.skillTextIntermediate,
+                          game.skillLevel === 'Advanced' && homeTextStyles.skillTextAdvanced,
+                        ]}>
+                          {game.skillLevel}
+                        </Text>
+                      </View>
+                      {game.players && (
+                        <Text style={homeTextStyles.playersNeeded}>{game.players} needed</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
                 
                 <TouchableOpacity style={homeStyles.gameDetailsButton}>
                   <Text style={homeTextStyles.gameDetailsButtonText}>View Details</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#ffffff" />
+                  <Ionicons name="chevron-forward" size={16} color="#6B7280" />
                 </TouchableOpacity>
               </View>
             ))}

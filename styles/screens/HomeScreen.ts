@@ -53,15 +53,22 @@ export const homeStyles = StyleSheet.create({
   },
   
   gameCard: {
-  backgroundColor: '#fff',  // explicitly override RN Web purple
-  borderRadius: borderRadius.xl,
-  padding: spacing.sm,
+  backgroundColor: colors.background,
+  borderRadius: borderRadius.lg,
   marginRight: spacing.md,
   width: 280,
   borderWidth: 1,
   borderColor: colors.gray100,
-  ...shadows.lg,
+  alignSelf: 'flex-start',
+  flexShrink: 0,
+  height: 'auto',
+  maxHeight: 300,
 },
+  
+  gameCardContent: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
 
 
   
@@ -109,8 +116,8 @@ export const homeStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   
@@ -137,11 +144,8 @@ export const homeStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    ...shadows.sm,
   },
   
   // Empty state
@@ -292,9 +296,9 @@ export const homeTextStyles = StyleSheet.create({
   },
   
   gameDetailsButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textInverse,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textPrimary,
   },
   
   // Empty state text
