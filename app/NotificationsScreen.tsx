@@ -1,10 +1,10 @@
+import { NotificationData } from '@/src/client/services/clientNotificationService';
 import AppHeader from '@/src/common/components/AppHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { FlatList, RefreshControl, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NotificationData } from '@/src/client/services/clientNotificationService';
 
 export default function NotificationsScreen() {
     const router = useRouter();

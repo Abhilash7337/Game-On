@@ -1,12 +1,9 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import {
-    buttonStyles,
-    cardStyles,
-    courtsStyles,
-    courtsTextStyles
+	courtsStyles
 } from '@/styles/screens/CourtsScreen';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, RefreshControl, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

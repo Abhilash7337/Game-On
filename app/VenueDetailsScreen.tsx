@@ -1,17 +1,14 @@
-import React, { useEffect, useState } from "react";
 import {
-    buttonStyles,
-    cardStyles,
-    venueDetailsStyles,
-    venueDetailsTextStyles
+  venueDetailsStyles
 } from '@/styles/screens/VenueDetailsScreen';
-import { View, Text, Image, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 // 1. Import StatusBar and useSafeAreaInsets
+import { Venue } from '@/src/common/types';
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Venue } from '@/src/common/types';
 
 const { width } = Dimensions.get("window");
 

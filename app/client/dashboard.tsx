@@ -3,10 +3,7 @@ import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Booking, Venue } from '@/src/common/types';
 import {
-    buttonStyles,
-    cardStyles,
-    clientDashboardStyles,
-    clientDashboardTextStyles
+  clientDashboardStyles
 } from '@/styles/screens/ClientDashboardScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';

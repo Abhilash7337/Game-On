@@ -1,5 +1,4 @@
 import { Booking } from '@/src/common/types';
-import { BookingWithNotification } from '@/src/common/services/bookingStorage';
 
 interface NotificationData {
   id: string;

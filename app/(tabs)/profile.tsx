@@ -1,9 +1,6 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import {
-    buttonStyles,
-    cardStyles,
-    profileStyles,
-    profileTextStyles
+    profileStyles
 } from '@/styles/screens/ProfileScreen';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';

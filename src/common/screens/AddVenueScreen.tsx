@@ -1,7 +1,7 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Input } from '@/src/common/components/Input';
-import { CourtType, Venue } from '@/src/common/types';
+import { CourtType } from '@/src/common/types';
 import { borderRadius, colors, shadows, spacing, typography } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';

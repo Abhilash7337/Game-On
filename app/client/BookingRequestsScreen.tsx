@@ -1,10 +1,10 @@
 import AppHeader from '@/src/common/components/AppHeader';
+import { BookingWithNotification } from '@/src/common/services/bookingStorage';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BookingWithNotification } from '@/src/common/services/bookingStorage';
 
 export default function ClientBookingRequestsScreen() {
     const router = useRouter();
