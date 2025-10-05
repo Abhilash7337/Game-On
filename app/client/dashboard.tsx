@@ -3,10 +3,7 @@ import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Booking, Venue } from '@/src/common/types';
 import {
-    buttonStyles,
-    cardStyles,
-    clientDashboardStyles,
-    clientDashboardTextStyles
+  clientDashboardStyles
 } from '@/styles/screens/ClientDashboardScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,8 +24,22 @@ export default function ClientDashboardScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    initializeClientSession();
     loadDashboardData();
   }, []);
+
+  const initializeClientSession = async () => {
+    // Initialize demo session if not already set
+    const { ClientSessionManager } = await import('@/src/client/services/clientSession');
+    if (!ClientSessionManager.isAuthenticated()) {
+      ClientSessionManager.setSession({
+        clientId: 'current-client',
+        name: 'Demo Venue Owner',
+        email: 'demo@gameon.com',
+        isAuthenticated: true,
+      });
+    }
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -148,8 +159,14 @@ export default function ClientDashboardScreen() {
           <View style={clientDashboardStyles.quickActions}>
             <Button
               title="Add Venue"
-              onPress={() => Alert.alert('Add Venue', 'Add venue functionality coming soon!')}
+              onPress={() => router.push('/add-venue')}
               variant="primary"
+              style={clientDashboardStyles.actionButton}
+            />
+            <Button
+              title="Booking Requests"
+              onPress={() => router.push('/client/BookingRequestsScreen')}
+              variant="outline"
               style={clientDashboardStyles.actionButton}
             />
             <Button

@@ -1,4 +1,5 @@
 import { ApiResponse, Booking, PaginatedResponse, User, Venue } from '../../common/types';
+import { ClientSessionManager } from './clientSession';
 
 export class ClientService {
   private static baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -6,31 +7,24 @@ export class ClientService {
   // Venue Management
   static async getClientVenues(): Promise<ApiResponse<Venue[]>> {
     try {
-      // Return mock data instead of API call
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-      const mockVenues: Venue[] = [
-        {
-          id: '1',
-          name: 'My Sports Center',
-          address: '789 Owner Street, Texas',
-          location: { latitude: 32.7767, longitude: -96.7970 },
-          description: 'My premier sports facility',
-          amenities: ['Parking', 'Cafeteria', 'Pro Shop', 'Locker Rooms'],
-          images: [],
-          pricing: { basePrice: 60, peakHourMultiplier: 1.4, currency: 'USD' },
-          operatingHours: { open: '06:00', close: '23:00', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
-          courts: [],
-          ownerId: 'currentClient',
-          rating: 4.7,
-          isActive: true,
-          createdAt: new Date()
-        }
-      ];
+      // Get current client ID
+      const clientId = ClientSessionManager.getCurrentClientId();
+      if (!clientId) {
+        return {
+          success: false,
+          message: 'Client not authenticated',
+          error: 'No client session found',
+        };
+      }
+
+      // Use VenueStorageService to get venues by owner
+      const { VenueStorageService } = await import('../../common/services/venueStorage');
+      const venues = await VenueStorageService.getVenuesByOwner(clientId);
       
       return {
         success: true,
         message: 'Client venues retrieved successfully',
-        data: mockVenues
+        data: venues
       };
     } catch (error) {
       return {
@@ -119,40 +113,31 @@ export class ClientService {
 
   static async getTodayBookings(): Promise<ApiResponse<Booking[]>> {
     try {
-      // Return mock data instead of API call
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
-      const mockBookings: Booking[] = [
-        {
-          id: '1',
-          userId: 'user1',
-          venueId: '1',
-          courtId: 'court1',
-          date: new Date(),
-          time: '10:00',
-          duration: '1 hr',
-          status: 'upcoming',
-          price: 50,
-          bookingType: 'Private Game',
-          paymentStatus: 'paid',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: '2', 
-          userId: 'user2',
-          venueId: '1',
-          courtId: 'court2',
-          date: new Date(),
-          time: '14:00',
-          duration: '1.5 hr',
-          status: 'upcoming',
-          price: 75,
-          bookingType: 'Open Game',
-          paymentStatus: 'paid',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
+      // Get current client ID
+      const clientId = ClientSessionManager.getCurrentClientId();
+      if (!clientId) {
+        return {
+          success: false,
+          message: 'Client not authenticated',
+          error: 'No client session found',
+        };
+      }
+
+      // Get client's venues first
+      const venuesResponse = await this.getClientVenues();
+      if (!venuesResponse.success || !venuesResponse.data) {
+        return {
+          success: true,
+          message: 'No bookings found',
+          data: []
+        };
+      }
+
+      const clientVenueIds = venuesResponse.data.map(venue => venue.id);
+      
+      // For now, return empty array since we don't have a booking system yet
+      // TODO: Implement actual booking storage and filtering
+      const mockBookings: Booking[] = [];
       
       return {
         success: true,
@@ -193,15 +178,42 @@ export class ClientService {
     growth: number;
   }>> {
     try {
-      // Return mock data instead of API call
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
+      // Get current client ID
+      const clientId = ClientSessionManager.getCurrentClientId();
+      if (!clientId) {
+        return {
+          success: false,
+          message: 'Client not authenticated',
+          error: 'No client session found',
+        };
+      }
+
+      // Get client's venues to calculate revenue
+      const venuesResponse = await this.getClientVenues();
+      if (!venuesResponse.success || !venuesResponse.data) {
+        return {
+          success: true,
+          message: 'Revenue stats retrieved successfully',
+          data: {
+            today: 0,
+            thisMonth: 0,
+            growth: 0
+          }
+        };
+      }
+
+      // TODO: Calculate actual revenue based on bookings
+      // For now, return demo data based on number of venues
+      const venueCount = venuesResponse.data.length;
+      const baseRevenue = venueCount * 500; // Base calculation
+      
       return {
         success: true,
         message: 'Revenue stats retrieved successfully',
         data: {
-          today: 125,
-          thisMonth: 3450,
-          growth: 12.5
+          today: baseRevenue * 0.1, // 10% of base
+          thisMonth: baseRevenue,
+          growth: venueCount > 0 ? 15.0 : 0
         }
       };
     } catch (error) {

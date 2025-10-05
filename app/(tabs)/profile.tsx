@@ -1,9 +1,6 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import {
-    buttonStyles,
-    cardStyles,
-    profileStyles,
-    profileTextStyles
+    profileStyles
 } from '@/styles/screens/ProfileScreen';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -74,6 +71,7 @@ export default function ProfileScreen() {
 	const [loading, setLoading] = useState(true);
 	const [tab, setTab] = useState('Stats');
 	const [userBookings, setUserBookings] = useState<Booking[]>([]);
+	const [pendingBookings, setPendingBookings] = useState<any[]>([]);
 
 	useEffect(() => {
 		setTimeout(() => {
@@ -82,8 +80,17 @@ export default function ProfileScreen() {
 		}, 700);
 
 		// Subscribe to booking updates
-		const updateBookings = () => {
+		const updateBookings = async () => {
 			setUserBookings(bookingStore.getAllBookings());
+			
+			// Load pending bookings
+			try {
+				const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
+				const userPendingBookings = await BookingStorageService.getBookingsByUser('current-user');
+				setPendingBookings(userPendingBookings.filter(b => (b as any).bookingStatus === 'pending'));
+			} catch (error) {
+				console.error('Error loading pending bookings:', error);
+			}
 		};
 
 		updateBookings();
@@ -250,6 +257,26 @@ export default function ProfileScreen() {
 			)}
 			{tab === 'Bookings' && (
 				<View style={{ padding: 16 }}>
+					{/* Pending Bookings */}
+					{pendingBookings.length > 0 && (
+						<View style={profileStyles.sectionCard}>
+							<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Pending Approvals ({pendingBookings.length})</Text>
+							{pendingBookings.map((booking) => (
+								<View key={booking.id} style={profileStyles.bookingRow}>
+									<View style={{ flex: 1 }}>
+										<Text style={[profileStyles.bookingTitle, { fontSize: responsiveFontSize(14) }]}>{booking.court} at {booking.venue}</Text>
+										<Text style={[profileStyles.bookingDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()} at {booking.time}</Text>
+										<Text style={[profileStyles.bookingAmount, { fontSize: responsiveFontSize(13) }]}>₹{booking.price}</Text>
+									</View>
+									<View style={[profileStyles.bookingStatus, { backgroundColor: '#fef3c7' }]}>
+										<Text style={[profileStyles.bookingStatusText, { color: '#92400e', fontSize: responsiveFontSize(13) }]}>Pending</Text>
+									</View>
+								</View>
+							))}
+						</View>
+					)}
+					
+					{/* Confirmed Bookings */}
 					<View style={profileStyles.sectionCard}>
 						<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Booking History</Text>
 						{userBookings.length > 0 ? (
@@ -266,7 +293,7 @@ export default function ProfileScreen() {
 								</View>
 							))
 						) : (
-							  <Text style={{ color: '#6b7280', fontSize: responsiveFontSize(13) }}>No bookings found</Text>
+							  <Text style={{ color: '#6b7280', fontSize: responsiveFontSize(13) }}>No confirmed bookings</Text>
 						)}
 					</View>
 				</View>
