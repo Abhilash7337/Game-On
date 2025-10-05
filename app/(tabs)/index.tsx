@@ -23,13 +23,26 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching data from backend
-    setTimeout(() => {
-      setUser({ name: 'GameOn', location: 'Hyderabad, India' });
-      setNotifications(2); // Example: 2 notifications
-      setLoading(false);
-    }, 700);
+    loadUserData();
   }, []);
+
+  const loadUserData = async () => {
+    try {
+      // Simulate fetching user data
+      setUser({ name: 'GameOn', location: 'Hyderabad, India' });
+      
+      // Load actual notification count
+      const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
+      const unreadCount = await ClientNotificationService.getUnreadCount(undefined, 'current-user');
+      setNotifications(unreadCount);
+      
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      setNotifications(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Subscribe to booking updates
   useFocusEffect(
@@ -100,11 +113,14 @@ export default function HomeScreen() {
           >
             <Ionicons name="swap-horizontal" size={26} color="#fff" />
           </TouchableOpacity>
-          <View style={homeStyles.notificationIconContainer}>
+          <TouchableOpacity 
+            style={homeStyles.notificationIconContainer}
+            onPress={() => router.push('/NotificationsScreen')}
+          >
             <Ionicons name="notifications-outline" size={26} color="#fff" />
             {/* Notification badge, show only if there are notifications */}
             {notifications > 0 && <View style={homeStyles.notificationBadge} />}
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity 
             style={homeStyles.profileIconContainer}
             onPress={() => router.push('/(tabs)/profile')}
