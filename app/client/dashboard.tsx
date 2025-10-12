@@ -171,7 +171,7 @@ export default function ClientDashboardScreen() {
             />
             <Button
               title="View Analytics"
-              onPress={() => Alert.alert('Analytics', 'Analytics functionality coming soon!')}
+              onPress={() => router.push('/client/AnalyticsScreen')}
               variant="outline"
               style={clientDashboardStyles.actionButton}
             />
@@ -182,7 +182,7 @@ export default function ClientDashboardScreen() {
         <View style={clientDashboardStyles.section}>
           <View style={clientDashboardStyles.sectionHeader}>
             <Text style={clientDashboardStyles.sectionTitle}>Your Venues</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/client/VenueManagementScreen')}>
               <Text style={clientDashboardStyles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>

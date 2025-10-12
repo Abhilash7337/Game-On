@@ -29,47 +29,67 @@ export default function ClientLoginScreen() {
   };
 
   const handleSignIn = () => {
-    // For now, just navigate to client dashboard
-    // Later, add client authentication logic here
+    // Demo credentials for testing
+    const demoCredentials = {
+      email: 'qq@gmail.com',
+      phone: '1',
+      password: 'q'
+    };
     
-    // Set demo client session
-    import('@/src/client/services/clientSession').then(({ ClientSessionManager }) => {
-      ClientSessionManager.setSession({
-        clientId: 'current-client',
-        name: formData.businessName || 'Demo Venue Owner',
-        email: formData.email,
-        isAuthenticated: true,
+    // Check if credentials match demo credentials
+    if (formData.email === demoCredentials.email && 
+        formData.phone === demoCredentials.phone && 
+        formData.password === demoCredentials.password) {
+      
+      // Set demo client session
+      import('@/src/client/services/clientSession').then(({ ClientSessionManager }) => {
+        ClientSessionManager.setSession({
+          clientId: 'current-client',
+          name: 'Demo Venue Owner',
+          email: formData.email,
+          isAuthenticated: true,
+        });
       });
-    });
-    
-    Alert.alert('Client Sign In', 'Welcome! Redirecting to your dashboard...', [
-      {
-        text: 'Continue',
-        onPress: () => router.push('/client/dashboard')
-      }
-    ]);
+      
+      // Navigate to client dashboard
+      router.push('/client/ClientNavigationScreen');
+    } else {
+      Alert.alert('Invalid Credentials', 'Please use the demo credentials:\nEmail: qq@gmail.com\nPhone: 1\nPassword: q');
+    }
   };
 
   const handleSignUp = () => {
-    // For now, just show alert
-    // Later, add client registration logic here
+    // Demo credentials for testing
+    const demoCredentials = {
+      email: 'qq@gmail.com',
+      phone: '1',
+      password: 'q'
+    };
     
-    // Set demo client session
-    import('@/src/client/services/clientSession').then(({ ClientSessionManager }) => {
-      ClientSessionManager.setSession({
-        clientId: 'current-client',
-        name: formData.businessName || 'Demo Venue Owner',
-        email: formData.email,
-        isAuthenticated: true,
+    // Check if credentials match demo credentials
+    if (formData.email === demoCredentials.email && 
+        formData.phone === demoCredentials.phone && 
+        formData.password === demoCredentials.password) {
+      
+      // Set demo client session
+      import('@/src/client/services/clientSession').then(({ ClientSessionManager }) => {
+        ClientSessionManager.setSession({
+          clientId: 'current-client',
+          name: formData.businessName || 'Demo Venue Owner',
+          email: formData.email,
+          isAuthenticated: true,
+        });
       });
-    });
-    
-    Alert.alert('Client Registration', 'Registration successful! Welcome to GameOn Business Portal.', [
-      {
-        text: 'Continue',
-        onPress: () => router.push('/client/dashboard')
-      }
-    ]);
+      
+      Alert.alert('Client Registration', 'Registration successful! Welcome to GameOn Business Portal.', [
+        {
+          text: 'Continue',
+          onPress: () => router.push('/client/ClientNavigationScreen')
+        }
+      ]);
+    } else {
+      Alert.alert('Invalid Credentials', 'Please use the demo credentials:\nEmail: qq@gmail.com\nPhone: 1\nPassword: q');
+    }
   };
 
   const handleBackToMain = () => {
@@ -136,6 +156,35 @@ export default function ClientLoginScreen() {
                   Manage your sports facilities, courts, and bookings all in one place
                 </Text>
               </View>
+            </View>
+
+            {/* Demo Credentials Banner */}
+            <View style={styles.demoBanner}>
+              <View style={styles.demoIconContainer}>
+                <Ionicons name="information-circle" size={20} color={colors.warning} />
+              </View>
+              <View style={styles.demoContent}>
+                <Text style={styles.demoTitle}>Demo Access</Text>
+                <Text style={styles.demoDescription}>
+                  Use: qq@gmail.com / 1 / q
+                </Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.demoButton}
+                onPress={() => {
+                  setFormData({
+                    email: 'qq@gmail.com',
+                    phone: '1',
+                    password: 'q',
+                    confirmPassword: 'q',
+                    businessName: 'Demo Sports Venue',
+                    ownerName: 'Demo Owner',
+                    address: '123 Demo Street',
+                  });
+                }}
+              >
+                <Text style={styles.demoButtonText}>Fill</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Main Form Card */}
@@ -388,6 +437,52 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
     lineHeight: typography.lineHeight.normal * typography.fontSize.sm,
+  },
+  demoBanner: {
+    backgroundColor: colors.warning + '20',
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.warning + '40',
+  },
+  demoIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.warning + '30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  demoContent: {
+    flex: 1,
+  },
+  demoTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.warning,
+    marginBottom: spacing.xs,
+  },
+  demoDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.warning,
+    fontWeight: typography.fontWeight.medium,
+    lineHeight: typography.lineHeight.normal * typography.fontSize.sm,
+  },
+  demoButton: {
+    backgroundColor: colors.warning,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.sm,
+  },
+  demoButtonText: {
+    color: colors.background,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   formCard: {
     backgroundColor: colors.background,

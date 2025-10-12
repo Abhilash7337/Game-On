@@ -54,7 +54,7 @@ export default function RoleSelectionScreen() {
         router.push('/(tabs)');
         break;
       case 'client':
-        router.push('/client/dashboard');
+        router.push('/client/ClientNavigationScreen');
         break;
       case 'admin':
         router.push('/admin/dashboard');

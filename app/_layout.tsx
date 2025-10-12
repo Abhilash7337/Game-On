@@ -36,6 +36,7 @@ export default function RootLayout() {
         <Stack.Screen name="JoinGamesScreen" options={{ headerShown: false }} />
         <Stack.Screen name="JoinGameScreen" options={{ headerShown: false }} />
         <Stack.Screen name="VenueDetailsScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="client" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
