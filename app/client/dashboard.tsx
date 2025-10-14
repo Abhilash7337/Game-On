@@ -1,6 +1,5 @@
 import { ClientService } from '@/src/client/services/clientApi';
 import AppHeader from '@/src/common/components/AppHeader';
-import { Button } from '@/src/common/components/Button';
 import { Booking, Venue } from '@/src/common/types';
 import {
   clientDashboardStyles
@@ -9,7 +8,7 @@ import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ClientDashboardScreen() {
@@ -22,6 +21,7 @@ export default function ClientDashboardScreen() {
     growth: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   useEffect(() => {
     initializeClientSession();
@@ -44,6 +44,11 @@ export default function ClientDashboardScreen() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
+      // Initialize demo booking data and get services
+      const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
+      const { ClientSessionManager } = await import('@/src/client/services/clientSession');
+      BookingStorageService.initializeDemoData();
+      
       // Load client's venues
       const venuesResponse = await ClientService.getClientVenues();
       if (venuesResponse.success && venuesResponse.data) {
@@ -54,12 +59,20 @@ export default function ClientDashboardScreen() {
       const bookingsResponse = await ClientService.getTodayBookings();
       if (bookingsResponse.success && bookingsResponse.data) {
         setTodayBookings(bookingsResponse.data);
+        console.log('Today Bookings:', bookingsResponse.data);
       }
 
       // Load revenue data
       const revenueResponse = await ClientService.getRevenueStats();
       if (revenueResponse.success && revenueResponse.data) {
         setRevenue(revenueResponse.data);
+      }
+
+      // Load pending booking requests count
+      const clientId = ClientSessionManager.getCurrentClientId();
+      if (clientId) {
+        const pendingBookings = await BookingStorageService.getPendingBookings(clientId);
+        setPendingRequestsCount(pendingBookings.length);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to load dashboard data');
@@ -126,7 +139,18 @@ export default function ClientDashboardScreen() {
         </TouchableOpacity>
       </AppHeader>
 
-      <ScrollView style={clientDashboardStyles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={clientDashboardStyles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={loadDashboardData}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
 
         {/* Stats Cards */}
         <View style={clientDashboardStyles.statsContainer}>
@@ -156,25 +180,56 @@ export default function ClientDashboardScreen() {
         {/* Quick Actions */}
         <View style={clientDashboardStyles.section}>
           <Text style={clientDashboardStyles.sectionTitle}>Quick Actions</Text>
-          <View style={clientDashboardStyles.quickActions}>
-            <Button
-              title="Add Venue"
-              onPress={() => router.push('/add-venue')}
-              variant="primary"
-              style={clientDashboardStyles.actionButton}
-            />
-            <Button
-              title="Booking Requests"
-              onPress={() => router.push('/client/BookingRequestsScreen')}
-              variant="outline"
-              style={clientDashboardStyles.actionButton}
-            />
-            <Button
-              title="View Analytics"
+          
+          <View style={clientDashboardStyles.quickActionsGrid}>
+            {/* First Row - Primary Actions */}
+            <View style={clientDashboardStyles.quickActions}>
+              <TouchableOpacity
+                style={clientDashboardStyles.modernActionButton}
+                onPress={() => router.push('/add-venue')}
+              >
+                <View style={clientDashboardStyles.modernButtonContent}>
+                  <View style={clientDashboardStyles.modernButtonIcon}>
+                    <Ionicons name="add-circle" size={24} color={colors.primary} />
+                  </View>
+                  <Text style={clientDashboardStyles.modernButtonText}>Add Venue</Text>
+                </View>
+              </TouchableOpacity>
+              
+              <View style={clientDashboardStyles.buttonWithBadge}>
+                <TouchableOpacity
+                  style={clientDashboardStyles.modernActionButtonOutline}
+                  onPress={() => router.push('/client/BookingRequestsScreen' as any)}
+                >
+                  <View style={clientDashboardStyles.modernButtonContent}>
+                    <View style={clientDashboardStyles.modernButtonIconOutline}>
+                      <Ionicons name="mail-outline" size={24} color={colors.primary} />
+                    </View>
+                    <Text style={clientDashboardStyles.modernButtonTextOutline}>Requests</Text>
+                  </View>
+                </TouchableOpacity>
+                {pendingRequestsCount > 0 && (
+                  <View style={clientDashboardStyles.badge}>
+                    <Text style={clientDashboardStyles.badgeText}>
+                      {pendingRequestsCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+            
+            {/* Second Row - Secondary Actions */}
+            <TouchableOpacity
+              style={clientDashboardStyles.modernActionButtonFull}
               onPress={() => Alert.alert('Analytics', 'Analytics functionality coming soon!')}
-              variant="outline"
-              style={clientDashboardStyles.actionButton}
-            />
+            >
+              <View style={clientDashboardStyles.modernButtonContentHorizontal}>
+                <View style={clientDashboardStyles.modernButtonIconOutline}>
+                  <Ionicons name="analytics-outline" size={24} color={colors.primary} />
+                </View>
+                <Text style={clientDashboardStyles.modernButtonTextOutline}>View Analytics</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -200,16 +255,23 @@ export default function ClientDashboardScreen() {
               <Text style={clientDashboardStyles.emptyText}>No bookings today</Text>
             </View>
           ) : (
-            todayBookings.map((booking) => (
-              <View key={booking.id} style={clientDashboardStyles.bookingCard}>
-                <View style={clientDashboardStyles.bookingHeader}>
-                  <Text style={clientDashboardStyles.bookingTime}>{booking.time}</Text>
-                  <Text style={clientDashboardStyles.bookingPrice}>₹{booking.price}</Text>
+            todayBookings.map((booking) => {
+              const bookingWithDetails = booking as any; // Type assertion for additional fields
+              return (
+                <View key={booking.id} style={clientDashboardStyles.bookingCard}>
+                  <View style={clientDashboardStyles.bookingHeader}>
+                    <Text style={clientDashboardStyles.bookingTime}>{booking.time}</Text>
+                    <Text style={clientDashboardStyles.bookingPrice}>₹{booking.price}</Text>
+                  </View>
+                  <Text style={clientDashboardStyles.bookingCourt}>
+                    {bookingWithDetails.venue || 'Unknown Venue'} - {bookingWithDetails.court || booking.courtId}
+                  </Text>
+                  <Text style={clientDashboardStyles.bookingDuration}>
+                    {booking.duration} • {booking.bookingType}
+                  </Text>
                 </View>
-                <Text style={clientDashboardStyles.bookingCourt}>{booking.courtId}</Text>
-                <Text style={clientDashboardStyles.bookingDuration}>{booking.duration} • {booking.bookingType}</Text>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>

@@ -1,6 +1,6 @@
 import { colors, spacing, typography } from '@/styles/theme';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AppHeaderProps {
@@ -22,7 +22,7 @@ export default function AppHeader({
     <View style={[
       styles.header, 
       { 
-        paddingTop: insets.top + 20,
+        paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 20),
         backgroundColor: backgroundColor || colors.primary 
       }
     ]}>

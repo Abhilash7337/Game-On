@@ -57,6 +57,8 @@ export default function AddVenueScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [editingCourtType, setEditingCourtType] = useState<string | null>(null);
+  const [customCourtType, setCustomCourtType] = useState('');
   const [formData, setFormData] = useState<VenueFormData>({
     name: '',
     address: '',
@@ -215,6 +217,19 @@ export default function AddVenueScreen() {
     }));
   };
 
+  const handleCustomCourtType = (courtId: string) => {
+    if (customCourtType.trim()) {
+      updateCourt(courtId, 'type', customCourtType.trim().toLowerCase().replace(/\s+/g, '') as CourtType);
+      setEditingCourtType(null);
+      setCustomCourtType('');
+    }
+  };
+
+  const cancelCustomCourtType = () => {
+    setEditingCourtType(null);
+    setCustomCourtType('');
+  };
+
   const validateCurrentStep = () => {
     switch (currentStep) {
       case 1:
@@ -249,6 +264,10 @@ export default function AddVenueScreen() {
     setLoading(true);
     try {
       const { VenueStorageService } = await import('@/src/common/services/venueStorage');
+      const { ClientSessionManager } = await import('@/src/client/services/clientSession');
+      
+      // Get current client ID
+      const clientId = ClientSessionManager.getCurrentClientId() || 'current-client';
       
       // Create the venue object
       const venueData = {
@@ -272,7 +291,7 @@ export default function AddVenueScreen() {
           ...court,
           venueId: '', // Will be set by the service
         })),
-        ownerId: 'current-client', // Will be replaced with actual client ID
+        ownerId: clientId,
         rating: 0,
         isActive: true,
       };
@@ -491,25 +510,70 @@ export default function AddVenueScreen() {
             
             <View style={[styles.fieldSpacing, { flex: 1 }]}>
               <Text style={styles.inputLabel}>Court Type</Text>
-              <View style={styles.courtTypeContainer}>
-                {COURT_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type.value}
-                    style={[
-                      styles.courtTypeChip,
-                      court.type === type.value && styles.courtTypeChipSelected
-                    ]}
-                    onPress={() => updateCourt(court.id, 'type', type.value)}
+              
+              {editingCourtType === court.id ? (
+                <View style={styles.customCourtTypeContainer}>
+                  <Input
+                    placeholder="Enter custom court type"
+                    value={customCourtType}
+                    onChangeText={setCustomCourtType}
+                    leftIcon="basketball-outline"
+                    style={styles.customCourtTypeInput}
+                  />
+                  <View style={styles.customCourtTypeActions}>
+                    <TouchableOpacity 
+                      style={styles.customTypeActionButton}
+                      onPress={cancelCustomCourtType}
+                    >
+                      <Ionicons name="close-outline" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.customTypeActionButton, styles.customTypeActionButtonPrimary]}
+                      onPress={() => handleCustomCourtType(court.id)}
+                    >
+                      <Ionicons name="checkmark-outline" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.courtTypeContainer}>
+                  {COURT_TYPES.map((type) => (
+                    <TouchableOpacity
+                      key={type.value}
+                      style={[
+                        styles.courtTypeChip,
+                        court.type === type.value && styles.courtTypeChipSelected
+                      ]}
+                      onPress={() => updateCourt(court.id, 'type', type.value)}
+                    >
+                      <Text style={[
+                        styles.courtTypeChipText,
+                        court.type === type.value && styles.courtTypeChipTextSelected
+                      ]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  
+                  {/* Show custom type if it's not in predefined types */}
+                  {!COURT_TYPES.some(type => type.value === court.type) && (
+                    <View style={[styles.courtTypeChip, styles.courtTypeChipSelected, styles.customCourtTypeChip]}>
+                      <Text style={[styles.courtTypeChipText, styles.courtTypeChipTextSelected]}>
+                        {court.type.charAt(0).toUpperCase() + court.type.slice(1)}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {/* Custom button at the end */}
+                  <TouchableOpacity 
+                    style={styles.customCourtTypeButton}
+                    onPress={() => setEditingCourtType(court.id)}
                   >
-                    <Text style={[
-                      styles.courtTypeChipText,
-                      court.type === type.value && styles.courtTypeChipTextSelected
-                    ]}>
-                      {type.label}
-                    </Text>
+                    <Ionicons name="add-outline" size={16} color={colors.primary} />
+                    <Text style={styles.customCourtTypeButtonText}>Custom</Text>
                   </TouchableOpacity>
-                ))}
-              </View>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -900,5 +964,52 @@ const styles = StyleSheet.create({
   prevButton: {
     flex: 1,
     marginRight: spacing.md,
+  },
+
+  customCourtTypeContainer: {
+    marginTop: spacing.sm,
+  },
+  customCourtTypeInput: {
+    marginBottom: spacing.sm,
+  },
+  customCourtTypeActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  customTypeActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: colors.gray300,
+  },
+  customTypeActionButtonPrimary: {
+    borderColor: colors.primary,
+    backgroundColor: colors.backgroundSecondary,
+  },
+  customCourtTypeChip: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  customCourtTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    backgroundColor: colors.backgroundSecondary,
+    gap: spacing.xs,
+  },
+  customCourtTypeButtonText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
   },
 });

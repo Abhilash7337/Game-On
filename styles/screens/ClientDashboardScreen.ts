@@ -6,8 +6,8 @@ import { headerStyles } from '../components/ui';
 export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
 
 // ClientDashboardScreen-specific styles
-import { StyleSheet } from 'react-native';
-import { borderRadius, colors, shadows, spacing, typography } from '../theme';
+    import { StyleSheet } from 'react-native';
+    import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export const clientDashboardStyles = StyleSheet.create({
   container: {
@@ -41,6 +41,7 @@ export const clientDashboardStyles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -50,11 +51,13 @@ export const clientDashboardStyles = StyleSheet.create({
   },
   statCard: {
     backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
     flexBasis: '47%',
     marginBottom: spacing.md,
-    ...shadows.md,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.gray100,
   },
   statHeader: {
     flexDirection: 'row',
@@ -80,9 +83,9 @@ export const clientDashboardStyles = StyleSheet.create({
   section: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    padding: spacing.xl,
     marginBottom: spacing.lg,
-    ...shadows.sm,
+    ...shadows.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -91,10 +94,10 @@ export const clientDashboardStyles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.lg,
+    fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   seeAll: {
     fontSize: typography.fontSize.sm,
@@ -104,7 +107,10 @@ export const clientDashboardStyles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  quickActionsGrid: {
+    gap: spacing.lg,
   },
   venueCard: {
     backgroundColor: colors.backgroundTertiary,
@@ -204,11 +210,122 @@ export const clientDashboardStyles = StyleSheet.create({
     color: colors.textTertiary,
   },
   actionButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    flex: 1,
+    marginHorizontal: spacing.xs,
+    marginBottom: spacing.md,
+    minHeight: 44,
+  },
+  actionButtonFull: {
+    width: '100%',
+    marginBottom: spacing.md,
+    minHeight: 44,
+  },
+  buttonWithBadge: {
+    position: 'relative',
+    flex: 1,
+    marginHorizontal: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: colors.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    zIndex: 10,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  badgeText: {
+    color: colors.textInverse,
+    fontSize: 10,
+    fontWeight: typography.fontWeight.bold,
+    textAlign: 'center',
+  },
+  // Modern button styles
+  modernActionButton: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
+    minHeight: 56,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  modernActionButtonOutline: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
+    minHeight: 56,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  modernButtonContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  modernButtonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  modernButtonIconOutline: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  modernButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
+    textAlign: 'center',
+  },
+  modernButtonTextOutline: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  modernActionButtonFull: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
+    minHeight: 56,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  modernButtonContentHorizontal: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.md,
+    gap: spacing.md,
   },
   actionButtonText: {
     color: colors.textInverse,
