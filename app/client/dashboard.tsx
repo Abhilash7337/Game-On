@@ -1,6 +1,5 @@
 import { ClientService } from '@/src/client/services/clientApi';
 import AppHeader from '@/src/common/components/AppHeader';
-import { Button } from '@/src/common/components/Button';
 import { Booking, Venue } from '@/src/common/types';
 import {
   clientDashboardStyles

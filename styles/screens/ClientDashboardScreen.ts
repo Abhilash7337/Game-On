@@ -6,8 +6,8 @@ import { headerStyles } from '../components/ui';
 export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
 
 // ClientDashboardScreen-specific styles
-import { StyleSheet } from 'react-native';
-import { borderRadius, colors, shadows, spacing, typography } from '../theme';
+    import { StyleSheet } from 'react-native';
+    import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export const clientDashboardStyles = StyleSheet.create({
   container: {

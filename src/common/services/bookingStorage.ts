@@ -154,3 +154,4 @@ class BookingStorageService {
 
 export { BookingStorageService };
 export type { BookingRequest, BookingWithNotification };
+
