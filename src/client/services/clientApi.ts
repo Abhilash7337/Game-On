@@ -123,26 +123,24 @@ export class ClientService {
         };
       }
 
-      // Get client's venues first
-      const venuesResponse = await this.getClientVenues();
-      if (!venuesResponse.success || !venuesResponse.data) {
-        return {
-          success: true,
-          message: 'No bookings found',
-          data: []
-        };
-      }
-
-      const clientVenueIds = venuesResponse.data.map(venue => venue.id);
+      // Get client's bookings from BookingStorageService
+      const { BookingStorageService } = await import('../../common/services/bookingStorage');
+      const allClientBookings = await BookingStorageService.getBookingsByClient(clientId);
       
-      // For now, return empty array since we don't have a booking system yet
-      // TODO: Implement actual booking storage and filtering
-      const mockBookings: Booking[] = [];
+      // Filter for today's bookings (confirmed bookings only)
+      const today = new Date();
+      const todayStr = today.toDateString();
+      
+      const todayBookings = allClientBookings.filter(booking => {
+        const bookingDate = new Date(booking.date);
+        return bookingDate.toDateString() === todayStr && 
+               (booking as any).bookingStatus === 'confirmed';
+      });
       
       return {
         success: true,
         message: 'Today\'s bookings retrieved successfully',
-        data: mockBookings
+        data: todayBookings
       };
     } catch (error) {
       return {
@@ -188,32 +186,53 @@ export class ClientService {
         };
       }
 
-      // Get client's venues to calculate revenue
-      const venuesResponse = await this.getClientVenues();
-      if (!venuesResponse.success || !venuesResponse.data) {
-        return {
-          success: true,
-          message: 'Revenue stats retrieved successfully',
-          data: {
-            today: 0,
-            thisMonth: 0,
-            growth: 0
-          }
-        };
-      }
-
-      // TODO: Calculate actual revenue based on bookings
-      // For now, return demo data based on number of venues
-      const venueCount = venuesResponse.data.length;
-      const baseRevenue = venueCount * 500; // Base calculation
+      // Get client's bookings from BookingStorageService
+      const { BookingStorageService } = await import('../../common/services/bookingStorage');
+      const allClientBookings = await BookingStorageService.getBookingsByClient(clientId);
+      
+      // Filter confirmed bookings only
+      const confirmedBookings = allClientBookings.filter(booking => 
+        (booking as any).bookingStatus === 'confirmed'
+      );
+      
+      // Calculate today's revenue
+      const today = new Date();
+      const todayStr = today.toDateString();
+      const todayBookings = confirmedBookings.filter(booking => {
+        const bookingDate = new Date(booking.date);
+        return bookingDate.toDateString() === todayStr;
+      });
+      const todayRevenue = todayBookings.reduce((sum, booking) => sum + booking.price, 0);
+      
+      // Calculate this month's revenue
+      const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const thisMonthBookings = confirmedBookings.filter(booking => {
+        const bookingDate = new Date(booking.date);
+        return bookingDate >= thisMonth && bookingDate < nextMonth;
+      });
+      const thisMonthRevenue = thisMonthBookings.reduce((sum, booking) => sum + booking.price, 0);
+      
+      // Calculate last month's revenue for growth calculation
+      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastMonthBookings = confirmedBookings.filter(booking => {
+        const bookingDate = new Date(booking.date);
+        return bookingDate >= lastMonth && bookingDate < thisMonth;
+      });
+      const lastMonthRevenue = lastMonthBookings.reduce((sum, booking) => sum + booking.price, 0);
+      
+      // Calculate growth percentage
+      const growth = lastMonthRevenue > 0 
+        ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+        : thisMonthRevenue > 0 ? 100 : 0;
       
       return {
         success: true,
         message: 'Revenue stats retrieved successfully',
         data: {
-          today: baseRevenue * 0.1, // 10% of base
-          thisMonth: baseRevenue,
-          growth: venueCount > 0 ? 15.0 : 0
+          today: todayRevenue,
+          thisMonth: thisMonthRevenue,
+          growth: Math.round(growth * 10) / 10 // Round to 1 decimal place
         }
       };
     } catch (error) {

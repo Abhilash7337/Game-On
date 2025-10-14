@@ -31,11 +31,19 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : MyTheme}>
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="client-login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="QuickBookScreen" options={{ headerShown: false }} />
         <Stack.Screen name="JoinGamesScreen" options={{ headerShown: false }} />
         <Stack.Screen name="JoinGameScreen" options={{ headerShown: false }} />
         <Stack.Screen name="VenueDetailsScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="BookingFormScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="NotificationsScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="client/BookingRequestsScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="client/dashboard" options={{ headerShown: false }} />
+        <Stack.Screen name="add-venue" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

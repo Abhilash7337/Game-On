@@ -28,6 +28,7 @@ interface BookingWithNotification extends Booking {
 class BookingStorageService {
   private static bookings: BookingWithNotification[] = [];
   private static listeners: (() => void)[] = [];
+  private static initialized = false;
 
   static async createBooking(bookingData: BookingRequest): Promise<Booking> {
     const booking: BookingWithNotification = {
@@ -138,6 +139,16 @@ class BookingStorageService {
 
   private static notifyListeners(): void {
     this.listeners.forEach(listener => listener());
+  }
+
+  // Initialize with demo data (no bookings - clean slate for testing)
+  static initializeDemoData(): void {
+    if (this.initialized) return;
+    
+    // Keep bookings array empty so user can test the complete workflow
+    // from booking creation to revenue tracking
+    this.bookings = [];
+    this.initialized = true;
   }
 }
 
