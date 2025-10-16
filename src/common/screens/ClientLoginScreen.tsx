@@ -1,3 +1,4 @@
+import { ClientAuthService } from '@/src/client/services/clientAuth';
 import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Input } from '@/src/common/components/Input';
@@ -11,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ClientLoginScreen() {
   const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -28,48 +30,88 @@ export default function ClientLoginScreen() {
     }));
   };
 
-  const handleSignIn = () => {
-    // For now, just navigate to client dashboard
-    // Later, add client authentication logic here
-    
-    // Set demo client session
-    import('@/src/client/services/clientSession').then(({ ClientSessionManager }) => {
-      ClientSessionManager.setSession({
-        clientId: 'current-client',
-        name: formData.businessName || 'Demo Venue Owner',
-        email: formData.email,
-        isAuthenticated: true,
-      });
-    });
-    
-    Alert.alert('Client Sign In', 'Welcome! Redirecting to your dashboard...', [
-      {
-        text: 'Continue',
-        onPress: () => router.push('/client/dashboard')
+  const handleSignIn = async () => {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await ClientAuthService.signIn(formData.email, formData.password);
+      
+      if (result && result.success) {
+        Alert.alert('Success', 'Welcome back to your business dashboard!', [
+          {
+            text: 'Continue',
+            onPress: () => router.push('/client/dashboard')
+          }
+        ]);
+      } else {
+        Alert.alert('Sign In Failed', (result?.error) || 'Please check your credentials and try again');
       }
-    ]);
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSignUp = () => {
-    // For now, just show alert
-    // Later, add client registration logic here
-    
-    // Set demo client session
-    import('@/src/client/services/clientSession').then(({ ClientSessionManager }) => {
-      ClientSessionManager.setSession({
-        clientId: 'current-client',
-        name: formData.businessName || 'Demo Venue Owner',
-        email: formData.email,
-        isAuthenticated: true,
-      });
-    });
-    
-    Alert.alert('Client Registration', 'Registration successful! Welcome to GameOn Business Portal.', [
-      {
-        text: 'Continue',
-        onPress: () => router.push('/client/dashboard')
+  const handleSignUp = async () => {
+    if (!formData.email || !formData.password || !formData.businessName || !formData.ownerName) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await ClientAuthService.signUp(
+        formData.email,
+        formData.password,
+        formData.businessName,
+        formData.ownerName,
+        formData.address,
+        formData.phone
+      );
+      
+      if (result && result.success) {
+        Alert.alert('Success', 'Business account created successfully! Please check your email to verify your account.', [
+          {
+            text: 'Continue',
+            onPress: () => {
+              setIsSignUp(false);
+              setFormData({
+                email: formData.email,
+                phone: '',
+                password: '',
+                confirmPassword: '',
+                businessName: '',
+                ownerName: '',
+                address: '',
+              });
+            }
+          }
+        ]);
+      } else {
+        Alert.alert('Registration Failed', (result?.error) || 'Please try again');
       }
-    ]);
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBackToMain = () => {
@@ -77,8 +119,27 @@ export default function ClientLoginScreen() {
     router.push('/login');
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Password recovery will be implemented later');
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      Alert.alert('Email Required', 'Please enter your email address first');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await ClientAuthService.resetPassword(formData.email);
+      
+      if (result && result.success) {
+        Alert.alert('Password Reset', 'Password reset email sent! Please check your inbox.');
+      } else {
+        Alert.alert('Error', (result?.error) || 'Failed to send password reset email');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleMode = () => {
@@ -270,11 +331,12 @@ export default function ClientLoginScreen() {
 
               {/* Main Action Button */}
               <Button
-                title={isSignUp ? 'Register Business' : 'Sign In to Dashboard'}
+                title={isLoading ? 'Please wait...' : (isSignUp ? 'Register Business' : 'Sign In to Dashboard')}
                 onPress={isSignUp ? handleSignUp : handleSignIn}
                 variant="primary"
                 size="large"
                 fullWidth
+                disabled={isLoading}
                 style={styles.actionButton}
               />
             </View>

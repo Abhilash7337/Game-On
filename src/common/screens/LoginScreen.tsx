@@ -1,6 +1,7 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Input } from '@/src/common/components/Input';
+import { UserAuthService } from '@/src/user/services/userAuth';
 import { borderRadius, colors, shadows, spacing, typography } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
@@ -11,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function LoginScreen() {
   const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -26,26 +28,84 @@ export default function LoginScreen() {
     }));
   };
 
-  const handleSignIn = () => {
-    // For now, just navigate to the main app
-    // Later, add authentication logic here
-    Alert.alert('Sign In', 'Authentication will be implemented later', [
-      {
-        text: 'Continue',
-        onPress: () => router.push('/(tabs)')
+  const handleSignIn = async () => {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await UserAuthService.signIn(formData.email, formData.password);
+      
+      if (result && result.success) {
+        Alert.alert('Success', 'Welcome back!', [
+          {
+            text: 'Continue',
+            onPress: () => router.push('/(tabs)')
+          }
+        ]);
+      } else {
+        Alert.alert('Sign In Failed', (result?.error) || 'Please check your credentials and try again');
       }
-    ]);
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSignUp = () => {
-    // For now, just show alert
-    // Later, add registration logic here
-    Alert.alert('Sign Up', 'Registration will be implemented later', [
-      {
-        text: 'Continue',
-        onPress: () => router.push('/(tabs)')
+  const handleSignUp = async () => {
+    if (!formData.email || !formData.password || !formData.fullName) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await UserAuthService.signUp(
+        formData.email,
+        formData.password,
+        formData.fullName,
+        formData.phone
+      );
+      
+      if (result && result.success) {
+        Alert.alert('Success', 'Account created successfully! Please check your email to verify your account.', [
+          {
+            text: 'Continue',
+            onPress: () => {
+              setIsSignUp(false);
+              setFormData({
+                email: formData.email,
+                phone: '',
+                password: '',
+                confirmPassword: '',
+                fullName: '',
+              });
+            }
+          }
+        ]);
+      } else {
+        Alert.alert('Sign Up Failed', (result?.error) || 'Please try again');
       }
-    ]);
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClientLogin = () => {
@@ -53,8 +113,27 @@ export default function LoginScreen() {
     router.push('/client-login');
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Password recovery will be implemented later');
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      Alert.alert('Email Required', 'Please enter your email address first');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await UserAuthService.resetPassword(formData.email);
+      
+      if (result && result.success) {
+        Alert.alert('Password Reset', 'Password reset email sent! Please check your inbox.');
+      } else {
+        Alert.alert('Error', (result?.error) || 'Failed to send password reset email');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleMode = () => {
@@ -195,11 +274,12 @@ export default function LoginScreen() {
 
               {/* Main Action Button */}
               <Button
-                title={isSignUp ? 'Create Account' : 'Sign In'}
+                title={isLoading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
                 onPress={isSignUp ? handleSignUp : handleSignIn}
                 variant="primary"
                 size="large"
                 fullWidth
+                disabled={isLoading}
                 style={styles.actionButton}
               />
             </View>
