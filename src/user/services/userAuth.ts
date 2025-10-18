@@ -36,7 +36,7 @@ class UserAuthService {
             id: authData.user.id,
             email,
             full_name: fullName,
-            phone,
+            phone: phone || null,
           });
 
         if (profileError) throw profileError;

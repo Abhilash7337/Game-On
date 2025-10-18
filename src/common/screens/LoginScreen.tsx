@@ -49,7 +49,7 @@ export default function LoginScreen() {
       } else {
         Alert.alert('Sign In Failed', (result?.error) || 'Please check your credentials and try again');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -78,8 +78,7 @@ export default function LoginScreen() {
       const result = await UserAuthService.signUp(
         formData.email,
         formData.password,
-        formData.fullName,
-        formData.phone
+        formData.fullName
       );
       
       if (result && result.success) {
@@ -101,7 +100,7 @@ export default function LoginScreen() {
       } else {
         Alert.alert('Sign Up Failed', (result?.error) || 'Please try again');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -129,11 +128,24 @@ export default function LoginScreen() {
       } else {
         Alert.alert('Error', (result?.error) || 'Failed to send password reset email');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePhoneSignup = () => {
+    // Navigate to phone number signup screen
+    router.push('/phone-signup');
+  };
+
+  const handleGoogleAuth = async () => {
+    Alert.alert('Coming Soon', 'Google authentication will be available soon!');
+  };
+
+  const handleAppleAuth = async () => {
+    Alert.alert('Coming Soon', 'Apple authentication will be available soon!');
   };
 
   const toggleMode = () => {
@@ -221,19 +233,6 @@ export default function LoginScreen() {
                   />
                 </View>
 
-                {isSignUp && (
-                  <View style={styles.fieldSpacing}>
-                    <Input
-                      label="Phone Number"
-                      placeholder="Enter your phone number"
-                      value={formData.phone}
-                      onChangeText={(value) => handleInputChange('phone', value)}
-                      leftIcon="call-outline"
-                      keyboardType="phone-pad"
-                      required
-                    />
-                  </View>
-                )}
 
                 <View style={styles.fieldSpacing}>
                   <Input
@@ -293,15 +292,22 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.socialButtons}>
-                <TouchableOpacity style={styles.socialButton}>
+                <TouchableOpacity style={styles.socialButton} onPress={handlePhoneSignup}>
+                  <Ionicons name="call" size={24} color="#10B981" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.socialButton} onPress={handleGoogleAuth}>
                   <Ionicons name="logo-google" size={24} color="#DB4437" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton}>
+                <TouchableOpacity style={styles.socialButton} onPress={handleAppleAuth}>
                   <Ionicons name="logo-apple" size={24} color="#000" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton}>
-                  <Ionicons name="logo-facebook" size={24} color="#4267B2" />
-                </TouchableOpacity>
+              </View>
+
+              {/* Social Button Labels */}
+              <View style={styles.socialLabels}>
+                <Text style={styles.socialLabel}>Phone</Text>
+                <Text style={styles.socialLabel}>Google</Text>
+                <Text style={styles.socialLabel}>Apple</Text>
               </View>
             </View>
 
@@ -466,5 +472,17 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.primary,
     fontWeight: typography.fontWeight.semibold,
+  },
+  socialLabels: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  socialLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    width: 56,
   },
 });
