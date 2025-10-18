@@ -135,9 +135,13 @@ export default function LoginScreen() {
     }
   };
 
-  const handlePhoneSignup = () => {
-    // Navigate to phone number signup screen
-    router.push('/phone-signup');
+  const handlePhoneAuth = () => {
+    // Navigate to appropriate phone screen based on mode
+    if (isSignUp) {
+      router.push('/phone-signup'); // For signup
+    } else {
+      router.push('/phone-login'); // For login
+    }
   };
 
   const handleGoogleAuth = async () => {
@@ -292,7 +296,7 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.socialButtons}>
-                <TouchableOpacity style={styles.socialButton} onPress={handlePhoneSignup}>
+                <TouchableOpacity style={styles.socialButton} onPress={handlePhoneAuth}>
                   <Ionicons name="call" size={24} color="#10B981" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.socialButton} onPress={handleGoogleAuth}>
@@ -305,7 +309,7 @@ export default function LoginScreen() {
 
               {/* Social Button Labels */}
               <View style={styles.socialLabels}>
-                <Text style={styles.socialLabel}>Phone</Text>
+                <Text style={styles.socialLabel}>{isSignUp ? 'Phone' : 'Phone'}</Text>
                 <Text style={styles.socialLabel}>Google</Text>
                 <Text style={styles.socialLabel}>Apple</Text>
               </View>

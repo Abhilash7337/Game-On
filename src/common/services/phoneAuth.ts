@@ -9,13 +9,52 @@ export interface PhoneAuthResponse {
 
 export class PhoneAuthService {
   /**
+   * Check if phone number is already registered
+   */
+  static async checkPhoneExists(phoneNumber: string): Promise<{ exists: boolean; userId?: string }> {
+    try {
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', formattedPhone)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error('Phone check error:', error);
+        return { exists: false };
+      }
+
+      return { 
+        exists: !!data, 
+        userId: data?.id 
+      };
+    } catch (error) {
+      console.error('Phone check error:', error);
+      return { exists: false };
+    }
+  }
+
+  /**
    * Send SMS verification code to phone number
    * Uses Supabase Auth with Twilio integration
    */
-  static async sendVerificationCode(phoneNumber: string): Promise<PhoneAuthResponse> {
+  static async sendVerificationCode(phoneNumber: string, isSignup: boolean = true): Promise<PhoneAuthResponse> {
     try {
       // Format phone number (ensure it starts with +)
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      
+      // Check if phone already exists for signup
+      if (isSignup) {
+        const phoneCheck = await this.checkPhoneExists(formattedPhone);
+        if (phoneCheck.exists) {
+          return {
+            success: false,
+            error: 'This phone number is already registered. Please sign in instead.'
+          };
+        }
+      }
       
       const { data, error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
@@ -94,11 +133,41 @@ export class PhoneAuthService {
       // Format phone number (ensure it starts with +)
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
       
+      // Check if profile already exists
+      const { data: existingProfile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (existingProfile) {
+        // Profile already exists, just update phone if needed
+        if (!existingProfile.phone) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ 
+              phone: formattedPhone,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (updateError) {
+            console.error('Profile update error:', updateError);
+            return { 
+              success: false, 
+              error: 'Failed to update user profile' 
+            };
+          }
+        }
+        return { success: true };
+      }
+
+      // Create new profile
       const { error } = await supabase
         .from('users')
         .insert({
           id: userId,
-          email: `${userId}@phone.local`, // Temporary email for phone-only users
+          email: null, // No email for phone-only users
           full_name: fullName,
           phone: formattedPhone,
         });
@@ -178,7 +247,24 @@ export class PhoneAuthService {
    * Sign in with phone number (for existing users)
    */
   static async signInWithPhone(phoneNumber: string): Promise<PhoneAuthResponse> {
-    return this.sendVerificationCode(phoneNumber);
+    try {
+      // Check if phone exists first
+      const phoneCheck = await this.checkPhoneExists(phoneNumber);
+      if (!phoneCheck.exists) {
+        return {
+          success: false,
+          error: 'Phone number not found. Please sign up first.'
+        };
+      }
+      
+      // Send verification code for existing user
+      return this.sendVerificationCode(phoneNumber, false); // isSignup = false
+    } catch {
+      return {
+        success: false,
+        error: 'Failed to initiate phone sign in'
+      };
+    }
   }
 
   /**

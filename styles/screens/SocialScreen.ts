@@ -1,36 +1,25 @@
 // SocialScreen specific styles
-import { buttonStyles, cardStyles } from '../components/common';
-import { layoutStyles, textStyles } from '../components/layout';
-import { headerStyles } from '../components/ui';
-
-export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
-
-// SocialScreen-specific styles
 import { StyleSheet } from 'react-native';
 import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export const socialStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.xxl,
-    paddingBottom: spacing.xxxl,
-    marginBottom: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+    ...shadows.sm,
   },
   headerTitle: {
-    color: colors.textInverse,
-    fontSize: typography.fontSize.xxxl,
+    fontSize: typography.fontSize.xxl,
     fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing.sm,
-  },
-  headerSubtitle: {
-    color: colors.textInverse,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal,
-    marginBottom: spacing.sm,
+    color: colors.textPrimary,
+    textAlign: 'left',
   },
   tabSwitcher: {
     flexDirection: 'row',
@@ -66,6 +55,11 @@ export const socialStyles = StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: typography.fontWeight.bold,
   },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: spacing.xxl,
+    backgroundColor: colors.backgroundSecondary,
+  },
   playersHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -87,153 +81,213 @@ export const socialStyles = StyleSheet.create({
     borderRadius: spacing.lg,
     marginHorizontal: spacing.xxl,
     marginTop: spacing.lg,
-    padding: spacing.xxxl,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholderText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSize.base,
-    textAlign: 'center',
-  },
-  // Games Section Styles
-  gamesContainer: {
     flex: 1,
     paddingHorizontal: spacing.xxl,
   },
-  gamesSection: {
-    marginBottom: spacing.xxxl,
-  },
-  gamesSectionHeader: {
+  
+  // Section Headers
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  gamesSectionTitle: {
+  sectionTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
-  gamesSectionCount: {
-    fontSize: typography.fontSize.base,
+  sectionCount: {
+    fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
   },
-  emptyState: {
+  section: {
+    marginBottom: spacing.xl,
+  },
+  
+  // Friends Tab
+  friendsContainer: {
+    flex: 1,
+  },
+  friendCard: {
     backgroundColor: colors.background,
-    borderRadius: spacing.lg,
-    padding: spacing.xxxxl,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    borderStyle: 'dashed',
+    ...shadows.sm,
+  },
+  friendAvatar: {
+    position: 'relative',
+    marginRight: spacing.md,
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.backgroundTertiary,
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  friendInfo: {
+    flex: 1,
+  },
+  friendName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
+  },
+  
+  // Global Tab
+  globalContainer: {
+    flex: 1,
+  },
+  sportGroupCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...shadows.sm,
+  },
+  sportGroupInfo: {
+    flex: 1,
+  },
+  sportGroupName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  sportGroupMembers: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  
+  // City Section
+  cityCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...shadows.sm,
+  },
+  cityInfo: {
+    flex: 1,
+  },
+  cityName: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  cityMembers: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  cityGroups: {
+    marginTop: spacing.md,
+  },
+  cityGroupsTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  
+  // Game Chats Tab
+  gameChatsContainer: {
+    flex: 1,
+  },
+  gameChatCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  gameChatInfo: {
+    flex: 1,
+  },
+  gameChatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  gameChatVenue: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  hostBadge: {
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    marginLeft: spacing.sm,
+  },
+  hostBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary,
+  },
+  gameChatTime: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  gameChatParticipants: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  
+  // Empty States
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
   },
   emptyStateText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textSecondary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
-  },
-  emptyStateSubtext: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textTertiary,
+    marginTop: spacing.md,
     textAlign: 'center',
   },
-  // Game Card Styles
-  gameCard: {
-    backgroundColor: colors.background,
-    borderRadius: spacing.lg,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  gameCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  gameVenue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  gameVenueText: {
+  emptyStateSubtext: {
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginLeft: spacing.xs,
-  },
-  gameTypeBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-  },
-  gameTypeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  gameCourtText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
-    marginLeft: 22,
-  },
-  gameDetails: {
-    marginBottom: spacing.lg,
-  },
-  gameDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  gameDetailText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginLeft: spacing.sm,
-  },
-  gameCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray200,
-  },
-  gamePriceText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
-  },
-  joinButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    borderRadius: spacing.xl,
-  },
-  joinButtonText: {
-    color: colors.textInverse,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  statusBadge: {
-    backgroundColor: colors.gray200,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-  },
-  statusText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
 });
 

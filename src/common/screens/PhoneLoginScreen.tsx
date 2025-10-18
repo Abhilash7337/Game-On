@@ -8,18 +8,16 @@ import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { styles } from '@/styles/screens/PhoneSignupScreen';
+import { styles } from '@/styles/screens/PhoneLoginScreen';
 
-export default function PhoneSignupScreen() {
+export default function PhoneLoginScreen() {
   const router = useRouter();
-  const [step, setStep] = useState<'phone' | 'verification' | 'profile'>('phone');
+  const [step, setStep] = useState<'phone' | 'verification'>('phone');
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     phoneNumber: '',
     verificationCode: '',
-    fullName: '',
   });
-  const [verifiedSession, setVerifiedSession] = useState<any>(null);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -43,13 +41,28 @@ export default function PhoneSignupScreen() {
     setIsLoading(true);
 
     try {
-      const result = await PhoneAuthService.sendVerificationCode(formData.phoneNumber);
+      const result = await PhoneAuthService.signInWithPhone(formData.phoneNumber);
       
       if (result.success) {
         Alert.alert('Code Sent', 'Verification code has been sent to your phone number.');
         setStep('verification');
       } else {
-        Alert.alert('Error', result.error || 'Failed to send verification code');
+        // If phone doesn't exist, suggest signup
+        if (result.error?.includes('not found')) {
+          Alert.alert(
+            'Phone Not Found', 
+            'This phone number is not registered. Would you like to create an account?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Sign Up', 
+                onPress: () => router.push('/phone-signup')
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Error', result.error || 'Failed to send verification code');
+        }
       }
     } catch {
       Alert.alert('Error', 'Failed to send verification code. Please try again.');
@@ -75,8 +88,12 @@ export default function PhoneSignupScreen() {
       const result = await PhoneAuthService.verifyCode(formData.phoneNumber, formData.verificationCode);
       
       if (result.success) {
-        setVerifiedSession(result); // Store the verified session
-        setStep('profile');
+        Alert.alert('Success', 'Welcome back!', [
+          {
+            text: 'Continue',
+            onPress: () => router.push('/(tabs)')
+          }
+        ]);
       } else {
         Alert.alert('Error', result.error || 'Invalid verification code');
       }
@@ -87,50 +104,9 @@ export default function PhoneSignupScreen() {
     }
   };
 
-  const handleCompleteSignup = async () => {
-    if (!formData.fullName) {
-      Alert.alert('Error', 'Please enter your full name');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      if (!verifiedSession || !verifiedSession.user) {
-        Alert.alert('Error', 'Session expired. Please verify your phone number again.');
-        setStep('verification');
-        return;
-      }
-
-      // Create user profile using the verified session
-      const result = await PhoneAuthService.createUserProfile(
-        verifiedSession.user.id,
-        formData.phoneNumber,
-        formData.fullName
-      );
-      
-      if (result.success) {
-        Alert.alert('Success', 'Account created successfully!', [
-          {
-            text: 'Continue',
-            onPress: () => router.push('/(tabs)')
-          }
-        ]);
-      } else {
-        Alert.alert('Error', result.error || 'Failed to create account');
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to create account. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleBack = () => {
     if (step === 'verification') {
       setStep('phone');
-    } else if (step === 'profile') {
-      setStep('verification');
     } else {
       router.back();
     }
@@ -140,11 +116,11 @@ export default function PhoneSignupScreen() {
     <View style={styles.formCard}>
       <View style={styles.formHeader}>
         <View style={styles.iconContainer}>
-          <Ionicons name="call" size={32} color={colors.primary} />
+          <Ionicons name="log-in" size={32} color={colors.primary} />
         </View>
-        <Text style={styles.formTitle}>Sign up with Phone</Text>
+        <Text style={styles.formTitle}>Sign in with Phone</Text>
         <Text style={styles.formSubtitle}>
-          Enter your phone number to get started. We&apos;ll send you a verification code.
+          Enter your registered phone number to sign in to your account.
         </Text>
       </View>
 
@@ -168,6 +144,12 @@ export default function PhoneSignupScreen() {
         fullWidth
         disabled={isLoading}
       />
+
+      <View style={styles.resendContainer}>
+        <TouchableOpacity onPress={() => router.push('/phone-signup')}>
+          <Text style={styles.resendText}>Don&apos;t have an account? Sign up with phone</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -197,7 +179,7 @@ export default function PhoneSignupScreen() {
       </View>
 
       <Button
-        title={isLoading ? 'Verifying...' : 'Verify Code'}
+        title={isLoading ? 'Verifying...' : 'Sign In'}
         onPress={handleVerifyCode}
         variant="primary"
         size="large"
@@ -212,46 +194,12 @@ export default function PhoneSignupScreen() {
     </View>
   );
 
-  const renderProfileStep = () => (
-    <View style={styles.formCard}>
-      <View style={styles.formHeader}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="person-add" size={32} color={colors.primary} />
-        </View>
-        <Text style={styles.formTitle}>Complete Your Profile</Text>
-        <Text style={styles.formSubtitle}>
-          Tell us your name to complete your account setup.
-        </Text>
-      </View>
-
-      <View style={styles.formFields}>
-        <Input
-          label="Full Name"
-          placeholder="Enter your full name"
-          value={formData.fullName}
-          onChangeText={(value) => handleInputChange('fullName', value)}
-          leftIcon="person-outline"
-          required
-        />
-      </View>
-
-      <Button
-        title={isLoading ? 'Creating Account...' : 'Complete Signup'}
-        onPress={handleCompleteSignup}
-        variant="primary"
-        size="large"
-        fullWidth
-        disabled={isLoading}
-      />
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
       
       <AppHeader 
-        title="Phone Signup"
+        title="Phone Sign In"
         subtitle="Quick and secure authentication"
       >
         <TouchableOpacity 
@@ -279,28 +227,22 @@ export default function PhoneSignupScreen() {
               <View style={styles.progressBar}>
                 <View style={[
                   styles.progressStep, 
-                  step === 'phone' || step === 'verification' || step === 'profile' ? styles.progressStepActive : null
+                  step === 'phone' || step === 'verification' ? styles.progressStepActive : null
                 ]} />
                 <View style={[
                   styles.progressStep, 
-                  step === 'verification' || step === 'profile' ? styles.progressStepActive : null
-                ]} />
-                <View style={[
-                  styles.progressStep, 
-                  step === 'profile' ? styles.progressStepActive : null
+                  step === 'verification' ? styles.progressStepActive : null
                 ]} />
               </View>
               <View style={styles.progressLabels}>
                 <Text style={styles.progressLabel}>Phone</Text>
                 <Text style={styles.progressLabel}>Verify</Text>
-                <Text style={styles.progressLabel}>Profile</Text>
               </View>
             </View>
 
             {/* Step Content */}
             {step === 'phone' && renderPhoneStep()}
             {step === 'verification' && renderVerificationStep()}
-            {step === 'profile' && renderProfileStep()}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
