@@ -54,9 +54,10 @@ class ClientAuthService {
 
         return { success: true, client: authData.user };
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Client sign up error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Client sign up failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -101,9 +102,10 @@ class ClientAuthService {
 
         return { success: true, client };
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Client sign in error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Client sign in failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -118,9 +120,10 @@ class ClientAuthService {
       await AsyncStorage.removeItem('client_session');
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Client sign out error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Client sign out failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -184,9 +187,10 @@ class ClientAuthService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Client reset password error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Client reset password failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -217,9 +221,10 @@ class ClientAuthService {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Update client profile error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Update client profile failed';
+      return { success: false, error: errorMessage };
     }
   }
 }

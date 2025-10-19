@@ -20,25 +20,25 @@ export interface Database {
       users: {
         Row: {
           id: string;
-          email: string;
+          email: string | null;
           full_name: string;
-          phone?: string;
+          phone: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
-          email: string;
+          email?: string | null;
           full_name: string;
-          phone?: string;
+          phone?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          email?: string;
+          email?: string | null;
           full_name?: string;
-          phone?: string;
+          phone?: string | null;
           updated_at?: string;
         };
       };

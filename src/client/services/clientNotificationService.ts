@@ -33,7 +33,7 @@ class ClientNotificationService {
     this.notifyListeners();
     
     // In real app, send push notification or email
-    console.log(`📱 Notification sent to client ${clientId}:`, notification.message);
+    // Production: Use proper push notification service
   }
 
   static async sendConfirmationNotification(userId: string, booking: Booking): Promise<void> {
@@ -51,7 +51,7 @@ class ClientNotificationService {
     this.notifications.push(notification);
     this.notifyListeners();
     
-    console.log(`✅ Confirmation sent to user ${userId}:`, notification.message);
+    // Production: Use proper push notification service
   }
 
   static async sendRejectionNotification(userId: string, booking: Booking, reason: string): Promise<void> {
@@ -69,7 +69,7 @@ class ClientNotificationService {
     this.notifications.push(notification);
     this.notifyListeners();
     
-    console.log(`❌ Rejection sent to user ${userId}:`, notification.message);
+    // Production: Use proper push notification service
   }
 
   static async getClientNotifications(clientId: string): Promise<NotificationData[]> {
