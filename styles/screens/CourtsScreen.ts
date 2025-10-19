@@ -1,18 +1,30 @@
 // CourtsScreen specific styles
+import { StyleSheet } from 'react-native';
+import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 import { buttonStyles, cardStyles } from '../components/common';
 import { layoutStyles, textStyles } from '../components/layout';
 import { headerStyles } from '../components/ui';
 
 export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
 
-// CourtsScreen-specific styles
-import { StyleSheet } from 'react-native';
-import { borderRadius, colors, shadows, spacing, typography } from '../theme';
-
 export const courtsStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.background,
+  },
+  header: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+    ...shadows.sm,
+  },
+  headerTitle: {
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    textAlign: 'left',
   },
   searchSection: {
     backgroundColor: colors.background,
@@ -58,38 +70,75 @@ export const courtsStyles = StyleSheet.create({
   venueCard: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.lg,
     ...shadows.md,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  imageContainer: {
+    position: 'relative',
+    width: 120,
+    height: 120,
   },
   venueImage: {
-    width: '100%',
-    height: 160,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
+    width: 120,
+    height: 120,
     resizeMode: 'cover',
   },
-  venueInfo: {
-    padding: spacing.lg,
+  imagePreviewButton: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xs / 2,
   },
-  venueTopRow: {
+  imagePreviewText: {
+    fontSize: typography.fontSize.xs,
+    color: '#FFFFFF',
+    fontWeight: typography.fontWeight.medium,
+    marginRight: spacing.xs / 2,
+  },
+  venueInfo: {
+    flex: 1,
+    padding: spacing.md,
+    justifyContent: 'space-between',
+  },
+  venueHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.xs,
   },
   venueName: {
-    fontSize: typography.fontSize.xl,
+    fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  venueRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   venueRating: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.xs,
     color: colors.textSecondary,
+    marginLeft: spacing.xs / 2,
   },
-  venueLocation: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
+  venueLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  venueDistance: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
+    marginLeft: spacing.xs / 2,
   },
   venueBottomRow: {
     flexDirection: 'row',
@@ -97,20 +146,38 @@ export const courtsStyles = StyleSheet.create({
     alignItems: 'center',
   },
   venuePrice: {
-    fontSize: typography.fontSize.lg,
+    fontSize: typography.fontSize.base,
     color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: typography.fontWeight.bold,
   },
   bookBtn: {
     backgroundColor: colors.secondary,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginLeft: spacing.sm,
   },
   bookBtnText: {
     color: colors.textInverse,
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
+  },
+  imagePreview: {
+    backgroundColor: colors.backgroundSecondary,
+    overflow: 'hidden',
+  },
+  imageScroll: {
+    flex: 1,
+  },
+  imageScrollContent: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  previewImage: {
+    height: 160,
+    borderRadius: borderRadius.md,
+    marginRight: spacing.sm,
+    resizeMode: 'cover',
   },
 });
 

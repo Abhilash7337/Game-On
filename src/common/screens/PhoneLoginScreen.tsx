@@ -91,7 +91,7 @@ export default function PhoneLoginScreen() {
         Alert.alert('Success', 'Welcome back!', [
           {
             text: 'Continue',
-            onPress: () => router.push('/(tabs)')
+            onPress: () => router.replace('/(tabs)')
           }
         ]);
       } else {

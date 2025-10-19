@@ -1,9 +1,14 @@
 import { UserAuthService } from '@/src/user/services/userAuth';
-import { Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-export default function Index() {
+interface AuthGuardProps {
+  children: React.ReactNode;
+}
+
+export default function AuthGuard({ children }: AuthGuardProps) {
+  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -13,10 +18,18 @@ export default function Index() {
   const checkAuthStatus = async () => {
     try {
       const currentUser = await UserAuthService.getCurrentSession();
-      setIsAuthenticated(currentUser ? true : false);
+      
+      if (currentUser && currentUser.isAuthenticated) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+        // Redirect to login if not authenticated
+        router.replace('/login');
+      }
     } catch (error) {
       console.error('Auth check error:', error);
       setIsAuthenticated(false);
+      router.replace('/login');
     }
   };
 
@@ -29,10 +42,11 @@ export default function Index() {
     );
   }
 
-  // Redirect based on authentication status
+  // Show children only if authenticated
   if (isAuthenticated) {
-    return <Redirect href="/(tabs)" />;
-  } else {
-    return <Redirect href="/login" />;
+    return <>{children}</>;
   }
+
+  // Return null if not authenticated (will redirect)
+  return null;
 }

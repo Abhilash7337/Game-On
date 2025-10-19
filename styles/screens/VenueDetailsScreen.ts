@@ -1,24 +1,24 @@
 // VenueDetailsScreen specific styles
+import { StyleSheet } from 'react-native';
+import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 import { buttonStyles, cardStyles } from '../components/common';
 import { layoutStyles, textStyles } from '../components/layout';
 import { headerStyles } from '../components/ui';
 
 export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
 
-// VenueDetailsScreen-specific styles
-import { StyleSheet } from 'react-native';
-import { borderRadius, colors, shadows, spacing, typography } from '../theme';
-
 export const venueDetailsStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.textInverse,
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.xxl,
     paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+    ...shadows.sm,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -27,10 +27,15 @@ export const venueDetailsStyles = StyleSheet.create({
     padding: spacing.xs,
   },
   headerTitle: {
-    color: colors.textInverse,
+    color: colors.textPrimary,
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
     marginLeft: spacing.md,
+  },
+  distanceText: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    marginLeft: spacing.xs,
   },
   imageCarousel: {
     width: '100%',
@@ -62,10 +67,26 @@ export const venueDetailsStyles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
   },
+  venueNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   venueName: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
+    flex: 1,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    marginLeft: spacing.xs / 2,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
   },
   venueLocation: {
     flexDirection: 'row',
@@ -77,9 +98,15 @@ export const venueDetailsStyles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: typography.fontSize.sm,
   },
-  ratingContainer: {
+  operatingHours: {
     flexDirection: 'row',
+    alignItems: 'center',
     marginTop: spacing.sm,
+  },
+  hoursText: {
+    marginLeft: spacing.xs,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
   },
   star: {
     marginRight: spacing.xs,
@@ -112,10 +139,91 @@ export const venueDetailsStyles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: typography.fontSize.sm,
   },
+  courtAvailability: {
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  availabilityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '10',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+  },
+  todayLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
+    marginRight: spacing.xs / 2,
+  },
+  courtSection: {
+    marginBottom: spacing.lg,
+  },
+  courtTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  timeSlotsScroll: {
+    marginBottom: spacing.xs,
+  },
+  timeSlotsContainer: {
+    paddingRight: spacing.xl,
+  },
+  timeSlotCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
+    marginRight: spacing.sm,
+    minWidth: 80,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  availableSlot: {
+    backgroundColor: colors.success + '08',
+    borderColor: colors.success,
+  },
+  openToJoinSlot: {
+    backgroundColor: '#FF8C00' + '08',
+    borderColor: '#FF8C00',
+  },
+  bookedSlot: {
+    backgroundColor: colors.gray100,
+    borderColor: colors.gray300,
+    opacity: 0.6,
+  },
+  slotTime: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs / 2,
+  },
+  slotPrice: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+  },
+  availablePrice: {
+    color: colors.success,
+  },
+  openToJoinPrice: {
+    color: '#FF8C00',
+  },
+  bookedPrice: {
+    color: colors.textSecondary,
+  },
   about: {
     paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
-    marginBottom: 80,
+    marginBottom: 40,
   },
   aboutTitle: {
     fontWeight: typography.fontWeight.semibold,
@@ -127,41 +235,6 @@ export const venueDetailsStyles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: typography.fontSize.sm,
     lineHeight: 20,
-  },
-  priceSection: {
-    marginTop: spacing.lg,
-  },
-  priceTitle: {
-    fontWeight: typography.fontWeight.semibold,
-    fontSize: typography.fontSize.lg,
-    color: colors.textPrimary,
-  },
-  priceText: {
-    color: colors.secondary,
-    fontWeight: typography.fontWeight.medium,
-    marginTop: spacing.xs,
-    fontSize: typography.fontSize.sm,
-  },
-  bookButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.lg,
-    backgroundColor: colors.textInverse,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray200,
-  },
-  bookButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.lg,
-    borderRadius: spacing.lg,
-  },
-  bookButtonText: {
-    color: colors.textInverse,
-    textAlign: 'center',
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
   },
 });
 

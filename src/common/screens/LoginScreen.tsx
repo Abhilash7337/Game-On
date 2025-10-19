@@ -43,7 +43,7 @@ export default function LoginScreen() {
         Alert.alert('Success', 'Welcome back!', [
           {
             text: 'Continue',
-            onPress: () => router.push('/(tabs)')
+            onPress: () => router.replace('/(tabs)')
           }
         ]);
       } else {

@@ -3,7 +3,7 @@ import {
 } from '@/styles/screens/VenueDetailsScreen';
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 // 1. Import StatusBar and useSafeAreaInsets
 import { Venue } from '@/src/common/types';
@@ -21,11 +21,7 @@ export default function VenueDetailsScreen() {
   // 2. Get the safe area inset values
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadVenueDetails();
-  }, []);
-
-  const loadVenueDetails = async () => {
+  const loadVenueDetails = useCallback(async () => {
     try {
       const { VenueStorageService } = await import('@/src/common/services/venueStorage');
       const venues = await VenueStorageService.getAllVenues();
@@ -53,12 +49,16 @@ export default function VenueDetailsScreen() {
           createdAt: new Date(),
         });
       }
-    } catch (error) {
-      console.error('Error loading venue details:', error);
+    } catch {
+      // Error loading venue details - using fallback venue
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.venueId]);
+
+  useEffect(() => {
+    loadVenueDetails();
+  }, [loadVenueDetails]);
 
   if (loading) {
     return (
@@ -105,13 +105,13 @@ export default function VenueDetailsScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       <View style={venueDetailsStyles.container}>
-        {/* 3. Header with dynamic padding for the safe area */}
-        <View style={[venueDetailsStyles.header, { paddingTop: insets.top + 16 }]}>
+        {/* White Header matching Social Hub design */}
+        <View style={[venueDetailsStyles.header, { paddingTop: insets.top + 20 }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back-outline" size={24} color="white" />
+            <Ionicons name="arrow-back-outline" size={24} color="#000" />
           </TouchableOpacity>
           <Text style={venueDetailsStyles.headerTitle}>Venue Details</Text>
         </View>
@@ -150,41 +150,36 @@ export default function VenueDetailsScreen() {
 
           {/* Venue Info */}
           <View style={venueDetailsStyles.venueInfo}>
-            <Text style={venueDetailsStyles.venueName}>{venue.name}</Text>
-            <View style={venueDetailsStyles.venueLocation}>
-              <Ionicons name="location-outline" size={18} color="gray" />
-              <Text style={venueDetailsStyles.locationText}>{venue.address}</Text>
+            <View style={venueDetailsStyles.venueNameRow}>
+              <Text style={venueDetailsStyles.venueName}>{venue.name}</Text>
+              <View style={venueDetailsStyles.ratingContainer}>
+                <Ionicons name="star" size={16} color="#EA580C" />
+                <Text style={venueDetailsStyles.ratingText}>
+                  {venue.rating.toFixed(1)} ({Math.floor(Math.random() * 50) + 10})
+                </Text>
+              </View>
             </View>
-            {/* Rating Stars */}
-            <View style={venueDetailsStyles.ratingContainer}>
-              {[...Array(5)].map((_, i) => (
-                <Ionicons 
-                  key={i} 
-                  name={i < Math.floor(venue.rating) ? "star" : "star-outline"} 
-                  size={18} 
-                  color="#EA580C" 
-                />
-              ))}
-              <Text style={{ marginLeft: 8, color: '#6B7280', fontSize: 14 }}>
-                {venue.rating.toFixed(1)}
+            <TouchableOpacity 
+              style={venueDetailsStyles.venueLocation}
+              onPress={() => {
+                // In a real app, use Linking.openURL with Google Maps URL
+                // Maps functionality will be implemented with proper linking
+              }}
+            >
+              <Ionicons name="map-outline" size={18} color="#047857" />
+              <Text style={venueDetailsStyles.locationText}>{venue.address}</Text>
+              <Text style={venueDetailsStyles.distanceText}>• 2.5 km</Text>
+            </TouchableOpacity>
+            
+            {/* Operating Hours */}
+            <View style={venueDetailsStyles.operatingHours}>
+              <Ionicons name="time-outline" size={16} color="#6B7280" />
+              <Text style={venueDetailsStyles.hoursText}>
+                {venue.operatingHours.open} - {venue.operatingHours.close} • {venue.operatingHours.days.join(', ')}
               </Text>
             </View>
           </View>
 
-          {/* Courts Info */}
-          {venue.courts.length > 0 && (
-            <View style={venueDetailsStyles.amenities}>
-              <Text style={venueDetailsStyles.amenitiesTitle}>Available Courts</Text>
-              <View style={venueDetailsStyles.amenitiesGrid}>
-                {venue.courts.map((court, index) => (
-                  <View key={court.id} style={venueDetailsStyles.amenityItem}>
-                    <Ionicons name="basketball-outline" size={20} color="#047857" />
-                    <Text style={venueDetailsStyles.amenityText}>{court.name} ({court.type})</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
 
           {/* Amenities */}
           <View style={venueDetailsStyles.amenities}>
@@ -209,43 +204,87 @@ export default function VenueDetailsScreen() {
             <Text style={venueDetailsStyles.aboutText}>
               {venue.description}
             </Text>
+          </View>
 
-            <View style={venueDetailsStyles.priceSection}>
-              <Text style={venueDetailsStyles.priceTitle}>
-                Price: ₹{venue.pricing.basePrice}/hour
-              </Text>
-              <Text style={venueDetailsStyles.priceText}>
-                Operating Hours: {venue.operatingHours.open} - {venue.operatingHours.close}
-              </Text>
-              <Text style={venueDetailsStyles.priceText}>
-                Days: {venue.operatingHours.days.join(', ')}
-              </Text>
+          {/* Advanced Court Availability */}
+          <View style={venueDetailsStyles.courtAvailability}>
+            <View style={venueDetailsStyles.availabilityHeader}>
+              <Text style={venueDetailsStyles.amenitiesTitle}>Court Availability</Text>
+              <TouchableOpacity 
+                style={venueDetailsStyles.dateSelector}
+                onPress={() => {
+                  // TODO: Implement date picker modal for next 15 days
+                  // Date selection functionality will be added
+                }}
+              >
+                <Text style={venueDetailsStyles.todayLabel}>Today</Text>
+                <Ionicons name="chevron-down-outline" size={16} color="#047857" />
+              </TouchableOpacity>
             </View>
+            
+            {/* Courts with Horizontal Scrollable Time Slots */}
+            {['Court A1', 'Court B1', 'Court C1'].map((courtName, courtIndex) => (
+              <View key={courtIndex} style={venueDetailsStyles.courtSection}>
+                <Text style={venueDetailsStyles.courtTitle}>{courtName}</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={venueDetailsStyles.timeSlotsScroll}
+                  contentContainerStyle={venueDetailsStyles.timeSlotsContainer}
+                >
+                  {[
+                    { time: '6:00 AM', status: 'available', price: 500 },
+                    { time: '7:00 AM', status: 'booked', price: 500 },
+                    { time: '8:00 AM', status: 'available', price: 500 },
+                    { time: '9:00 AM', status: 'openToJoin', price: 500 },
+                    { time: '10:00 AM', status: 'booked', price: 500 },
+                    { time: '11:00 AM', status: 'available', price: 500 },
+                    { time: '12:00 PM', status: 'openToJoin', price: 500 },
+                    { time: '1:00 PM', status: 'booked', price: 500 },
+                    { time: '2:00 PM', status: 'available', price: 500 },
+                  ].map((slot, timeIndex) => (
+                    <TouchableOpacity
+                      key={timeIndex}
+                      style={[
+                        venueDetailsStyles.timeSlotCard,
+                        slot.status === 'available' ? venueDetailsStyles.availableSlot : 
+                        slot.status === 'openToJoin' ? venueDetailsStyles.openToJoinSlot : 
+                        venueDetailsStyles.bookedSlot
+                      ]}
+                      onPress={() => {
+                        if (slot.status === 'available' || slot.status === 'openToJoin') {
+                          router.push({
+                            pathname: '/BookingFormScreen',
+                            params: {
+                              venueId: venue.id,
+                              venueName: venue.name,
+                              venuePrice: slot.price.toString(),
+                              ownerId: venue.ownerId,
+                              court: courtName,
+                              timeSlot: slot.time
+                            }
+                          });
+                        }
+                      }}
+                      disabled={slot.status === 'booked'}
+                    >
+                      <Text style={venueDetailsStyles.slotTime}>{slot.time}</Text>
+                      <Text style={[
+                        venueDetailsStyles.slotPrice,
+                        slot.status === 'available' ? venueDetailsStyles.availablePrice : 
+                        slot.status === 'openToJoin' ? venueDetailsStyles.openToJoinPrice :
+                        venueDetailsStyles.bookedPrice
+                      ]}>
+                        {slot.status === 'available' ? `₹${slot.price}` : 
+                         slot.status === 'openToJoin' ? 'Join Game' : 'Booked'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ))}
           </View>
         </ScrollView>
-
-        {/* Book Button */}
-        <View style={venueDetailsStyles.bookButtonContainer}>
-          <TouchableOpacity 
-            style={venueDetailsStyles.bookButton}
-            onPress={() => {
-              // Navigate to booking form with venue data
-              router.push({
-                pathname: '/BookingFormScreen',
-                params: {
-                  venueId: venue.id,
-                  venueName: venue.name,
-                  venuePrice: venue.pricing.basePrice.toString(),
-                  ownerId: venue.ownerId
-                }
-              });
-            }}
-          >
-            <Text style={venueDetailsStyles.bookButtonText}>
-              Book Now - ₹{venue.pricing.basePrice}/hour
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </>
   );
