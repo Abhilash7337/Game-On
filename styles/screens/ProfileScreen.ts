@@ -10,19 +10,90 @@ import { StyleSheet } from 'react-native';
 import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export const profileStyles = StyleSheet.create({
+  header: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+    ...shadows.sm,
+  },
+  headerTitle: {
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    textAlign: 'left',
+  },
   userInfoSection: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
     marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
     marginBottom: spacing.lg,
     borderRadius: spacing.lg,
+    ...shadows.md,
   },
-  header: {
-    backgroundColor: colors.primary,
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userDetails: {
+    marginLeft: spacing.lg,
+    flex: 1,
+  },
+  userName: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs / 2,
+  },
+  userPhone: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  menuSection: {
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.background,
+    borderRadius: spacing.lg,
+    ...shadows.md,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxl,
-    marginBottom: spacing.md,
+    paddingVertical: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray100,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  menuItemText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textPrimary,
+    marginLeft: spacing.md,
+  },
+  logoutItem: {
+    borderBottomWidth: 0,
+  },
+  logoutText: {
+    color: '#DC2626',
   },
   avatar: {
     width: 80,

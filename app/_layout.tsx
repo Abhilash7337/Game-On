@@ -1,13 +1,15 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { BackHandler } from 'react-native';
 import 'react-native-reanimated';
 
 import { MyTheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { UserAuthService } from '@/src/user/services/userAuth';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +46,7 @@ export default function RootLayout() {
         <Stack.Screen name="client/BookingRequestsScreen" options={{ headerShown: false }} />
         <Stack.Screen name="client/dashboard" options={{ headerShown: false }} />
         <Stack.Screen name="add-venue" options={{ headerShown: false }} />
+        <Stack.Screen name="EditProfileScreen" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

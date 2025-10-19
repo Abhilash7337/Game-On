@@ -1,10 +1,10 @@
-import AppHeader from '@/src/common/components/AppHeader';
-import {
-    profileStyles
-} from '@/styles/screens/ProfileScreen';
+import { profileStyles } from '@/styles/screens/ProfileScreen';
+import { UserAuthService } from '@/src/user/services/userAuth';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Booking, bookingStore } from '../../utils/bookingStore';
 
@@ -67,30 +67,41 @@ function getSkillLevelColor(skillLevel?: string) {
 
 export default function ProfileScreen() {
 	const insets = useSafeAreaInsets();
+	const router = useRouter();
 	const [user, setUser] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
-	const [tab, setTab] = useState('Stats');
 	const [userBookings, setUserBookings] = useState<Booking[]>([]);
-	const [pendingBookings, setPendingBookings] = useState<any[]>([]);
 
 	useEffect(() => {
-		setTimeout(() => {
-			setUser(demoUser);
-			setLoading(false);
-		}, 700);
+		const loadUserData = async () => {
+			try {
+				// Get current user session
+				const currentUser = await UserAuthService.getCurrentSession();
+				
+				if (currentUser && currentUser.profile) {
+					setUser({
+						firstName: currentUser.profile.fullName.split(' ')[0] || 'User',
+						lastName: currentUser.profile.fullName.split(' ').slice(1).join(' ') || '',
+						phone: currentUser.profile.phone || 'No phone number',
+						profileImageUrl: '',
+					});
+				} else {
+					// Fallback to demo user if no session
+					setUser(demoUser);
+				}
+			} catch (error) {
+				console.error('Error loading user data:', error);
+				setUser(demoUser);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		loadUserData();
 
 		// Subscribe to booking updates
 		const updateBookings = async () => {
 			setUserBookings(bookingStore.getAllBookings());
-			
-			// Load pending bookings
-			try {
-				const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
-				const userPendingBookings = await BookingStorageService.getBookingsByUser('current-user');
-				setPendingBookings(userPendingBookings.filter(b => (b as any).bookingStatus === 'pending'));
-			} catch (error) {
-				console.error('Error loading pending bookings:', error);
-			}
 		};
 
 		updateBookings();
@@ -98,6 +109,29 @@ export default function ProfileScreen() {
 
 		return () => unsubscribe();
 	}, []);
+
+	const handleLogout = () => {
+		Alert.alert(
+			'Logout',
+			'Are you sure you want to logout?',
+			[
+				{ text: 'Cancel', style: 'cancel' },
+				{ 
+					text: 'Logout', 
+					style: 'destructive',
+					onPress: async () => {
+						try {
+							await UserAuthService.signOut();
+							router.replace('/login');
+						} catch (error) {
+							console.error('Logout error:', error);
+							Alert.alert('Error', 'Failed to logout. Please try again.');
+						}
+					}
+				}
+			]
+		);
+	};
 
 	if (loading || !user) {
 		return (
@@ -107,198 +141,80 @@ export default function ProfileScreen() {
 		);
 	}
 
-	const completedBookings = userBookings.filter((booking) => booking.status === 'completed');
-	const upcomingBookings = userBookings.filter((booking) => booking.status === 'upcoming');
-	const averageRating = demoRatings.length > 0 ? (demoRatings.reduce((a, b) => a + b, 0) / demoRatings.length).toFixed(1) : 'N/A';
-	const levelProgress = Math.min(((user.gamesPlayed || 0) * 10) % 100, 100);
-	const currentLevel = Math.floor((user.gamesPlayed || 0) / 10) + 1;
-
 	return (
-		<ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ paddingBottom: 32 }}>
-			<AppHeader 
-				title="Profile" 
-				subtitle="Your game stats and bookings"
-			/>
-			
-			{/* User Info Section */}
-			<View style={profileStyles.userInfoSection}>
-				<View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-					{user.profileImageUrl ? (
-						<Image
-							source={{ uri: user.profileImageUrl }}
-							style={profileStyles.avatar}
-						/>
-					) : (
-						<View style={[profileStyles.avatar, profileStyles.defaultAvatar]}>
-							<Ionicons name="person" size={40} color="#047857" />
-						</View>
-					)}
-					<View style={{ marginLeft: 16, flex: 1 }}>
-						<Text style={[profileStyles.name, { fontSize: responsiveFontSize(22) }]}>{user.firstName} {user.lastName}</Text>
-															<Text style={[profileStyles.email, { fontSize: responsiveFontSize(14), marginTop: 6, alignSelf: 'flex-start' }]}>{user.phone}</Text>
-																							<View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, width: '100%' }}>
-																								<Text style={[profileStyles.email, { fontSize: responsiveFontSize(14), marginRight: 10, textAlign: 'left', flexShrink: 0 }]}>{user.gender}</Text>
-																								<Text style={[profileStyles.email, { fontSize: responsiveFontSize(14), textAlign: 'left', flexShrink: 0 }]}>{user.age}</Text>
-																							</View>
-					</View>
-				</View>
-				<View style={profileStyles.levelBox}>
-					<View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-						<Text style={[profileStyles.levelText, { fontSize: responsiveFontSize(13) }]}>Level {currentLevel}</Text>
-						<Text style={[profileStyles.levelText, { fontSize: responsiveFontSize(13) }]}>{levelProgress}%</Text>
-					</View>
-					<View style={profileStyles.progressBarBg}>
-						<View style={[profileStyles.progressBar, { width: `${levelProgress}%` }]} />
-					</View>
-				</View>
+		<View style={{ flex: 1, backgroundColor: '#fff' }}>
+			{/* Make status bar icons dark for white background */}
+			<StatusBar style="dark" />
+
+			{/* White Header matching Social Hub */}
+			<View style={[profileStyles.header, { paddingTop: insets.top + 20 }]}>
+				<Text style={profileStyles.headerTitle}>Profile</Text>
 			</View>
 
-			{/* Tabs */}
-			<View style={profileStyles.tabsRow}>
-				{TABS.map((t) => (
-					<TouchableOpacity key={t} style={[profileStyles.tabBtn, tab === t && profileStyles.tabBtnActive]} onPress={() => setTab(t)}>
-						<Text style={[profileStyles.tabBtnText, tab === t && profileStyles.tabBtnTextActive, { fontSize: responsiveFontSize(15) }]}>{t}</Text>
+			<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }}>
+				{/* User Info Section */}
+				<View style={profileStyles.userInfoSection}>
+					<View style={profileStyles.userRow}>
+						{user.profileImageUrl ? (
+							<Image
+								source={{ uri: user.profileImageUrl }}
+								style={profileStyles.avatar}
+							/>
+						) : (
+							<View style={[profileStyles.avatar, profileStyles.defaultAvatar]}>
+								<Ionicons name="person" size={40} color="#047857" />
+							</View>
+						)}
+						<View style={profileStyles.userDetails}>
+							<Text style={profileStyles.userName}>{user.firstName} {user.lastName}</Text>
+							<Text style={profileStyles.userPhone}>{user.phone}</Text>
+						</View>
+						<TouchableOpacity 
+							style={profileStyles.editButton}
+							onPress={() => Alert.alert('Coming Soon', 'Profile editing will be available soon!')}
+						>
+							<Ionicons name="pencil" size={18} color="#047857" />
+						</TouchableOpacity>
+					</View>
+				</View>
+
+				{/* Menu List */}
+				<View style={profileStyles.menuSection}>
+					<TouchableOpacity 
+						style={profileStyles.menuItem}
+						onPress={() => Alert.alert('Coming Soon', 'My Bookings feature will be available soon!')}
+					>
+						<View style={profileStyles.menuItemLeft}>
+							<Ionicons name="calendar-outline" size={24} color="#047857" />
+							<Text style={profileStyles.menuItemText}>My Bookings</Text>
+						</View>
+						<Ionicons name="chevron-forward-outline" size={20} color="#9CA3AF" />
 					</TouchableOpacity>
-				))}
-			</View>
 
-			{/* Tab Content */}
-			{tab === 'Stats' && (
-				<View style={{ padding: 16 }}>
-					<View style={profileStyles.statsGrid}>
-						<View style={profileStyles.statCard}>
-							  <Text style={[profileStyles.statValue, { fontSize: responsiveFontSize(20) }]}>{user.gamesPlayed || 0}</Text>
-							  <Text style={[profileStyles.statLabel, { fontSize: responsiveFontSize(13) }]}>Games Played</Text>
+					<TouchableOpacity 
+						style={profileStyles.menuItem}
+						onPress={() => Alert.alert('Coming Soon', 'Notification Preferences will be available soon!')}
+					>
+						<View style={profileStyles.menuItemLeft}>
+							<Ionicons name="notifications-outline" size={24} color="#047857" />
+							<Text style={profileStyles.menuItemText}>Notification Preferences</Text>
 						</View>
-						<View style={profileStyles.statCard}>
-							  <Text style={[profileStyles.statValue, { fontSize: responsiveFontSize(20) }]}>{user.hoursPlayed || 0}h</Text>
-							  <Text style={[profileStyles.statLabel, { fontSize: responsiveFontSize(13) }]}>Hours Played</Text>
+						<Ionicons name="chevron-forward-outline" size={20} color="#9CA3AF" />
+					</TouchableOpacity>
+
+					<TouchableOpacity 
+						style={[profileStyles.menuItem, profileStyles.logoutItem]}
+						onPress={handleLogout}
+					>
+						<View style={profileStyles.menuItemLeft}>
+							<Ionicons name="log-out-outline" size={24} color="#DC2626" />
+							<Text style={[profileStyles.menuItemText, profileStyles.logoutText]}>Logout</Text>
 						</View>
-						<View style={profileStyles.statCard}>
-							  <Text style={[profileStyles.statValue, { fontSize: responsiveFontSize(20) }]}>#{user.ranking || 'N/A'}</Text>
-							  <Text style={[profileStyles.statLabel, { fontSize: responsiveFontSize(13) }]}>Ranking</Text>
-						</View>
-						<View style={profileStyles.statCard}>
-							  <Text style={[profileStyles.statValue, { fontSize: responsiveFontSize(20) }]}>{averageRating}</Text>
-							  <Text style={[profileStyles.statLabel, { fontSize: responsiveFontSize(13) }]}>Rating</Text>
-						</View>
-					</View>
-					<View style={profileStyles.sectionCard}>
-						<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Preferred Sports</Text>
-						<View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-							{user.preferredSports && user.preferredSports.length > 0 ? (
-								user.preferredSports.map((sport: string) => (
-									<View key={sport} style={profileStyles.sportBadge}>
-										<Text style={[profileStyles.sportBadgeText, { fontSize: responsiveFontSize(12) }]}>{sport.replace('_', ' ')}</Text>
-									</View>
-								))
-							) : (
-								<Text style={{ color: '#6b7280', fontSize: responsiveFontSize(13) }}>No preferences set</Text>
-							)}
-						</View>
-					</View>
-					<View style={profileStyles.sectionCard}>
-						<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Recent Activity</Text>
-						{completedBookings.length > 0 ? (
-							completedBookings.slice(0, 3).map((booking) => (
-								<View key={booking.id} style={profileStyles.activityRow}>
-														<View style={profileStyles.activityIcon}><Text style={{ color: '#047857', fontSize: responsiveFontSize(16) }}>✓</Text></View>
-														<View style={{ flex: 1 }}>
-															<Text style={[profileStyles.activityTitle, { fontSize: responsiveFontSize(14) }]}>Completed {booking.bookingType} at {booking.venue}</Text>
-															<Text style={[profileStyles.activityDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()}</Text>
-									</View>
-								</View>
-							))
-						) : (
-							  <Text style={{ color: '#6b7280', fontSize: responsiveFontSize(13) }}>No recent activity</Text>
-						)}
-					</View>
+						<Ionicons name="chevron-forward-outline" size={20} color="#9CA3AF" />
+					</TouchableOpacity>
 				</View>
-			)}
-			{tab === 'Games' && (
-				<View style={{ padding: 16 }}>
-					<View style={profileStyles.sectionCard}>
-						<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Upcoming Games ({upcomingBookings.length})</Text>
-						{upcomingBookings.length > 0 ? (
-							upcomingBookings.map((booking) => (
-								<View key={booking.id} style={profileStyles.gameRow}>
-									<View>
-										<Text style={[profileStyles.gameTitle, { fontSize: responsiveFontSize(14) }]}>{booking.bookingType} at {booking.venue}</Text>
-										<Text style={[profileStyles.gameDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()} at {booking.time}</Text>
-									</View>
-									<View style={profileStyles.playersBadge}>
-										<Text style={[profileStyles.playersBadgeText, { fontSize: responsiveFontSize(13) }]}>{booking.court}</Text>
-									</View>
-								</View>
-							))
-						) : (
-							<Text style={{ color: '#6b7280', fontSize: responsiveFontSize(13) }}>No upcoming games</Text>
-						)}
-					</View>
-					<View style={profileStyles.sectionCard}>
-						<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Game History ({completedBookings.length})</Text>
-						{completedBookings.length > 0 ? (
-							completedBookings.slice(0, 5).map((booking) => (
-								<View key={booking.id} style={profileStyles.gameRow}>
-									<View>
-										<Text style={[profileStyles.gameTitle, { fontSize: responsiveFontSize(14) }]}>{booking.bookingType} at {booking.venue}</Text>
-										<Text style={[profileStyles.gameDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()}</Text>
-									</View>
-									<View style={[profileStyles.playersBadge, { backgroundColor: '#e5e7eb' }] }>
-										<Text style={[profileStyles.playersBadgeText, { color: '#374151', fontSize: responsiveFontSize(13) }]}>Completed</Text>
-									</View>
-								</View>
-							))
-						) : (
-							  <Text style={{ color: '#6b7280', fontSize: responsiveFontSize(13) }}>No completed games</Text>
-						)}
-					</View>
-				</View>
-			)}
-			{tab === 'Bookings' && (
-				<View style={{ padding: 16 }}>
-					{/* Pending Bookings */}
-					{pendingBookings.length > 0 && (
-						<View style={profileStyles.sectionCard}>
-							<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Pending Approvals ({pendingBookings.length})</Text>
-							{pendingBookings.map((booking) => (
-								<View key={booking.id} style={profileStyles.bookingRow}>
-									<View style={{ flex: 1 }}>
-										<Text style={[profileStyles.bookingTitle, { fontSize: responsiveFontSize(14) }]}>{booking.court} at {booking.venue}</Text>
-										<Text style={[profileStyles.bookingDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()} at {booking.time}</Text>
-										<Text style={[profileStyles.bookingAmount, { fontSize: responsiveFontSize(13) }]}>₹{booking.price}</Text>
-									</View>
-									<View style={[profileStyles.bookingStatus, { backgroundColor: '#fef3c7' }]}>
-										<Text style={[profileStyles.bookingStatusText, { color: '#92400e', fontSize: responsiveFontSize(13) }]}>Pending</Text>
-									</View>
-								</View>
-							))}
-						</View>
-					)}
-					
-					{/* Confirmed Bookings */}
-					<View style={profileStyles.sectionCard}>
-						<Text style={[profileStyles.sectionTitle, { fontSize: responsiveFontSize(16) }]}>Booking History</Text>
-						{userBookings.length > 0 ? (
-							userBookings.map((booking) => (
-								<View key={booking.id} style={profileStyles.bookingRow}>
-									<View style={{ flex: 1 }}>
-										<Text style={[profileStyles.bookingTitle, { fontSize: responsiveFontSize(14) }]}>{booking.court} at {booking.venue}</Text>
-										<Text style={[profileStyles.bookingDate, { fontSize: responsiveFontSize(12) }]}>{booking.date.toLocaleDateString()} at {booking.time}</Text>
-										<Text style={[profileStyles.bookingAmount, { fontSize: responsiveFontSize(13) }]}>₹{booking.price}</Text>
-									</View>
-									<View style={[profileStyles.bookingStatus, booking.status === 'upcoming' ? { backgroundColor: '#bbf7d0' } : booking.status === 'completed' ? { backgroundColor: '#dbeafe' } : { backgroundColor: '#e5e7eb' }] }>
-										<Text style={[profileStyles.bookingStatusText, { fontSize: responsiveFontSize(13) }]}>{booking.status}</Text>
-									</View>
-								</View>
-							))
-						) : (
-							  <Text style={{ color: '#6b7280', fontSize: responsiveFontSize(13) }}>No confirmed bookings</Text>
-						)}
-					</View>
-				</View>
-			)}
-		</ScrollView>
+			</ScrollView>
+		</View>
 	);
 }
 
