@@ -43,9 +43,10 @@ class UserAuthService {
 
         return { success: true, user: authData.user };
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Sign up error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -88,9 +89,10 @@ class UserAuthService {
 
         return { success: true, user };
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Sign in error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -105,9 +107,10 @@ class UserAuthService {
       await AsyncStorage.removeItem('user_session');
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Sign out error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Sign out failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -167,9 +170,10 @@ class UserAuthService {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Reset password error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Reset password failed';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -198,9 +202,10 @@ class UserAuthService {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Update profile error:', error);
-      return { success: false, error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Update profile failed';
+      return { success: false, error: errorMessage };
     }
   }
 }

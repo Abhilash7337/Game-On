@@ -1,10 +1,11 @@
 import { supabase } from './supabase';
+import { Session, User } from '@supabase/supabase-js';
 
 export interface PhoneAuthResponse {
   success: boolean;
   error?: string;
-  session?: any;
-  user?: any;
+  session?: Session | null;
+  user?: User | null;
 }
 
 export class PhoneAuthService {
@@ -73,11 +74,12 @@ export class PhoneAuthService {
         session: data.session,
         user: data.user
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Phone verification error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send verification code';
       return { 
         success: false, 
-        error: 'Failed to send verification code. Please try again.' 
+        error: errorMessage
       };
     }
   }
@@ -116,11 +118,12 @@ export class PhoneAuthService {
         success: false, 
         error: 'Verification failed' 
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Code verification error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify code';
       return { 
         success: false, 
-        error: 'Failed to verify code. Please try again.' 
+        error: errorMessage
       };
     }
   }
@@ -181,11 +184,12 @@ export class PhoneAuthService {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Profile creation error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user profile';
       return { 
         success: false, 
-        error: 'Failed to create user profile' 
+        error: errorMessage
       };
     }
   }
@@ -234,11 +238,12 @@ export class PhoneAuthService {
         session: verifyResult.session,
         user: verifyResult.user
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Phone signup error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Phone signup failed';
       return { 
         success: false, 
-        error: 'Failed to complete phone signup' 
+        error: errorMessage
       };
     }
   }
@@ -259,10 +264,12 @@ export class PhoneAuthService {
       
       // Send verification code for existing user
       return this.sendVerificationCode(phoneNumber, false); // isSignup = false
-    } catch {
-      return {
-        success: false,
-        error: 'Failed to initiate phone sign in'
+    } catch (error) {
+      console.error('Phone signin error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initiate phone sign in';
+      return { 
+        success: false, 
+        error: errorMessage
       };
     }
   }
@@ -292,18 +299,20 @@ export class PhoneAuthService {
 
       if (error) {
         console.error('Phone update error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to update phone number';
         return { 
           success: false, 
-          error: 'Failed to update phone number' 
+          error: errorMessage
         };
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Phone verification error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify phone number';
       return { 
         success: false, 
-        error: 'Failed to verify phone number' 
+        error: errorMessage
       };
     }
   }

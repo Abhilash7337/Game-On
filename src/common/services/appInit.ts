@@ -3,11 +3,19 @@ import { supabase } from '@/src/common/services/supabase';
 import { UserAuthService } from '@/src/user/services/userAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export interface AppUser {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  full_name?: string;
+  created_at?: string;
+}
+
 export interface AppState {
   isLoading: boolean;
   isAuthenticated: boolean;
   userType: 'user' | 'client' | null;
-  user: any | null;
+  user: AppUser | null;
 }
 
 class AppInitService {
@@ -132,7 +140,7 @@ class AppInitService {
   }
 
   // Update authentication state after successful login
-  static updateAuthState(userType: 'user' | 'client', user: any): void {
+  static updateAuthState(userType: 'user' | 'client', user: AppUser): void {
     this.currentState = {
       isLoading: false,
       isAuthenticated: true,
@@ -168,7 +176,7 @@ class AppInitService {
   // Set up auth state listener
   static setupAuthListener(): void {
     supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.id);
+      // Auth state changed - production apps should use proper logging service
       
       if (event === 'SIGNED_OUT' || !session) {
         this.currentState = {

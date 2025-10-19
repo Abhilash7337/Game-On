@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { socialStyles } from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,8 +48,12 @@ export default function SocialScreen() {
     const [showCitySports, setShowCitySports] = useState(false);
 
     useEffect(() => {
+        let isMounted = true;
+        
         // Simulate fetching data from backend
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
+            if (!isMounted) return; // Prevent state updates if component unmounted
+            
             // Mock friends data
             setFriends([
                 {
@@ -119,35 +123,48 @@ export default function SocialScreen() {
             
             setLoading(false);
         }, 500);
+        
+        // Cleanup function to prevent memory leaks
+        return () => {
+            isMounted = false;
+            clearTimeout(timeoutId);
+        };
     }, [userCity]);
 
-    const handleFriendPress = (friend: Friend) => {
+    const handleFriendPress = useCallback((friend: Friend) => {
         Alert.alert(
             `Chat with ${friend.name}`,
             'Chat functionality will be implemented soon!',
             [{ text: 'OK' }]
         );
-    };
+    }, []);
 
-    const handleSportGroupPress = (group: SportGroup) => {
+    const handleSportGroupPress = useCallback((group: SportGroup) => {
         Alert.alert(
             group.name,
             `Join ${group.memberCount.toLocaleString()} members in ${group.sport} discussions!`,
             [{ text: 'OK' }]
         );
-    };
+    }, []);
 
-    const handleGameChatPress = (chat: GameChat) => {
+    const handleGameChatPress = useCallback((chat: GameChat) => {
         Alert.alert(
             'Game Chat',
             `Open chat for ${chat.venue} - ${chat.court}?`,
             [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Chat' }]
         );
-    };
+    }, []);
 
-    const handleCityPress = () => {
+    const handleCityPress = useCallback(() => {
         setShowCitySports(!showCitySports);
-    };
+    }, [showCitySports]);
+
+    // Memoized computed values
+    const totalCityMembers = useMemo(() => {
+        return citySports.reduce((sum, group) => sum + group.memberCount, 0);
+    }, [citySports]);
+
+    const tabList = useMemo(() => ['Friends', 'Global', 'Game Chats'], []);
 
     const FriendCard = ({ friend }: { friend: Friend }) => (
         <TouchableOpacity 
@@ -234,7 +251,7 @@ export default function SocialScreen() {
 
             {/* Tab Switcher */}
             <View style={socialStyles.tabSwitcher}>
-                {['Friends', 'Global', 'Game Chats'].map(tab => (
+                {tabList.map(tab => (
                     <TouchableOpacity
                         key={tab}
                         style={[socialStyles.tabButton, activeTab === tab && socialStyles.tabButtonActive]}
@@ -287,7 +304,7 @@ export default function SocialScreen() {
                             <View style={socialStyles.sectionHeader}>
                                 <Text style={socialStyles.sectionTitle}>Your City</Text>
                                 <Text style={socialStyles.sectionCount}>
-                                    {citySports.reduce((sum, group) => sum + group.memberCount, 0).toLocaleString()} members
+                                    {totalCityMembers.toLocaleString()} members
                                 </Text>
                             </View>
                             
@@ -298,7 +315,7 @@ export default function SocialScreen() {
                                 <View style={socialStyles.cityInfo}>
                                     <Text style={socialStyles.cityName}>{userCity}</Text>
                                     <Text style={socialStyles.cityMembers}>
-                                        {citySports.reduce((sum, group) => sum + group.memberCount, 0).toLocaleString()} members
+                                        {totalCityMembers.toLocaleString()} members
                                     </Text>
                                 </View>
                                 <Ionicons 
