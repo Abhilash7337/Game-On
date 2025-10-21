@@ -1,5 +1,7 @@
 
 import AppHeader from '@/src/common/components/AppHeader';
+import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
+import { LoadingState } from '@/src/common/components/LoadingState';
 import {
     buttonStyles,
     homeStyles,
@@ -10,7 +12,7 @@ import { Booking, bookingStore } from '@/utils/bookingStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
@@ -85,16 +87,19 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={homeStyles.container} edges={['left', 'right', 'bottom']}>
-        <ActivityIndicator size="large" color="#047857" style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} />
-      </SafeAreaView>
+      <ErrorBoundary>
+        <SafeAreaView style={homeStyles.container} edges={['left', 'right', 'bottom']}>
+          <LoadingState message="Loading your dashboard..." />
+        </SafeAreaView>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <SafeAreaView style={homeStyles.container} edges={['left', 'right', 'bottom']}>
-      {/* Disable Expo Router default header */}
-      <Stack.Screen options={{ headerShown: false }} />
+    <ErrorBoundary>
+      <SafeAreaView style={homeStyles.container} edges={['left', 'right', 'bottom']}>
+        {/* Disable Expo Router default header */}
+        <Stack.Screen options={{ headerShown: false }} />
 
       <AppHeader 
         title={user?.name ?? 'GameOn'} 
@@ -229,5 +234,6 @@ export default function HomeScreen() {
         )}
       </View>
     </SafeAreaView>
+    </ErrorBoundary>
   );
 }

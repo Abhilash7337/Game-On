@@ -171,7 +171,7 @@ export default function ProfileScreen() {
 						</View>
 						<TouchableOpacity 
 							style={profileStyles.editButton}
-							onPress={() => Alert.alert('Coming Soon', 'Profile editing will be available soon!')}
+							onPress={() => router.push('/EditProfileScreen')}
 						>
 							<Ionicons name="pencil" size={18} color="#047857" />
 						</TouchableOpacity>

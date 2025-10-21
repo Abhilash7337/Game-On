@@ -1,9 +1,11 @@
+import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
+import { LoadingState } from '@/src/common/components/LoadingState';
 import { courtsStyles } from '@/styles/screens/CourtsScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, FlatList, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, FlatList, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -136,16 +138,17 @@ export default function CourtsScreen() {
 
 	if (loading) {
 		return (
-			<View style={courtsStyles.container}>
-				<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-					<ActivityIndicator size="large" color="#047857" />
+			<ErrorBoundary>
+				<View style={courtsStyles.container}>
+					<LoadingState message="Loading venues..." />
 				</View>
-			</View>
+			</ErrorBoundary>
 		);
 	}
 
 	return (
-		<View style={courtsStyles.container}>
+		<ErrorBoundary>
+			<View style={courtsStyles.container}>
 			{/* Make status bar icons dark for white background */}
 			<StatusBar style="dark" />
 
@@ -262,6 +265,7 @@ export default function CourtsScreen() {
 				/>
 			</View>
 		</View>
+		</ErrorBoundary>
 	);
 }
 
