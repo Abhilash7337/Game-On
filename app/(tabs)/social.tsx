@@ -3,8 +3,9 @@ import { socialStyles } from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 
 
@@ -38,6 +39,7 @@ interface GameChat {
 
 export default function SocialScreen() {
     const insets = useSafeAreaInsets();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState('Global');
     const [friends, setFriends] = useState<Friend[]>([]);
     const [globalSports, setGlobalSports] = useState<SportGroup[]>([]);
@@ -132,28 +134,41 @@ export default function SocialScreen() {
     }, [userCity]);
 
     const handleFriendPress = useCallback((friend: Friend) => {
-        Alert.alert(
-            `Chat with ${friend.name}`,
-            'Chat functionality will be implemented soon!',
-            [{ text: 'OK' }]
-        );
-    }, []);
+        router.push({
+            pathname: '/FriendChatScreen',
+            params: {
+                friendId: friend.id,
+                friendName: friend.name,
+                friendAvatar: friend.profilePhoto
+            }
+        });
+    }, [router]);
 
     const handleSportGroupPress = useCallback((group: SportGroup) => {
-        Alert.alert(
-            group.name,
-            `Join ${group.memberCount.toLocaleString()} members in ${group.sport} discussions!`,
-            [{ text: 'OK' }]
-        );
-    }, []);
+        router.push({
+            pathname: '/GlobalChatScreen',
+            params: {
+                channelId: group.id,
+                channelName: group.name,
+                channelType: 'sport'
+            }
+        });
+    }, [router]);
 
     const handleGameChatPress = useCallback((chat: GameChat) => {
-        Alert.alert(
-            'Game Chat',
-            `Open chat for ${chat.venue} - ${chat.court}?`,
-            [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Chat' }]
-        );
-    }, []);
+        router.push({
+            pathname: '/GameChatScreen',
+            params: {
+                gameId: chat.id,
+                sport: 'Badminton', // You can add sport to GameChat interface
+                venue: chat.venue,
+                court: chat.court,
+                date: chat.date,
+                time: chat.time,
+                status: 'upcoming'
+            }
+        });
+    }, [router]);
 
     const handleCityPress = useCallback(() => {
         setShowCitySports(!showCitySports);
@@ -287,19 +302,7 @@ export default function SocialScreen() {
 
                 {activeTab === 'Global' && (
                     <View style={socialStyles.globalContainer}>
-                        {/* Global Sport Groups */}
-                        <View style={socialStyles.section}>
-                            <View style={socialStyles.sectionHeader}>
-                                <Text style={socialStyles.sectionTitle}>Global Sport Groups</Text>
-                                <Text style={socialStyles.sectionCount}>{globalSports.length} groups</Text>
-                            </View>
-                            
-                            {globalSports.map(group => (
-                                <SportGroupCard key={group.id} group={group} />
-                            ))}
-                        </View>
-
-                        {/* Your City */}
+                        {/* Your City - Always Expanded */}
                         <View style={socialStyles.section}>
                             <View style={socialStyles.sectionHeader}>
                                 <Text style={socialStyles.sectionTitle}>Your City</Text>
@@ -308,14 +311,29 @@ export default function SocialScreen() {
                                 </Text>
                             </View>
                             
+                            <View style={socialStyles.cityGroups}>
+                                <Text style={socialStyles.cityGroupsTitle}>Sport Groups in {userCity}</Text>
+                                {citySports.map(group => (
+                                    <SportGroupCard key={group.id} group={group} />
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Global Sport Groups - Expandable */}
+                        <View style={socialStyles.section}>
+                            <View style={socialStyles.sectionHeader}>
+                                <Text style={socialStyles.sectionTitle}>Global Sport Groups</Text>
+                                <Text style={socialStyles.sectionCount}>{globalSports.length} groups</Text>
+                            </View>
+                            
                             <TouchableOpacity 
                                 style={socialStyles.cityCard}
                                 onPress={handleCityPress}
                             >
                                 <View style={socialStyles.cityInfo}>
-                                    <Text style={socialStyles.cityName}>{userCity}</Text>
+                                    <Text style={socialStyles.cityName}>Global Communities</Text>
                                     <Text style={socialStyles.cityMembers}>
-                                        {totalCityMembers.toLocaleString()} members
+                                        {globalSports.length} sport groups
                                     </Text>
                                 </View>
                                 <Ionicons 
@@ -327,8 +345,8 @@ export default function SocialScreen() {
 
                             {showCitySports && (
                                 <View style={socialStyles.cityGroups}>
-                                    <Text style={socialStyles.cityGroupsTitle}>Sport Groups in {userCity}</Text>
-                                    {citySports.map(group => (
+                                    <Text style={socialStyles.cityGroupsTitle}>Global Sport Communities</Text>
+                                    {globalSports.map(group => (
                                         <SportGroupCard key={group.id} group={group} />
                                     ))}
                                 </View>
