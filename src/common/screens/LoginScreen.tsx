@@ -1,24 +1,59 @@
-import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Input } from '@/src/common/components/Input';
+import { LoadingOverlay } from '@/src/common/components/LoadingState';
+import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
+import { useLoadingStates } from '@/src/common/hooks/useAsyncOperation';
+import { GoogleAuthService } from '@/src/common/services/googleAuth';
 import { UserAuthService } from '@/src/user/services/userAuth';
-import { borderRadius, colors, shadows, spacing, typography } from '@/styles/theme';
+import { colors } from '@/styles/theme';
+import { loginScreenStyles } from '@/styles/screens/LoginScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isBusinessMode, setIsBusinessMode] = useState(false);
+  const { setLoading, isLoading, isAnyLoading } = useLoadingStates();
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
     fullName: '',
+  });
+
+  // Animation values (minimal)
+  const fadeAnim = useRef(new Animated.Value(1)).current; // Start at 1, no fade-in
+  const slideAnim = useRef(new Animated.Value(0)).current; // Start at 0, no slide-in
+  const scaleAnim = useRef(new Animated.Value(1)).current; // Start at 1, no scale-in
+  const logoRotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Set initial values without animation
+    fadeAnim.setValue(1);
+    slideAnim.setValue(0);
+    scaleAnim.setValue(1);
+    
+    // Only keep subtle logo rotation
+    Animated.loop(
+      Animated.timing(logoRotateAnim, {
+        toValue: 1,
+        duration: 30000, // Slower, more subtle
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [fadeAnim, slideAnim, scaleAnim, logoRotateAnim]);
+
+  const logoRotate = logoRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -34,7 +69,7 @@ export default function LoginScreen() {
       return;
     }
 
-    setIsLoading(true);
+    setLoading('signin', true);
 
     try {
       const result = await UserAuthService.signIn(formData.email, formData.password);
@@ -52,7 +87,7 @@ export default function LoginScreen() {
     } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading('signin', false);
     }
   };
 
@@ -72,7 +107,7 @@ export default function LoginScreen() {
       return;
     }
 
-    setIsLoading(true);
+    setLoading('signup', true);
 
     try {
       const result = await UserAuthService.signUp(
@@ -103,13 +138,20 @@ export default function LoginScreen() {
     } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading('signup', false);
     }
   };
 
-  const handleClientLogin = () => {
-    // Navigate to client login page
-    router.push('/client-login');
+  const handleBusinessToggle = () => {
+    const newBusinessMode = !isBusinessMode;
+    setIsBusinessMode(newBusinessMode);
+
+    // If switching to business mode, navigate to client login
+    if (newBusinessMode) {
+      setTimeout(() => {
+        router.push('/client-login');
+      }, 150); // Faster response
+    }
   };
 
   const handleForgotPassword = async () => {
@@ -118,7 +160,7 @@ export default function LoginScreen() {
       return;
     }
 
-    setIsLoading(true);
+    setLoading('forgot', true);
 
     try {
       const result = await UserAuthService.resetPassword(formData.email);
@@ -131,7 +173,7 @@ export default function LoginScreen() {
     } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading('forgot', false);
     }
   };
 
@@ -145,7 +187,26 @@ export default function LoginScreen() {
   };
 
   const handleGoogleAuth = async () => {
-    Alert.alert('Coming Soon', 'Google authentication will be available soon!');
+    setLoading('google', true);
+    
+    try {
+      console.log('Starting Google authentication...');
+      const result = await GoogleAuthService.signInWithGoogle();
+      
+      console.log('Google auth result:', result);
+      
+      if (result.success) {
+        // Navigate directly without alert to prevent app reload feeling
+        router.replace('/(tabs)');
+      } else {
+        Alert.alert('Google Sign In Failed', result.error || 'Failed to authenticate with Google. Please try again.');
+      }
+    } catch (error) {
+      console.error('Google auth error:', error);
+      Alert.alert('Error', 'An unexpected error occurred during Google authentication. Please try again.');
+    } finally {
+      setLoading('google', false);
+    }
   };
 
   const handleAppleAuth = async () => {
@@ -162,57 +223,109 @@ export default function LoginScreen() {
       confirmPassword: '',
       fullName: '',
     });
+    // Scroll to top when switching modes
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'top', 'bottom']}>
-      {/* Disable Expo Router default header */}
-      <Stack.Screen options={{ headerShown: false }} />
-      
-      <AppHeader 
-        title="Welcome to GameOn"
-        subtitle={isSignUp ? "Create your account to get started" : "Sign in to continue"}
-      >
-        {/* Client Login Button positioned absolutely in top right */}
-        <TouchableOpacity 
-          style={styles.clientLoginButton}
-          onPress={handleClientLogin}
-        >
-          <Ionicons name="business-outline" size={20} color="#fff" />
-          <Text style={styles.clientLoginText}>Client</Text>
-        </TouchableOpacity>
-      </AppHeader>
+    <ErrorBoundary>
+      <View style={loginScreenStyles.container}>
+        {/* Disable Expo Router default header */}
+        <Stack.Screen options={{ headerShown: false }} />
+        
+        {/* Loading overlay for any loading state */}
+        <LoadingOverlay visible={isAnyLoading()} message="Please wait..." />
+        
+        <SafeAreaView style={loginScreenStyles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+          {/* Non-scrolling green header area */}
+          <View style={loginScreenStyles.greenHeader}>
+          {/* Compact Header */}
+          <Animated.View 
+            style={[
+              loginScreenStyles.compactHeader,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            <View style={loginScreenStyles.headerContent}>
+              <View style={loginScreenStyles.logoSection}>
+                <Animated.View 
+                  style={[
+                    loginScreenStyles.compactLogo,
+                    { transform: [{ rotate: logoRotate }] }
+                  ]}
+                >
+                  <Ionicons name="basketball-outline" size={20} color={colors.primary} />
+                </Animated.View>
+                <Text style={loginScreenStyles.compactAppName}>GameOn</Text>
+              </View>
+              
+              {/* Traditional Toggle Switch */}
+              <View style={loginScreenStyles.businessToggleContainer}>
+                <Text style={loginScreenStyles.toggleLabel}>Business</Text>
+                <TouchableOpacity 
+                  style={[
+                    loginScreenStyles.toggleSwitch,
+                    isBusinessMode && loginScreenStyles.toggleSwitchActive
+                  ]}
+                  onPress={handleBusinessToggle}
+                  activeOpacity={0.8}
+                >
+                  <View style={[
+                    loginScreenStyles.toggleThumb,
+                    isBusinessMode && loginScreenStyles.toggleThumbActive
+                  ]} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Animated.View>
+          </View>
 
       <KeyboardAvoidingView 
-        style={styles.keyboardView}
+        style={loginScreenStyles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          ref={scrollViewRef}
+          style={loginScreenStyles.scrollView}
+          contentContainerStyle={[
+            loginScreenStyles.scrollContent,
+            { paddingTop: isSignUp ? screenHeight * 0.15 : screenHeight * 0.35 }
+          ]}
           showsVerticalScrollIndicator={false}
+          bounces={false}
+          overScrollMode="never"
+          contentInsetAdjustmentBehavior="never"
         >
-          <View style={styles.formContainer}>
-            {/* Main Form Card */}
-            <View style={styles.formCard}>
-              {/* Form Title */}
-              <View style={styles.formHeader}>
-                <Text style={styles.formTitle}>
+          <Animated.View 
+            style={[
+              loginScreenStyles.scrollableContent,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim }
+                ]
+              }
+            ]}
+          >
+
+            {/* Glassmorphism Form Card */}
+            <Animated.View style={[loginScreenStyles.glassCard, { transform: [{ scale: scaleAnim }] }]}>
+              <View style={loginScreenStyles.cardHeader}>
+                <View style={loginScreenStyles.cardIndicator} />
+                <Text style={loginScreenStyles.cardTitle}>
                   {isSignUp ? 'Create Account' : 'Sign In'}
-                </Text>
-                <Text style={styles.formSubtitle}>
-                  {isSignUp 
-                    ? 'Join the GameOn community and start playing!' 
-                    : 'Welcome back! Please sign in to continue.'
-                  }
                 </Text>
               </View>
 
               {/* Form Fields */}
-              <View style={styles.formFields}>
+              <View style={loginScreenStyles.formFields}>
                 {isSignUp && (
-                  <View style={styles.fieldSpacing}>
+                  <View style={loginScreenStyles.fieldSpacing}>
                     <Input
                       label="Full Name"
                       placeholder="Enter your full name"
@@ -224,7 +337,7 @@ export default function LoginScreen() {
                   </View>
                 )}
 
-                <View style={styles.fieldSpacing}>
+                <View style={loginScreenStyles.fieldSpacing}>
                   <Input
                     label="Email"
                     placeholder="Enter your email"
@@ -238,7 +351,7 @@ export default function LoginScreen() {
                 </View>
 
 
-                <View style={styles.fieldSpacing}>
+                <View style={loginScreenStyles.fieldSpacing}>
                   <Input
                     label="Password"
                     placeholder="Enter your password"
@@ -251,7 +364,7 @@ export default function LoginScreen() {
                 </View>
 
                 {isSignUp && (
-                  <View style={styles.fieldSpacing}>
+                  <View style={loginScreenStyles.fieldSpacing}>
                     <Input
                       label="Confirm Password"
                       placeholder="Confirm your password"
@@ -268,225 +381,69 @@ export default function LoginScreen() {
               {/* Forgot Password (Only for Sign In) */}
               {!isSignUp && (
                 <TouchableOpacity 
-                  style={styles.forgotPasswordContainer}
+                  style={loginScreenStyles.forgotPasswordContainer}
                   onPress={handleForgotPassword}
                 >
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                  <Text style={loginScreenStyles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
               )}
 
               {/* Main Action Button */}
               <Button
-                title={isLoading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                title={isLoading(isSignUp ? 'signup' : 'signin') ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
                 onPress={isSignUp ? handleSignUp : handleSignIn}
                 variant="primary"
                 size="large"
                 fullWidth
-                disabled={isLoading}
-                style={styles.actionButton}
+                disabled={isLoading(isSignUp ? 'signup' : 'signin')}
+                style={loginScreenStyles.actionButton}
               />
-            </View>
+            </Animated.View>
 
             {/* Social Login Card */}
-            <View style={styles.socialContainer}>
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or continue with</Text>
-                <View style={styles.dividerLine} />
+            <View style={loginScreenStyles.socialContainer}>
+              <View style={loginScreenStyles.divider}>
+                <View style={loginScreenStyles.dividerLine} />
+                <Text style={loginScreenStyles.dividerText}>or continue with</Text>
+                <View style={loginScreenStyles.dividerLine} />
               </View>
 
-              <View style={styles.socialButtons}>
-                <TouchableOpacity style={styles.socialButton} onPress={handlePhoneAuth}>
+              <View style={loginScreenStyles.socialButtons}>
+                <TouchableOpacity style={loginScreenStyles.socialButton} onPress={handlePhoneAuth}>
                   <Ionicons name="call" size={24} color="#10B981" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton} onPress={handleGoogleAuth}>
+                <TouchableOpacity style={loginScreenStyles.socialButton} onPress={handleGoogleAuth}>
                   <Ionicons name="logo-google" size={24} color="#DB4437" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton} onPress={handleAppleAuth}>
+                <TouchableOpacity style={loginScreenStyles.socialButton} onPress={handleAppleAuth}>
                   <Ionicons name="logo-apple" size={24} color="#000" />
                 </TouchableOpacity>
               </View>
 
               {/* Social Button Labels */}
-              <View style={styles.socialLabels}>
-                <Text style={styles.socialLabel}>{isSignUp ? 'Phone' : 'Phone'}</Text>
-                <Text style={styles.socialLabel}>Google</Text>
-                <Text style={styles.socialLabel}>Apple</Text>
+              <View style={loginScreenStyles.socialLabels}>
+                <Text style={loginScreenStyles.socialLabel}>{isSignUp ? 'Phone' : 'Phone'}</Text>
+                <Text style={loginScreenStyles.socialLabel}>Google</Text>
+                <Text style={loginScreenStyles.socialLabel}>Apple</Text>
               </View>
             </View>
 
             {/* Toggle Sign In/Sign Up Card */}
-            <View style={styles.toggleContainer}>
-              <Text style={styles.toggleText}>
+            <View style={loginScreenStyles.toggleContainer}>
+              <Text style={loginScreenStyles.toggleText}>
                 {isSignUp ? 'Already have an account?' : "Don't have an account?"}
               </Text>
               <TouchableOpacity onPress={toggleMode}>
-                <Text style={styles.toggleLink}>
+                <Text style={loginScreenStyles.toggleLink}>
                   {isSignUp ? 'Sign In' : 'Sign Up'}
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </View>
+    </ErrorBoundary>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  clientLoginButton: {
-    position: 'absolute',
-    top: Platform.OS === 'android' ? 10 : 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Platform.OS === 'android' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.xl,
-    gap: spacing.xs,
-    ...Platform.select({
-      android: {
-        elevation: 2,
-      },
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-      },
-    }),
-  },
-  clientLoginText: {
-    color: Platform.OS === 'android' ? colors.primary : colors.textInverse,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-  },
-  formContainer: {
-    flex: 1,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-  },
-  formCard: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
-    ...shadows.md,
-  },
-  formHeader: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  formTitle: {
-    fontSize: typography.fontSize.xxxl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  formSubtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: typography.lineHeight.relaxed * typography.fontSize.base,
-  },
-  formFields: {
-    marginBottom: spacing.lg,
-  },
-  fieldSpacing: {
-    marginBottom: spacing.lg,
-  },
-  forgotPasswordContainer: {
-    alignItems: 'flex-end',
-    marginBottom: spacing.lg,
-  },
-  forgotPasswordText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
-  },
-  actionButton: {
-    marginBottom: spacing.xl,
-  },
-  socialContainer: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
-    ...shadows.md,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.gray200,
-  },
-  dividerText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    paddingHorizontal: spacing.md,
-  },
-  socialButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.lg,
-  },
-  socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.backgroundTertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  toggleContainer: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.xs,
-    ...shadows.sm,
-  },
-  toggleText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  toggleLink: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  socialLabels: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.sm,
-  },
-  socialLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    width: 56,
-  },
-});

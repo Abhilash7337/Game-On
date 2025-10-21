@@ -1,6 +1,7 @@
-import { colors, spacing, typography } from '@/styles/theme';
+import { colors } from '@/styles/theme';
+import { appHeaderStyles } from '@/styles/components/AppHeader';
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AppHeaderProps {
@@ -20,17 +21,17 @@ export default function AppHeader({
 
   return (
     <View style={[
-      styles.header, 
+      appHeaderStyles.header, 
       { 
         paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 20),
         backgroundColor: backgroundColor || colors.primary 
       }
     ]}>
-      <View style={styles.headerContent}>
-        <View style={styles.titleSection}>
-          <Text style={styles.headerTitle}>{title}</Text>
+      <View style={appHeaderStyles.headerContent}>
+        <View style={appHeaderStyles.titleSection}>
+          <Text style={appHeaderStyles.headerTitle}>{title}</Text>
           {subtitle && (
-            <Text style={styles.headerSubtitle}>{subtitle}</Text>
+            <Text style={appHeaderStyles.headerSubtitle}>{subtitle}</Text>
           )}
         </View>
         {children}
@@ -38,35 +39,3 @@ export default function AppHeader({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    borderBottomLeftRadius: spacing.xxxl,
-    borderBottomRightRadius: spacing.xxxl,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxxl,
-    alignItems: 'flex-start',
-    marginBottom: spacing.lg,
-  },
-  
-  headerContent: {
-    width: '100%',
-  },
-  
-  titleSection: {
-    width: '100%',
-  },
-  
-  headerTitle: {
-    color: colors.textInverse,
-    fontSize: typography.fontSize.xxl,
-    fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing.xs,
-  },
-  
-  headerSubtitle: {
-    color: colors.textInverse,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal,
-  },
-});

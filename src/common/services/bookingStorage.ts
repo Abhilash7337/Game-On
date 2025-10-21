@@ -31,39 +31,25 @@ class BookingStorageService {
   private static initialized = false;
 
   static async createBooking(bookingData: BookingRequest): Promise<Booking> {
-    const booking: BookingWithNotification = {
-      id: Date.now().toString(),
-      userId: bookingData.userId,
-      venueId: bookingData.venueId,
-      courtId: `${bookingData.venueId}-${bookingData.court}`,
-      date: bookingData.date,
-      time: bookingData.time,
-      duration: bookingData.duration,
-      bookingType: bookingData.bookingType,
-      skillLevel: bookingData.skillLevel,
-      players: bookingData.players,
-      price: bookingData.price,
-      status: 'upcoming', // We'll use 'upcoming' for confirmed bookings
-      paymentStatus: bookingData.paymentStatus,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      // Additional fields for our app
-      venue: bookingData.venueName,
-      court: bookingData.court,
-      ownerId: bookingData.ownerId,
-      bookingStatus: bookingData.status, // pending, confirmed, rejected
-      notificationSent: false,
-    };
+    try {
+      // Validate required fields
+      if (!bookingData.userId || !bookingData.venueId || !bookingData.venueName) {
+        throw new Error('User ID, venue ID, and venue name are required');
+      }
 
-    this.bookings.push(booking);
-    this.notifyListeners();
-    
-    // Also add to the old booking store for compatibility
-    const { bookingStore } = await import('@/utils/bookingStore');
-    if (bookingData.status === 'confirmed') {
-      bookingStore.addBooking({
-        venue: bookingData.venueName,
-        court: bookingData.court,
+      if (!bookingData.date || !bookingData.time || !bookingData.duration) {
+        throw new Error('Date, time, and duration are required');
+      }
+
+      if (bookingData.price < 0) {
+        throw new Error('Price cannot be negative');
+      }
+
+      const booking: BookingWithNotification = {
+        id: Date.now().toString(),
+        userId: bookingData.userId,
+        venueId: bookingData.venueId,
+        courtId: `${bookingData.venueId}-${bookingData.court}`,
         date: bookingData.date,
         time: bookingData.time,
         duration: bookingData.duration,
@@ -71,18 +57,75 @@ class BookingStorageService {
         skillLevel: bookingData.skillLevel,
         players: bookingData.players,
         price: bookingData.price,
-      });
-    }
+        status: 'upcoming', // We'll use 'upcoming' for confirmed bookings
+        paymentStatus: bookingData.paymentStatus,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // Additional fields for our app
+        venue: bookingData.venueName,
+        court: bookingData.court,
+        ownerId: bookingData.ownerId,
+        bookingStatus: bookingData.status, // pending, confirmed, rejected
+        notificationSent: false,
+      };
 
-    return booking;
+      this.bookings.push(booking);
+      this.notifyListeners();
+      
+      // Also add to the old booking store for compatibility
+      const { bookingStore } = await import('@/utils/bookingStore');
+      if (bookingData.status === 'confirmed') {
+        bookingStore.addBooking({
+          venue: bookingData.venueName,
+          court: bookingData.court,
+          date: bookingData.date,
+          time: bookingData.time,
+          duration: bookingData.duration,
+          bookingType: bookingData.bookingType,
+          skillLevel: bookingData.skillLevel,
+          players: bookingData.players,
+          price: bookingData.price,
+        });
+      }
+
+      return booking;
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to create booking. Please try again.');
+    }
   }
 
   static async getBookingsByUser(userId: string): Promise<Booking[]> {
-    return this.bookings.filter(booking => booking.userId === userId);
+    try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      return this.bookings.filter(booking => booking.userId === userId);
+    } catch (error) {
+      console.error('Error fetching user bookings:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to fetch bookings. Please try again.');
+    }
   }
 
   static async getBookingsByClient(clientId: string): Promise<BookingWithNotification[]> {
-    return this.bookings.filter(booking => booking.ownerId === clientId);
+    try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+      return this.bookings.filter(booking => booking.ownerId === clientId);
+    } catch (error) {
+      console.error('Error fetching client bookings:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to fetch bookings. Please try again.');
+    }
   }
 
   static async getPendingBookings(clientId: string): Promise<BookingWithNotification[]> {

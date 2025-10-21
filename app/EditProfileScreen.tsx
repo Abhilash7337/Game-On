@@ -7,7 +7,6 @@ import React, { useEffect, useState } from 'react';
 import { 
   ActivityIndicator, 
   Alert, 
-  Image, 
   KeyboardAvoidingView, 
   Platform, 
   ScrollView, 
@@ -30,6 +29,14 @@ export default function EditProfileScreen() {
     phone: '',
     email: '',
   });
+  const [phoneVerification, setPhoneVerification] = useState({
+    showOtpForm: false,
+    otp: '',
+    isVerifying: false,
+    isSendingOtp: false,
+    isVerified: false,
+  });
+  const [hasExistingPhone, setHasExistingPhone] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -41,12 +48,14 @@ export default function EditProfileScreen() {
       
       if (currentUser && currentUser.profile) {
         const nameParts = currentUser.profile.fullName.split(' ');
+        const existingPhone = currentUser.profile.phone || '';
         setFormData({
           firstName: nameParts[0] || '',
           lastName: nameParts.slice(1).join(' ') || '',
-          phone: currentUser.profile.phone || '',
+          phone: existingPhone,
           email: currentUser.profile.email || '',
         });
+        setHasExistingPhone(!!existingPhone);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -91,6 +100,90 @@ export default function EditProfileScreen() {
       ...prev,
       [field]: value
     }));
+    
+    // Reset phone verification if phone number changes
+    if (field === 'phone') {
+      setPhoneVerification({
+        showOtpForm: false,
+        otp: '',
+        isVerifying: false,
+        isSendingOtp: false,
+        isVerified: false
+      });
+    }
+  };
+
+  const sendPhoneOtp = async () => {
+    if (!formData.phone || formData.phone.length < 10) {
+      Alert.alert('Error', 'Please enter a valid phone number');
+      return;
+    }
+
+    // Check if phone number already exists (simulate API call)
+    const phoneExists = await checkPhoneExists(formData.phone);
+    if (phoneExists) {
+      Alert.alert(
+        'Phone Number Already Registered', 
+        'This phone number is already registered with another account. Please login using your phone number or use a different number.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setPhoneVerification(prev => ({ ...prev, isSendingOtp: true }));
+
+    try {
+      // Here you would integrate with your OTP service
+      // For now, we'll simulate the OTP sending
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setPhoneVerification(prev => ({ 
+        ...prev, 
+        showOtpForm: true, 
+        isSendingOtp: false 
+      }));
+      
+      Alert.alert('OTP Sent', 'Please check your phone for the verification code');
+    } catch (error) {
+      console.error('OTP send error:', error);
+      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+      setPhoneVerification(prev => ({ ...prev, isSendingOtp: false }));
+    }
+  };
+
+  // Simulate checking if phone number exists
+  const checkPhoneExists = async (phone: string): Promise<boolean> => {
+    // This would be an actual API call in production
+    // For demo purposes, let's say phone numbers starting with '999' are already taken
+    return phone.startsWith('999');
+  };
+
+  const verifyPhoneOtp = async () => {
+    if (!phoneVerification.otp || phoneVerification.otp.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+      return;
+    }
+
+    setPhoneVerification(prev => ({ ...prev, isVerifying: true }));
+
+    try {
+      // Here you would verify the OTP with your service
+      // For now, we'll simulate verification (accept any 6-digit code)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      Alert.alert('Success', 'Phone number verified successfully!');
+      setPhoneVerification({
+        showOtpForm: false,
+        otp: '',
+        isVerifying: false,
+        isSendingOtp: false,
+        isVerified: true
+      });
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      Alert.alert('Error', 'Invalid OTP. Please try again.');
+      setPhoneVerification(prev => ({ ...prev, isVerifying: false }));
+    }
   };
 
   if (loading) {
@@ -170,16 +263,67 @@ export default function EditProfileScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone Number</Text>
-            <TextInput
-              style={[styles.input, styles.disabledInput]}
-              value={formData.phone}
-              editable={false}
-              placeholder="Phone number"
-              placeholderTextColor={colors.textSecondary}
-            />
-            <Text style={styles.helperText}>
-              Phone number cannot be changed. Contact support if needed.
-            </Text>
+            {hasExistingPhone && (
+              <Text style={styles.phoneNote}>
+                Phone number cannot be changed once verified
+              </Text>
+            )}
+            <View style={styles.phoneInputContainer}>
+              <TextInput
+                style={[
+                  styles.input, 
+                  styles.phoneInput,
+                  hasExistingPhone && styles.disabledInput
+                ]}
+                value={formData.phone}
+                onChangeText={(value) => handleInputChange('phone', value)}
+                placeholder="Enter your phone number"
+                placeholderTextColor={colors.textSecondary}
+                keyboardType="phone-pad"
+                editable={!hasExistingPhone}
+              />
+              {formData.phone && formData.phone.length >= 10 && !phoneVerification.showOtpForm && (
+                <TouchableOpacity
+                  style={[styles.otpButton, phoneVerification.isSendingOtp && styles.otpButtonDisabled]}
+                  onPress={sendPhoneOtp}
+                  disabled={phoneVerification.isSendingOtp}
+                >
+                  {phoneVerification.isSendingOtp ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.otpButtonText}>Get OTP</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {phoneVerification.showOtpForm && (
+              <View style={styles.otpFormContainer}>
+                <Text style={styles.otpLabel}>Enter OTP</Text>
+                <View style={styles.otpInputContainer}>
+                  <TextInput
+                    style={styles.otpInput}
+                    value={phoneVerification.otp}
+                    onChangeText={(value) => setPhoneVerification(prev => ({ ...prev, otp: value }))}
+                    placeholder="6-digit OTP"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    maxLength={6}
+                  />
+                  <TouchableOpacity
+                    style={[styles.verifyButton, phoneVerification.isVerifying && styles.verifyButtonDisabled]}
+                    onPress={verifyPhoneOtp}
+                    disabled={phoneVerification.isVerifying}
+                  >
+                    {phoneVerification.isVerifying ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.verifyButtonText}>Verify</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
 
           <View style={styles.inputGroup}>
@@ -344,6 +488,86 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs / 2,
     fontStyle: 'italic',
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  phoneInput: {
+    flex: 1,
+  },
+  phoneNote: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    fontStyle: 'italic',
+  },
+  otpButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpButtonDisabled: {
+    opacity: 0.6,
+  },
+  otpButtonText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  otpFormContainer: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  otpLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  otpInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  otpInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.fontSize.base,
+    color: colors.textPrimary,
+    backgroundColor: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: 2,
+  },
+  verifyButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyButtonDisabled: {
+    opacity: 0.6,
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   optionsSection: {
     marginHorizontal: spacing.xl,
