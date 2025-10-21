@@ -56,6 +56,9 @@ export default function RootLayout() {
           <Stack.Screen name="client/dashboard" options={{ headerShown: false }} />
           <Stack.Screen name="add-venue" options={{ headerShown: false }} />
           <Stack.Screen name="EditProfileScreen" options={{ headerShown: false }} />
+          <Stack.Screen name="FriendChatScreen" options={{ headerShown: false }} />
+          <Stack.Screen name="GlobalChatScreen" options={{ headerShown: false }} />
+          <Stack.Screen name="GameChatScreen" options={{ headerShown: false }} />
           <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
         </Stack>
