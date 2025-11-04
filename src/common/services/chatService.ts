@@ -1,4 +1,4 @@
-import { supabase, Message, Conversation } from '@/src/common/services/supabase';
+import { Conversation, Message, supabase } from '@/src/common/services/supabase';
 
 export class ChatService {
   // Get or create a direct conversation between two users

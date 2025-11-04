@@ -1,4 +1,4 @@
-import { supabase, Friend } from '@/src/common/services/supabase';
+import { Friend, supabase } from '@/src/common/services/supabase';
 
 export class FriendService {
   // Search for users by name

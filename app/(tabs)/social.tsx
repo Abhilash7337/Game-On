@@ -1,13 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FriendService } from '@/src/common/services/friendService';
+import { supabase } from '@/src/common/services/supabase';
 import { socialStyles } from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View, Modal, TextInput, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { FriendService } from '@/src/common/services/friendService';
-import { supabase } from '@/src/common/services/supabase';
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 

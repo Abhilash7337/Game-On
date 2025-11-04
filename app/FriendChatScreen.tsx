@@ -1,28 +1,27 @@
-import { friendChatStyles } from '../styles/screens/FriendChatScreen';
+import { ChatService } from '@/src/common/services/chatService';
+import { Message } from '@/src/common/services/supabase';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  Alert,
-  Image,
-  Animated,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  Dimensions,
-  SafeAreaView
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ChatService } from '@/src/common/services/chatService';
-import { Message } from '@/src/common/services/supabase';
+import { friendChatStyles } from '../styles/screens/FriendChatScreen';
 
 interface Friend {
   id: string;
