@@ -157,6 +157,38 @@ export const socialStyles = StyleSheet.create({
     color: colors.textSecondary,
     marginLeft: spacing.xs,
   },
+  lastMessageContainer: {
+    flexDirection: 'column',
+    flex: 1,
+  },
+  lastMessageText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs / 2,
+  },
+  lastMessageTime: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textTertiary,
+  },
+  friendActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  unreadBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: spacing.lg,
+    minWidth: spacing.xl,
+    height: spacing.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs,
+  },
+  unreadCount: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.background,
+  },
   
   // Global Tab
   globalContainer: {
@@ -288,6 +320,157 @@ export const socialStyles = StyleSheet.create({
     color: colors.textTertiary,
     marginTop: spacing.xs,
     textAlign: 'center',
+  },
+  
+  // Friend Search Styles
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addFriendButton: {
+    padding: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.backgroundTertiary,
+  },
+  
+  // Pending Requests Styles
+  pendingRequestsContainer: {
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.lg,
+  },
+  pendingRequestsTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  pendingRequestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.xs,
+  },
+  pendingRequestAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: spacing.sm,
+  },
+  pendingRequestInfo: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  pendingRequestName: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textPrimary,
+  },
+  pendingRequestEmail: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+  },
+  acceptButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+  },
+  acceptButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.background,
+  },
+  
+  // Search Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    maxHeight: '80%',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  closeButton: {
+    padding: spacing.xs,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: typography.fontSize.base,
+    marginBottom: spacing.md,
+  },
+  searchResultsContainer: {
+    maxHeight: 300,
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+  },
+  searchResultAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: spacing.sm,
+    backgroundColor: colors.backgroundTertiary,
+  },
+  searchResultInfo: {
+    flex: 1,
+  },
+  searchResultName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textPrimary,
+  },
+  searchResultEmail: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  addButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+  },
+  addButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.background,
+  },
+  loadingContainer: {
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  emptySearchText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    padding: spacing.xl,
   },
 });
 
