@@ -1,6 +1,7 @@
 import { Venue } from '../types';
+import { supabase } from './supabase';
 
-// In-memory storage for venues (replace with AsyncStorage or API later)
+// Fallback in-memory storage for offline mode
 let venuesStorage: Venue[] = [
   {
     id: '1',
@@ -47,12 +48,41 @@ export class VenueStorageService {
   // Get all venues
   static async getAllVenues(): Promise<Venue[]> {
     try {
-      // Simulate async operation
-      await new Promise(resolve => setTimeout(resolve, 100));
-      return [...venuesStorage];
+      // Try to fetch from Supabase first
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase fetch failed, using local storage:', error.message);
+        return [...venuesStorage];
+      }
+
+      // Transform Supabase data to match Venue interface
+      const venues: Venue[] = (data || []).map(v => ({
+        id: v.id,
+        name: v.name,
+        address: v.address,
+        location: v.location || { latitude: 0, longitude: 0 },
+        description: v.description || '',
+        amenities: v.facilities || [],
+        images: v.images || [],
+        pricing: v.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
+        operatingHours: v.availability || { open: '06:00', close: '22:00', days: [] },
+        courts: v.courts || [],
+        ownerId: v.client_id,
+        rating: v.rating || 0,
+        isActive: v.is_active !== false,
+        createdAt: new Date(v.created_at),
+      }));
+
+      // Update local cache
+      venuesStorage = venues;
+      return venues;
     } catch (error) {
       console.error('Error fetching venues:', error);
-      throw new Error('Failed to fetch venues. Please try again.');
+      return [...venuesStorage]; // Fallback to local storage
     }
   }
 
@@ -64,22 +94,64 @@ export class VenueStorageService {
         throw new Error('Venue name and address are required');
       }
 
-      // Simulate async operation
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const venueId = Date.now().toString();
-      const newVenue: Venue = {
-        ...venue,
-        id: venueId,
-        createdAt: new Date(),
-        // Fix courts to have the correct venueId
-        courts: venue.courts.map(court => ({
-          ...court,
-          venueId: venueId
-        }))
+      // Validate location coordinates
+      if (!venue.location || venue.location.latitude === 0 || venue.location.longitude === 0) {
+        throw new Error('Please select a valid location on the map');
+      }
+
+      // Transform to Supabase schema
+      const supabaseVenue = {
+        client_id: venue.ownerId,
+        name: venue.name,
+        address: venue.address,
+        location: venue.location,
+        description: venue.description,
+        facilities: venue.amenities,
+        images: venue.images,
+        pricing: venue.pricing,
+        availability: venue.operatingHours,
+        courts: venue.courts,
+        rating: venue.rating,
+        is_active: venue.isActive,
       };
-      
+
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('venues')
+        .insert([supabaseVenue])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw new Error('Failed to save venue to database: ' + error.message);
+      }
+
+      // Transform back to Venue interface
+      const newVenue: Venue = {
+        id: data.id,
+        name: data.name,
+        address: data.address,
+        location: data.location,
+        description: data.description,
+        amenities: data.facilities,
+        images: data.images,
+        pricing: data.pricing,
+        operatingHours: data.availability,
+        courts: data.courts.map((court: any) => ({
+          ...court,
+          venueId: data.id
+        })),
+        ownerId: data.client_id,
+        rating: data.rating,
+        isActive: data.is_active,
+        createdAt: new Date(data.created_at),
+      };
+
+      // Update local cache
       venuesStorage.push(newVenue);
+      console.log('✅ Venue added to Supabase:', newVenue.name);
+      console.log('📊 Total venues in storage:', venuesStorage.length);
       return newVenue;
     } catch (error) {
       console.error('Error adding venue:', error);
@@ -96,14 +168,39 @@ export class VenueStorageService {
       if (!ownerId) {
         throw new Error('Owner ID is required');
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
-      return venuesStorage.filter(venue => venue.ownerId === ownerId);
+
+      // Try Supabase first
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('client_id', ownerId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase fetch failed, using local storage:', error.message);
+        return venuesStorage.filter(venue => venue.ownerId === ownerId);
+      }
+
+      // Transform to Venue interface
+      return (data || []).map(v => ({
+        id: v.id,
+        name: v.name,
+        address: v.address,
+        location: v.location || { latitude: 0, longitude: 0 },
+        description: v.description || '',
+        amenities: v.facilities || [],
+        images: v.images || [],
+        pricing: v.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
+        operatingHours: v.availability || { open: '06:00', close: '22:00', days: [] },
+        courts: v.courts || [],
+        ownerId: v.client_id,
+        rating: v.rating || 0,
+        isActive: v.is_active !== false,
+        createdAt: new Date(v.created_at),
+      }));
     } catch (error) {
       console.error('Error fetching venues by owner:', error);
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Failed to fetch venues. Please try again.');
+      return venuesStorage.filter(venue => venue.ownerId === ownerId);
     }
   }
 
@@ -160,22 +257,28 @@ export class VenueStorageService {
     price: number;
     image: string;
     images?: string[];
+    distance?: string;
+    coordinates?: { latitude: number; longitude: number };
   }[]> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Fetch all venues from Supabase
+      const allVenues = await this.getAllVenues();
       
-      return venuesStorage
-        .filter(venue => venue.isActive)
-        .map(venue => ({
-          id: venue.id,
-          name: venue.name,
-          rating: venue.rating,
-          reviews: Math.floor(Math.random() * 20) + 5, // Random reviews count
-          location: venue.address,
-          price: venue.pricing.basePrice,
-          image: venue.images[0] || 'https://via.placeholder.com/300x200/047857/ffffff?text=Venue+Image',
-          images: venue.images, // Add images array for compatibility
-        }));
+      console.log('📍 Fetching public venues from Supabase. Total:', allVenues.length);
+      const activeVenues = allVenues.filter(venue => venue.isActive);
+      console.log('✅ Active venues:', activeVenues.length);
+      
+      return activeVenues.map(venue => ({
+        id: venue.id,
+        name: venue.name,
+        rating: venue.rating,
+        reviews: Math.floor(Math.random() * 20) + 5, // Random reviews count
+        location: venue.address,
+        price: venue.pricing.basePrice,
+        image: venue.images[0] || 'https://via.placeholder.com/300x200/047857/ffffff?text=Venue+Image',
+        images: venue.images,
+        coordinates: venue.location,
+      }));
     } catch (error) {
       console.error('Error fetching public venues:', error);
       throw new Error('Failed to fetch venues. Please try again.');
