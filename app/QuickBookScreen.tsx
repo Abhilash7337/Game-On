@@ -4,11 +4,13 @@ import {
     buttonStyles,
     cardStyles,
     chipStyles,
+    headerStyles,
     inputStyles,
     layoutStyles,
     modalStyles,
     summaryStyles,
-    textStyles
+    textStyles,
+    quickBookStyles
 } from '@/styles/screens/QuickBookScreen';
 import { colors } from '@/styles/theme';
 import { bookingStore } from '@/utils/bookingStore';
@@ -179,23 +181,13 @@ export default function QuickBookScreen() {
                     subtitle="Schedule your next game"
                     backgroundColor={colors.primary}
                 >
-                    <TouchableOpacity onPress={() => router.back()} style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: 40,
-                        height: 40,
-                        borderRadius: 20,
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}>
+                    <TouchableOpacity onPress={() => router.back()} style={quickBookStyles.backButton}>
                         <Ionicons name="arrow-back" size={24} color={colors.textInverse} />
                     </TouchableOpacity>
                 </AppHeader>
 
                 <ScrollView 
-                    style={{ flex: 1 }}
+                    style={quickBookStyles.scrollView}
                     contentContainerStyle={layoutStyles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
@@ -279,14 +271,9 @@ export default function QuickBookScreen() {
                                                 <Text style={[modalStyles.title, { color: colors.textPrimary }]}>Select Date</Text>
                                                 <TouchableOpacity 
                                                     onPress={() => setShowDate(false)}
-                                                    style={{
-                                                        backgroundColor: colors.primary,
-                                                        paddingHorizontal: 16,
-                                                        paddingVertical: 8,
-                                                        borderRadius: 20,
-                                                    }}
+                                                    style={quickBookStyles.datePickerDoneButton}
                                                 >
-                                                    <Text style={{ color: colors.textInverse, fontWeight: '600' }}>Done</Text>
+                                                    <Text style={quickBookStyles.datePickerDoneText}>Done</Text>
                                                 </TouchableOpacity>
                                             </View>
                                             <DateTimePicker
@@ -297,7 +284,7 @@ export default function QuickBookScreen() {
                                                 onChange={(event, selectedDate) => {
                                                     if (selectedDate) setDate(selectedDate);
                                                 }}
-                                                style={{ backgroundColor: colors.background }}
+                                                style={quickBookStyles.datePickerStyle}
                                                 textColor={colors.textPrimary}
                                             />
                                         </View>

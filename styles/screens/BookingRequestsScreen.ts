@@ -8,22 +8,20 @@ export const bookingRequestsStyles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.background,
-    paddingHorizontal: spacing.xxl,
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray200,
     ...shadows.sm,
   },
   headerTitle: {
-    fontSize: typography.fontSize.xxl,
+    fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
-    textAlign: 'left',
   },
   headerSubtitle: {
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   listContainer: {
     padding: spacing.lg,

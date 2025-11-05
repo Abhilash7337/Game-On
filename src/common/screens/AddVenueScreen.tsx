@@ -273,16 +273,43 @@ export default function AddVenueScreen() {
     setLoading(true);
     try {
       const { VenueStorageService } = await import('@/src/common/services/venueStorage');
-      const { ClientSessionManager } = await import('@/src/client/services/clientSession');
+      const { ClientAuthService } = await import('@/src/client/services/clientAuth');
+      const { supabase } = await import('@/src/common/services/supabase');
       
-      // Get current client ID
-      const clientId = ClientSessionManager.getCurrentClientId() || 'current-client';
+      // Get current client ID from auth
+      let currentClientId: string | null = null;
+      const currentClient = ClientAuthService.getCurrentClient();
+      
+      if (currentClient && currentClient.id) {
+        currentClientId = currentClient.id;
+      } else {
+        // Try to get from supabase auth as fallback
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          currentClientId = user.id;
+        }
+      }
+      
+      if (!currentClientId) {
+        Alert.alert(
+          'Authentication Required', 
+          'You must be logged in to create a venue. Please sign in first.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.back()
+            }
+          ]
+        );
+        setLoading(false);
+        return;
+      }
       
       // Create the venue object
       const venueData = {
         name: formData.name,
         address: formData.address,
-        location: { latitude: 0, longitude: 0 }, // Will be geocoded later
+        location: formData.location,
         description: formData.description,
         amenities: formData.amenities,
         images: formData.images,
@@ -300,7 +327,7 @@ export default function AddVenueScreen() {
           ...court,
           venueId: '', // Will be set by the service
         })),
-        ownerId: clientId,
+        ownerId: currentClientId,
         rating: 0,
         isActive: true,
       };
