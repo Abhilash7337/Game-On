@@ -174,61 +174,117 @@ export default function HomeScreen() {
             contentContainerStyle={homeStyles.gamesScrollContainer}
           >
             {upcomingGames.map((game) => (
-              <View key={game.id} style={homeStyles.gameCard}>
-                <View style={homeStyles.gameCardHeader}>
-                  <View style={homeStyles.gameTypeContainer}>
+              <TouchableOpacity 
+                key={game.id} 
+                style={homeStyles.gameCard}
+                activeOpacity={0.8}
+              >
+                {/* Top Section: Venue Name & Type Badge */}
+                <View style={homeStyles.gameCardTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={homeTextStyles.gameVenueName} numberOfLines={1}>
+                      {game.venue}
+                    </Text>
+                    <Text style={homeTextStyles.gameCourtName} numberOfLines={1}>
+                      {game.court}
+                    </Text>
+                  </View>
+                  <View style={[
+                    homeStyles.gameTypeBadge,
+                    game.bookingType === 'Open Game' 
+                      ? { backgroundColor: '#FEF3C7' } 
+                      : { backgroundColor: '#DBEAFE' }
+                  ]}>
                     <Ionicons 
                       name={getGameTypeIcon(game.bookingType)} 
-                      size={14} 
-                      color="#047857" 
+                      size={12} 
+                      color={game.bookingType === 'Open Game' ? '#D97706' : '#2563EB'}
                     />
-                    <Text style={homeTextStyles.gameType}>{game.bookingType}</Text>
-                  </View>
-                  <View style={homeStyles.gamePriceTag}>
-                    <Text style={homeTextStyles.gamePrice}>₹{game.price}</Text>
-                  </View>
-                </View>
-                
-                <Text style={homeTextStyles.gameCourt}>{game.court}</Text>
-                <View style={homeStyles.gameVenueContainer}>
-                  <Ionicons name="location" size={16} color="#6B7280" />
-                  <Text style={homeTextStyles.gameVenue}>{game.venue}</Text>
-                </View>
-                
-                <View style={homeStyles.gameTimeContainer}>
-                  <Ionicons name="time" size={16} color="#6B7280" />
-                  <Text style={homeTextStyles.gameTime}>{formatGameTime(game.date, game.time)}</Text>
-                  <Text style={homeTextStyles.gameDuration}>• {game.duration}</Text>
-                </View>
-                
-                {game.bookingType === 'Open Game' && game.skillLevel && (
-                  <View style={homeStyles.gameSkillContainer}>
-                    <View style={[
-                      homeStyles.skillBadge,
-                      game.skillLevel === 'Beginner' && homeStyles.skillBeginner,
-                      game.skillLevel === 'Intermediate' && homeStyles.skillIntermediate,
-                      game.skillLevel === 'Advanced' && homeStyles.skillAdvanced,
+                    <Text style={[
+                      homeTextStyles.gameTypeBadgeText,
+                      game.bookingType === 'Open Game' 
+                        ? { color: '#D97706' } 
+                        : { color: '#2563EB' }
                     ]}>
-                      <Text style={[
-                        homeTextStyles.skillText,
-                        game.skillLevel === 'Beginner' && homeTextStyles.skillTextBeginner,
-                        game.skillLevel === 'Intermediate' && homeTextStyles.skillTextIntermediate,
-                        game.skillLevel === 'Advanced' && homeTextStyles.skillTextAdvanced,
-                      ]}>
-                        {game.skillLevel}
+                      {game.bookingType === 'Open Game' ? 'Open' : 'Private'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Divider Line */}
+                <View style={homeStyles.gameCardDivider} />
+
+                {/* Middle Section: Date, Time & Duration */}
+                <View style={homeStyles.gameCardMiddle}>
+                  <View style={homeStyles.gameInfoRow}>
+                    <View style={homeStyles.gameInfoIconCircle}>
+                      <Ionicons name="calendar" size={16} color="#047857" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={homeTextStyles.gameInfoLabel}>Date</Text>
+                      <Text style={homeTextStyles.gameInfoValue}>
+                        {formatGameTime(game.date, game.time).split(' at ')[0]}
                       </Text>
                     </View>
-                    {game.players && (
-                      <Text style={homeTextStyles.playersNeeded}>{game.players} needed</Text>
-                    )}
                   </View>
-                )}
-                
-                <TouchableOpacity style={homeStyles.gameDetailsButton}>
-                  <Text style={homeTextStyles.gameDetailsButtonText}>View Details</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#ffffff" />
+
+                  <View style={homeStyles.gameInfoRow}>
+                    <View style={homeStyles.gameInfoIconCircle}>
+                      <Ionicons name="time" size={16} color="#047857" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={homeTextStyles.gameInfoLabel}>Time</Text>
+                      <Text style={homeTextStyles.gameInfoValue}>
+                        {game.time} • {game.duration}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Bottom Section: Price, Skill Level, Players */}
+                <View style={homeStyles.gameCardBottom}>
+                  <View style={homeStyles.gamePriceSection}>
+                    <Text style={homeTextStyles.gamePriceLabel}>Total</Text>
+                    <Text style={homeTextStyles.gamePriceAmount}>₹{game.price}</Text>
+                  </View>
+
+                  {game.bookingType === 'Open Game' && (
+                    <View style={homeStyles.gameMetaSection}>
+                      {game.skillLevel && (
+                        <View style={[
+                          homeStyles.skillChip,
+                          game.skillLevel === 'Beginner' && { backgroundColor: '#D1FAE5', borderColor: '#10B981' },
+                          game.skillLevel === 'Intermediate' && { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' },
+                          game.skillLevel === 'Advanced' && { backgroundColor: '#FEE2E2', borderColor: '#EF4444' },
+                        ]}>
+                          <Text style={[
+                            homeTextStyles.skillChipText,
+                            game.skillLevel === 'Beginner' && { color: '#047857' },
+                            game.skillLevel === 'Intermediate' && { color: '#D97706' },
+                            game.skillLevel === 'Advanced' && { color: '#DC2626' },
+                          ]}>
+                            {game.skillLevel}
+                          </Text>
+                        </View>
+                      )}
+                      {game.players && (
+                        <View style={homeStyles.playersChip}>
+                          <Ionicons name="people" size={12} color="#6B7280" />
+                          <Text style={homeTextStyles.playersChipText}>
+                            {game.players}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Action Button */}
+                <TouchableOpacity style={homeStyles.gameActionButton}>
+                  <Text style={homeTextStyles.gameActionButtonText}>View Details</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#047857" />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         )}

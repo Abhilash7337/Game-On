@@ -84,7 +84,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     <>
       <TouchableOpacity style={styles.pickerButton} onPress={() => setModalVisible(true)}>
         <Ionicons name="location" size={20} color={colors.primary} />
-        <Text style={styles.pickerButtonText}>
+        <Text style={[
+          styles.pickerButtonText,
+          (!initialLocation || initialLocation.latitude === 0) && styles.requiredText
+        ]}>
           {initialLocation && initialLocation.latitude !== 0
             ? 'Location Selected ✓'
             : 'Select Location on Map *'}
@@ -165,6 +168,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     fontWeight: typography.fontWeight.medium,
+  },
+  requiredText: {
+    color: colors.primary,
   },
   modalContainer: {
     flex: 1,

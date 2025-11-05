@@ -60,22 +60,44 @@ export class VenueStorageService {
       }
 
       // Transform Supabase data to match Venue interface
-      const venues: Venue[] = (data || []).map(v => ({
-        id: v.id,
-        name: v.name,
-        address: v.address,
-        location: v.location || { latitude: 0, longitude: 0 },
-        description: v.description || '',
-        amenities: v.facilities || [],
-        images: v.images || [],
-        pricing: v.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
-        operatingHours: v.availability || { open: '06:00', close: '22:00', days: [] },
-        courts: v.courts || [],
-        ownerId: v.client_id,
-        rating: v.rating || 0,
-        isActive: v.is_active !== false,
-        createdAt: new Date(v.created_at),
-      }));
+      const venues: Venue[] = (data || []).map(v => {
+        // Parse location safely
+        let location = { latitude: 0, longitude: 0 };
+        if (v.location) {
+          try {
+            // If location is a string, try to parse it as JSON
+            if (typeof v.location === 'string') {
+              const parsed = JSON.parse(v.location);
+              if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+                location = parsed;
+              }
+            } else if (typeof v.location === 'object' && v.location.latitude && v.location.longitude) {
+              // Already an object with coordinates
+              location = v.location;
+            }
+          } catch (parseError) {
+            // If parsing fails or location is invalid text, use default
+            console.log(`Invalid location format for venue ${v.id}, using default coordinates`);
+          }
+        }
+
+        return {
+          id: v.id,
+          name: v.name,
+          address: v.address,
+          location: location,
+          description: v.description || '',
+          amenities: v.facilities || [],
+          images: v.images || [],
+          pricing: v.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
+          operatingHours: v.availability || { open: '06:00', close: '22:00', days: [] },
+          courts: v.courts || [],
+          ownerId: v.client_id,
+          rating: v.rating || 0,
+          isActive: v.is_active !== false,
+          createdAt: new Date(v.created_at),
+        };
+      });
 
       // Update local cache
       venuesStorage = venues;
@@ -110,7 +132,6 @@ export class VenueStorageService {
         images: venue.images,
         pricing: venue.pricing,
         availability: venue.operatingHours,
-        courts: venue.courts,
         rating: venue.rating,
         is_active: venue.isActive,
       };
@@ -127,6 +148,25 @@ export class VenueStorageService {
         throw new Error('Failed to save venue to database: ' + error.message);
       }
 
+      // If courts exist, insert them into courts table
+      if (venue.courts && venue.courts.length > 0) {
+        const courtsData = venue.courts.map(court => ({
+          venue_id: data.id,
+          name: court.name,
+          type: court.type,
+          is_active: court.isActive !== false,
+        }));
+
+        const { error: courtsError } = await supabase
+          .from('courts')
+          .insert(courtsData);
+
+        if (courtsError) {
+          console.error('Error inserting courts:', courtsError);
+          // Don't fail the entire operation if courts insert fails
+        }
+      }
+
       // Transform back to Venue interface
       const newVenue: Venue = {
         id: data.id,
@@ -138,7 +178,7 @@ export class VenueStorageService {
         images: data.images,
         pricing: data.pricing,
         operatingHours: data.availability,
-        courts: data.courts.map((court: any) => ({
+        courts: venue.courts.map((court: any) => ({
           ...court,
           venueId: data.id
         })),

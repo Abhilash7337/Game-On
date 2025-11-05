@@ -7,7 +7,8 @@ import {
     layoutStyles,
     modalStyles,
     summaryStyles,
-    textStyles
+    textStyles,
+    bookingFormStyles
 } from '@/styles/screens/QuickBookScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,17 +29,20 @@ export default function BookingFormScreen() {
     const venueName = params.venueName as string;
     const venuePrice = parseInt(params.venuePrice as string) || 500;
     const ownerId = params.ownerId as string;
+    const preSelectedCourt = params.court as string;
+    const preSelectedTime = params.timeSlot as string;
     
     const [courts, setCourts] = useState<string[]>([]);
     const [times, setTimes] = useState<string[]>([]);
     const [durations, setDurations] = useState<string[]>([]);
     const [skillLevels, setSkillLevels] = useState<string[]>([]);
     const [playersRequired, setPlayersRequired] = useState<string[]>([]);
+    const [timeSlotStatuses, setTimeSlotStatuses] = useState<{[key: string]: {status: string; spotsLeft: number}}>({});
     
-    const [court, setCourt] = useState<string>('');
+    const [court, setCourt] = useState<string>(preSelectedCourt || '');
     const [date, setDate] = useState(new Date());
     const [showDate, setShowDate] = useState(false);
-    const [time, setTime] = useState<string>('');
+    const [time, setTime] = useState<string>(preSelectedTime || '');
     const [duration, setDuration] = useState<string>('');
     const [bookingType, setBookingType] = useState<'Open Game' | 'Private Game' | ''>('');
     const [skillLevel, setSkillLevel] = useState<string>('');
@@ -54,11 +58,84 @@ export default function BookingFormScreen() {
     useEffect(() => {
         // Load courts for this specific venue
         loadVenueCourts();
-        setTimes(['6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM']);
-        setDurations(['30 min', '1 hr', '1.5 hr', '2 hr']);
+        loadVenueOperatingHours();
+        loadTimeSlotStatuses();
+        setDurations(['1 hr', '2 hr', '3 hr']);
         setSkillLevels(['Beginner', 'Intermediate', 'Advanced']);
         setPlayersRequired(['2', '4', '6', '8']);
     }, []);
+
+    const loadVenueOperatingHours = async () => {
+        try {
+            const { VenueStorageService } = await import('@/src/common/services/venueStorage');
+            const venues = await VenueStorageService.getAllVenues();
+            const venue = venues.find(v => v.id === venueId);
+            
+            if (venue && venue.operatingHours) {
+                const { open, close } = venue.operatingHours;
+                const openHour = parseInt(open.split(':')[0]);
+                const closeHour = parseInt(close.split(':')[0]);
+                
+                const generatedTimes = [];
+                for (let hour = openHour; hour < closeHour; hour++) {
+                    const period = hour < 12 ? 'AM' : 'PM';
+                    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+                    generatedTimes.push(`${displayHour}:00 ${period}`);
+                }
+                setTimes(generatedTimes);
+            } else {
+                // Default times if no operating hours
+                setTimes(['6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM']);
+            }
+        } catch (error) {
+            console.error('Error loading venue hours:', error);
+            setTimes(['6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM']);
+        }
+    };
+
+    const loadTimeSlotStatuses = async () => {
+        // Mock data - In real app, fetch from database based on bookings
+        const statuses: {[key: string]: {status: string; spotsLeft: number}} = {};
+        const timeSlots = ['6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM'];
+        
+        timeSlots.forEach(slot => {
+            const random = Math.random();
+            if (random > 0.8) {
+                statuses[slot] = { status: 'booked', spotsLeft: 0 }; // Fully booked
+            } else if (random > 0.6) {
+                statuses[slot] = { status: 'available', spotsLeft: 4 }; // Available (green)
+            } else if (random > 0.4) {
+                statuses[slot] = { status: 'joining', spotsLeft: 2 }; // Available to join (orange)
+            } else {
+                statuses[slot] = { status: 'last-spot', spotsLeft: 1 }; // 1 spot left (red)
+            }
+        });
+        
+        setTimeSlotStatuses(statuses);
+    };
+
+    const getTimeSlotColor = (timeSlot: string) => {
+        const status = timeSlotStatuses[timeSlot];
+        if (!status) return colors.gray300;
+        
+        switch (status.status) {
+            case 'booked':
+                return colors.gray300; // Faded
+            case 'available':
+                return '#10B981'; // Green
+            case 'joining':
+                return '#F59E0B'; // Orange
+            case 'last-spot':
+                return '#EF4444'; // Red
+            default:
+                return colors.gray300;
+        }
+    };
+
+    const isTimeSlotDisabled = (timeSlot: string) => {
+        const status = timeSlotStatuses[timeSlot];
+        return status?.status === 'booked';
+    };
 
     const loadVenueCourts = async () => {
         try {
@@ -85,7 +162,7 @@ export default function BookingFormScreen() {
         bookingType !== '' &&
         (bookingType === 'Private Game' || (skillLevel !== '' && players !== ''));
 
-    // Custom Dropdown Component
+    // Custom Dropdown Component with Time Slot Colors
     const CustomDropdown = ({ 
         title, 
         value, 
@@ -93,7 +170,8 @@ export default function BookingFormScreen() {
         options, 
         onSelect, 
         visible, 
-        onClose 
+        onClose,
+        isTimeDropdown = false
     }: {
         title: string;
         value: string;
@@ -102,6 +180,7 @@ export default function BookingFormScreen() {
         onSelect: (value: string) => void;
         visible: boolean;
         onClose: () => void;
+        isTimeDropdown?: boolean;
     }) => (
         <Modal visible={visible} transparent animationType="slide">
             <View style={modalStyles.overlay}>
@@ -115,18 +194,58 @@ export default function BookingFormScreen() {
                     <FlatList
                         data={options}
                         keyExtractor={(item) => item}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={[modalStyles.option, { borderBottomColor: colors.gray200 }]}
-                                onPress={() => {
-                                    onSelect(item);
-                                    onClose();
-                                }}
-                            >
-                                <Text style={[modalStyles.optionText, { color: colors.textPrimary }]}>{item}</Text>
-                                {value === item && <Ionicons name="checkmark" size={20} color={colors.primary} />}
-                            </TouchableOpacity>
-                        )}
+                        renderItem={({ item }) => {
+                            const isDisabled = isTimeDropdown && isTimeSlotDisabled(item);
+                            const slotColor = isTimeDropdown ? getTimeSlotColor(item) : colors.textPrimary;
+                            const status = timeSlotStatuses[item];
+                            
+                            return (
+                                <TouchableOpacity
+                                    style={[
+                                        modalStyles.option, 
+                                        { 
+                                            borderBottomColor: colors.gray200,
+                                            opacity: isDisabled ? 0.4 : 1,
+                                            backgroundColor: isTimeDropdown && value === item ? slotColor + '20' : 'transparent'
+                                        }
+                                    ]}
+                                    onPress={() => {
+                                        if (!isDisabled) {
+                                            onSelect(item);
+                                            onClose();
+                                        }
+                                    }}
+                                    disabled={isDisabled}
+                                >
+                                    <View style={bookingFormStyles.slotIndicatorRow}>
+                                        {isTimeDropdown && (
+                                            <View style={[
+                                                bookingFormStyles.slotIndicator,
+                                                { backgroundColor: slotColor }
+                                            ]} />
+                                        )}
+                                        <Text style={[
+                                            modalStyles.optionText, 
+                                            { 
+                                                color: isDisabled ? colors.textSecondary : colors.textPrimary,
+                                                flex: 1
+                                            }
+                                        ]}>
+                                            {item}
+                                        </Text>
+                                        {isTimeDropdown && status && (
+                                            <Text style={bookingFormStyles.slotStatusText}>
+                                                {status.status === 'booked' ? 'Booked' : 
+                                                 status.status === 'available' ? 'Available' :
+                                                 status.status === 'last-spot' ? '1 spot left' :
+                                                 `${status.spotsLeft} spots`}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    {value === item && <Ionicons name="checkmark" size={20} color={slotColor} />}
+                                </TouchableOpacity>
+                            );
+                        }}
                     />
                 </View>
             </View>
@@ -136,9 +255,9 @@ export default function BookingFormScreen() {
     const calculatePrice = () => {
         if (!duration) return venuePrice;
         
-        const durationHours = duration === '30 min' ? 0.5 : 
-                             duration === '1 hr' ? 1 : 
-                             duration === '1.5 hr' ? 1.5 : 2;
+        const durationHours = duration === '1 hr' ? 1 : 
+                             duration === '2 hr' ? 2 : 
+                             duration === '3 hr' ? 3 : 1;
         
         return Math.round(venuePrice * durationHours);
     };
@@ -150,11 +269,24 @@ export default function BookingFormScreen() {
         }
 
         try {
+            console.log('🎯 [BOOKING] Starting booking process...');
+            
+            // Get the actual authenticated user ID
+            const { supabase } = await import('@/src/common/services/supabase');
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            console.log('👤 [BOOKING] Authenticated user:', user?.id);
+            
+            if (!user) {
+                Alert.alert('Authentication Error', 'You must be logged in to make a booking.');
+                return;
+            }
+
             // Create booking request (pending approval)
             const { BookingStorageService } = await import('../src/common/services/bookingStorage');
             
             const bookingData = {
-                userId: 'current-user', // In real app, get from user session
+                userId: user.id, // Use actual user ID from Supabase auth
                 venueId: venueId,
                 venueName: venueName,
                 ownerId: ownerId,
@@ -170,11 +302,24 @@ export default function BookingFormScreen() {
                 paymentStatus: 'pending' as const,
             };
 
+            console.log('📋 [BOOKING] Booking data:', JSON.stringify({
+                userId: bookingData.userId,
+                venueId: bookingData.venueId,
+                venueName: bookingData.venueName,
+                ownerId: bookingData.ownerId,
+                court: bookingData.court,
+                status: bookingData.status,
+            }, null, 2));
+
             const booking = await BookingStorageService.createBooking(bookingData);
+            
+            console.log('✅ [BOOKING] Booking created:', booking.id);
             
             // Send notification to client
             const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
             await ClientNotificationService.sendBookingRequest(ownerId, booking);
+
+            console.log('📧 [BOOKING] Notification sent to owner:', ownerId);
 
             Alert.alert(
                 'Booking Request Sent!',
@@ -187,7 +332,7 @@ export default function BookingFormScreen() {
                 ]
             );
         } catch (error) {
-            console.error('Error creating booking:', error);
+            console.error('❌ [BOOKING] Error creating booking:', error);
             Alert.alert('Error', 'Failed to create booking request. Please try again.');
         }
     };
@@ -197,26 +342,32 @@ export default function BookingFormScreen() {
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style="dark" />
             
-            <View style={[layoutStyles.container, { paddingTop: insets.top }]}>
-                <AppHeader 
-                    title={`Book ${venueName}`}
-                    subtitle="Fill in the details below"
-                />
-
-                <ScrollView style={layoutStyles.scrollContent} showsVerticalScrollIndicator={false}>
-                    {/* Venue Info Card */}
-                    <View style={[cardStyles.base, { backgroundColor: colors.primary + '10' }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                            <Ionicons name="location" size={20} color={colors.primary} />
-                            <Text style={[textStyles.label, { color: colors.primary, marginLeft: 8, marginBottom: 0 }]}>
-                                {venueName}
-                            </Text>
-                        </View>
-                        <Text style={[textStyles.subLabel, { color: colors.textSecondary, marginBottom: 0 }]}>
-                            Base Price: ₹{venuePrice}/hour
+            <View style={[layoutStyles.container, { paddingTop: 0 }]}>
+                {/* White Header */}
+                <View style={[{
+                    backgroundColor: '#FFFFFF',
+                    paddingTop: insets.top + 20,
+                    paddingBottom: 20,
+                    paddingHorizontal: 20,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#F3F4F6',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                }]}>
+                    <TouchableOpacity onPress={() => router.back()} style={bookingFormStyles.headerBackButton}>
+                        <Ionicons name="arrow-back-outline" size={24} color="#000" />
+                    </TouchableOpacity>
+                    <View style={bookingFormStyles.headerTextContainer}>
+                        <Text style={bookingFormStyles.headerTitle}>
+                            Book {venueName}
+                        </Text>
+                        <Text style={bookingFormStyles.headerSubtitle}>
+                            Fill in the details below
                         </Text>
                     </View>
+                </View>
 
+                <ScrollView style={layoutStyles.scrollContent} showsVerticalScrollIndicator={false}>
                     {/* Court Selection */}
                     <Text style={textStyles.label}>Court *</Text>
                     <TouchableOpacity 
@@ -408,6 +559,7 @@ export default function BookingFormScreen() {
                     onSelect={setTime}
                     visible={showTimeModal}
                     onClose={() => setShowTimeModal(false)}
+                    isTimeDropdown={true}
                 />
 
                 <CustomDropdown

@@ -55,16 +55,107 @@ export const homeStyles = StyleSheet.create({
   gameCard: {
   backgroundColor: '#fff',  // explicitly override RN Web purple
   borderRadius: borderRadius.xl,
-  padding: spacing.sm,
+  padding: spacing.lg,
   marginRight: spacing.md,
-  width: 280,
+  width: 300,
   borderWidth: 1,
-  borderColor: colors.gray100,
+  borderColor: colors.gray200,
   ...shadows.lg,
 },
 
+  // New redesigned card sections
+  gameCardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
 
-  
+  gameTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+  },
+
+  gameCardDivider: {
+    height: 1,
+    backgroundColor: colors.gray200,
+    marginBottom: spacing.md,
+  },
+
+  gameCardMiddle: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+
+  gameInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+
+  gameInfoIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  gameCardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray200,
+    marginBottom: spacing.sm,
+  },
+
+  gamePriceSection: {
+    flex: 1,
+  },
+
+  gameMetaSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+
+  skillChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+
+  playersChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.gray100,
+  },
+
+  gameActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    backgroundColor: '#ECFDF5',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+
+
   gameCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -317,5 +408,65 @@ export const homeTextStyles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
     color: colors.textInverse,
+  },
+
+  // New redesigned card text styles
+  gameVenueName: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+
+  gameCourtName: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textSecondary,
+  },
+
+  gameTypeBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+
+  gameInfoLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+
+  gameInfoValue: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+
+  gamePriceLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+
+  gamePriceAmount: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary,
+  },
+
+  skillChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+
+  playersChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textSecondary,
+  },
+
+  gameActionButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
   },
 });

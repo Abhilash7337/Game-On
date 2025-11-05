@@ -25,16 +25,43 @@ export default function ClientBookingRequestsScreen() {
         if (isRefresh) setRefreshing(true);
         
         try {
-            const { ClientSessionManager } = await import('@/src/client/services/clientSession');
+            console.log('🔍 [BOOKING REQUESTS] Loading pending bookings...');
+            
+            // Get the actual authenticated client ID from Supabase
+            const { supabase } = await import('@/src/common/services/supabase');
+            const { ClientAuthService } = await import('@/src/client/services/clientAuth');
             const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
             
-            const clientId = ClientSessionManager.getCurrentClientId();
+            // Try ClientAuthService first, fallback to Supabase auth
+            let clientId = null;
+            const client = await ClientAuthService.getCurrentClient();
+            
+            if (client?.id) {
+                clientId = client.id;
+            } else {
+                // Fallback to getting user from Supabase auth directly
+                const { data: { user } } = await supabase.auth.getUser();
+                clientId = user?.id || null;
+            }
+            
+            console.log('👤 [BOOKING REQUESTS] Current client ID:', clientId);
+            
             if (clientId) {
                 const bookings = await BookingStorageService.getPendingBookings(clientId);
+                console.log('📋 [BOOKING REQUESTS] Found pending bookings:', bookings.length);
+                console.log('📋 [BOOKING REQUESTS] Bookings:', JSON.stringify(bookings.map(b => ({
+                    id: b.id,
+                    venue: b.venue,
+                    ownerId: b.ownerId,
+                    bookingStatus: (b as any).bookingStatus,
+                })), null, 2));
+                
                 setPendingBookings(bookings);
+            } else {
+                console.log('⚠️ [BOOKING REQUESTS] No client ID found');
             }
         } catch (error) {
-            console.error('Error loading pending bookings:', error);
+            console.error('❌ [BOOKING REQUESTS] Error loading pending bookings:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -54,13 +81,38 @@ export default function ClientBookingRequestsScreen() {
                         try {
                             const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
                             const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
+                            const { GameChatroomService } = await import('@/src/common/services/gameChatroomService');
                             
+                            // Update booking status to confirmed
                             await BookingStorageService.updateBookingStatus(booking.id, 'confirmed');
+                            
+                            // Create game chatroom automatically (with null checks)
+                            if (booking.venue && booking.court) {
+                                const chatroom = await GameChatroomService.createChatroom(
+                                    booking.id,
+                                    booking.venue,
+                                    booking.court,
+                                    booking.date,
+                                    booking.time,
+                                    booking.duration,
+                                    booking.userId
+                                );
+                                
+                                console.log('✅ Game chatroom created:', chatroom.id);
+                            } else {
+                                console.warn('⚠️ Cannot create chatroom: missing venue or court info');
+                            }
+                            
+                            // Send confirmation notification
                             await ClientNotificationService.sendConfirmationNotification(booking.userId, booking);
                             
-                            Alert.alert('Success', 'Booking approved successfully!');
+                            Alert.alert(
+                                'Success', 
+                                'Booking approved! A game chatroom has been created for the players.'
+                            );
                             loadPendingBookings();
                         } catch (error) {
+                            console.error('❌ Error approving booking:', error);
                             Alert.alert('Error', 'Failed to approve booking');
                         }
                     }
@@ -172,14 +224,18 @@ export default function ClientBookingRequestsScreen() {
             
             {/* White Elevated Header */}
             <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-                <TouchableOpacity 
-                    onPress={() => router.back()}
-                    style={{ position: 'absolute', left: 20, top: insets.top + 20 }}
-                >
-                    <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Booking Requests</Text>
-                <Text style={styles.headerSubtitle}>{pendingBookings.length} pending requests</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
+                    <TouchableOpacity 
+                        onPress={() => router.back()}
+                        style={{ marginRight: 16 }}
+                    >
+                        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.headerTitle}>Booking Requests</Text>
+                        <Text style={styles.headerSubtitle}>{pendingBookings.length} pending requests</Text>
+                    </View>
+                </View>
             </View>
 
             <FlatList

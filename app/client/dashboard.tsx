@@ -31,15 +31,22 @@ export default function ClientDashboardScreen() {
   }, []);
 
   const initializeClientSession = async () => {
-    // Initialize demo session if not already set
-    const { ClientSessionManager } = await import('@/src/client/services/clientSession');
-    if (!ClientSessionManager.isAuthenticated()) {
-      ClientSessionManager.setSession({
-        clientId: 'current-client',
-        name: 'Demo Venue Owner',
-        email: 'demo@gameon.com',
-        isAuthenticated: true,
-      });
+    // Check if client is authenticated
+    const { ClientAuthService } = await import('@/src/client/services/clientAuth');
+    const client = await ClientAuthService.getCurrentSession();
+    
+    if (!client) {
+      // Not authenticated, redirect to login
+      Alert.alert(
+        'Authentication Required',
+        'Please sign in to access your dashboard',
+        [
+          {
+            text: 'Sign In',
+            onPress: () => router.replace('/client-login')
+          }
+        ]
+      );
     }
   };
 
@@ -71,12 +78,19 @@ export default function ClientDashboardScreen() {
       }
 
       // Load pending booking requests count
-      const clientId = ClientSessionManager.getCurrentClientId();
+      const { supabase } = await import('@/src/common/services/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      const clientId = user?.id;
+      
+      console.log('📊 [DASHBOARD] Loading pending count for client:', clientId);
+      
       if (clientId) {
         const pendingBookings = await BookingStorageService.getPendingBookings(clientId);
+        console.log('📊 [DASHBOARD] Pending bookings count:', pendingBookings.length);
         setPendingRequestsCount(pendingBookings.length);
       }
     } catch (error) {
+      console.error('❌ [DASHBOARD] Error loading dashboard data:', error);
       Alert.alert('Error', 'Failed to load dashboard data');
     } finally {
       setLoading(false);

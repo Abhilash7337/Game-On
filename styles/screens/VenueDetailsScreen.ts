@@ -236,6 +236,80 @@ export const venueDetailsStyles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     lineHeight: 20,
   },
+  // Loading and Error States
+  loadingText: {
+    marginTop: 16,
+    color: '#6B7280',
+  },
+  errorText: {
+    color: '#6B7280',
+  },
+  goBackButton: {
+    marginTop: 16,
+  },
+  goBackText: {
+    color: '#047857',
+  },
+  noCourtsText: {
+    color: '#6B7280',
+    textAlign: 'center',
+    padding: 16,
+  },
+  // Date Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  datePickerContainer: {
+    position: 'absolute',
+    top: 320,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: 280,
+    maxHeight: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  datePickerHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  datePickerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  datePickerScroll: {
+    maxHeight: 300,
+  },
+  dateOption: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#fff',
+  },
+  dateOptionSelected: {
+    backgroundColor: '#ECFDF5',
+  },
+  dateOptionText: {
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '400',
+  },
+  dateOptionTextSelected: {
+    color: '#047857',
+    fontWeight: '600',
+  },
+  dateSubtext: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 3,
+  },
 });
 
 export const venueDetailsTextStyles = StyleSheet.create({

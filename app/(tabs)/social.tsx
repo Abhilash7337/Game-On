@@ -1,9 +1,11 @@
 import { FriendService } from '@/src/common/services/friendService';
+import { GameChatroomService, GameChatroomDisplay } from '@/src/common/services/gameChatroomService';
+import { SportGroupService } from '@/src/common/services/sportGroupService';
 import { supabase } from '@/src/common/services/supabase';
 import { socialStyles } from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -31,6 +33,10 @@ interface SportGroup {
   name: string;
   memberCount: number;
   sport: string;
+  conversationId?: string;
+  city?: string | null;
+  isGlobal?: boolean;
+  isMember?: boolean;
 }
 
 interface GameChat {
@@ -42,6 +48,7 @@ interface GameChat {
   duration: string;
   isHost: boolean;
   participants: number;
+  expiresAt?: Date; // Added for chatroom expiry tracking
 }
 
 export default function SocialScreen() {
@@ -55,6 +62,8 @@ export default function SocialScreen() {
     const [userCity] = useState('Hyderabad'); // setUserCity removed as it's not used yet
     const [loading, setLoading] = useState(true);
     const [showCitySports, setShowCitySports] = useState(false);
+    const [showGlobalSports, setShowGlobalSports] = useState(false);
+    const [navigating, setNavigating] = useState(false);
     
     // Friend search states
     const [showAddFriendModal, setShowAddFriendModal] = useState(false);
@@ -62,6 +71,40 @@ export default function SocialScreen() {
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+
+    // Load game chatrooms from GameChatroomService
+    const loadGameChatrooms = async () => {
+        try {
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            if (userError || !userData?.user?.id) {
+                console.log('⚠️ No authenticated user for chatrooms');
+                setGameChats([]);
+                return;
+            }
+
+            const userId = userData.user.id;
+            const chatrooms = await GameChatroomService.getUserChatrooms(userId);
+            
+            // Convert GameChatroomDisplay to GameChat format
+            const gameChatsData: GameChat[] = chatrooms.map(room => ({
+                id: room.id,
+                venue: room.venue,
+                court: room.court,
+                date: room.date,
+                time: room.time,
+                duration: room.duration,
+                isHost: room.isHost,
+                participants: room.participants,
+                expiresAt: room.expiresAt
+            }));
+
+            setGameChats(gameChatsData);
+            console.log('💬 Loaded', gameChatsData.length, 'game chatrooms');
+        } catch (error) {
+            console.error('❌ Error loading game chatrooms:', error);
+            setGameChats([]);
+        }
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -167,59 +210,66 @@ export default function SocialScreen() {
 
         loadData();
 
-        // Load mock data for sports groups (these can be real data later)
-        const timeoutId = setTimeout(() => {
-            if (!isMounted) return;
-            
-            // Mock global sports data
-            setGlobalSports([
-                { id: '1', name: 'Global/Football', memberCount: 12500, sport: 'Football' },
-                { id: '2', name: 'Global/Badminton', memberCount: 8900, sport: 'Badminton' },
-                { id: '3', name: 'Global/Table Tennis', memberCount: 6700, sport: 'Table Tennis' },
-                { id: '4', name: 'Global/Tennis', memberCount: 9800, sport: 'Tennis' },
-                { id: '5', name: 'Global/Basketball', memberCount: 11200, sport: 'Basketball' }
-            ]);
+        // Load sport groups data
+        const loadSportGroups = async () => {
+            try {
+                const { data: userData } = await supabase.auth.getUser();
+                const userId = userData?.user?.id;
 
-            // Mock city sports data
-            setCitySports([
-                { id: '1', name: `${userCity}/Football`, memberCount: 450, sport: 'Football' },
-                { id: '2', name: `${userCity}/Badminton`, memberCount: 320, sport: 'Badminton' },
-                { id: '3', name: `${userCity}/Table Tennis`, memberCount: 280, sport: 'Table Tennis' },
-                { id: '4', name: `${userCity}/Tennis`, memberCount: 380, sport: 'Tennis' },
-                { id: '5', name: `${userCity}/Basketball`, memberCount: 290, sport: 'Basketball' }
-            ]);
+                // Initialize city sport groups if they don't exist
+                console.log(`🔄 Initializing sport groups for ${userCity}...`);
+                await SportGroupService.initializeCitySportGroups(userCity);
 
-            // Mock game chats data
-            setGameChats([
-                {
-                    id: '1',
-                    venue: 'Elite Sports Club',
-                    court: 'Court A1',
-                    date: 'Today',
-                    time: '6:00 PM',
-                    duration: '1 hr',
-                    isHost: true,
-                    participants: 4
-                },
-                {
-                    id: '2',
-                    venue: 'Champion Courts',
-                    court: 'Court B2',
-                    date: 'Tomorrow',
-                    time: '7:00 AM',
-                    duration: '1.5 hr',
-                    isHost: false,
-                    participants: 6
+                // Load global and city sport groups in parallel
+                const [globalGroups, cityGroups] = await Promise.all([
+                    SportGroupService.getGlobalSportGroups(),
+                    SportGroupService.getCitySportGroups(userCity)
+                ]);
+
+                if (!isMounted) return;
+
+                console.log(`📊 Loaded ${globalGroups.length} global groups and ${cityGroups.length} city groups`);
+
+                // Check membership status for each group if user is logged in
+                if (userId) {
+                    const globalWithMembership = await Promise.all(
+                        globalGroups.map(async (group) => ({
+                            ...group,
+                            name: group.displayName,
+                            isMember: await SportGroupService.isGroupMember(userId, group.conversationId)
+                        }))
+                    );
+
+                    const cityWithMembership = await Promise.all(
+                        cityGroups.map(async (group) => ({
+                            ...group,
+                            name: group.displayName,
+                            isMember: await SportGroupService.isGroupMember(userId, group.conversationId)
+                        }))
+                    );
+
+                    setGlobalSports(globalWithMembership);
+                    setCitySports(cityWithMembership);
+                } else {
+                    setGlobalSports(globalGroups.map(g => ({ ...g, name: g.displayName })));
+                    setCitySports(cityGroups.map(g => ({ ...g, name: g.displayName })));
                 }
-            ]);
-            
-            setLoading(false);
-        }, 500);
+
+                // Load real game chatrooms
+                await loadGameChatrooms();
+                
+                setLoading(false);
+            } catch (error) {
+                console.error('Error loading sport groups:', error);
+                setLoading(false);
+            }
+        };
+
+        loadSportGroups();
         
         // Cleanup function to prevent memory leaks
         return () => {
             isMounted = false;
-            clearTimeout(timeoutId);
         };
     }, [userCity]);
 
@@ -281,7 +331,20 @@ export default function SocialScreen() {
         };
     }, [friends]);
 
+    // Reload game chatrooms when screen gains focus or Game Chats tab is active
+    useFocusEffect(
+        useCallback(() => {
+            if (activeTab === 'Game Chats') {
+                loadGameChatrooms();
+            }
+        }, [activeTab])
+    );
+
     const handleFriendPress = useCallback((friend: Friend) => {
+        // Prevent multiple rapid clicks
+        if (navigating) return;
+        
+        setNavigating(true);
         router.push({
             pathname: '/FriendChatScreen',
             params: {
@@ -290,20 +353,110 @@ export default function SocialScreen() {
                 friendAvatar: friend.profilePhoto
             }
         });
-    }, [router]);
+        
+        // Reset navigating flag after a delay
+        setTimeout(() => setNavigating(false), 1000);
+    }, [router, navigating]);
 
-    const handleSportGroupPress = useCallback((group: SportGroup) => {
-        router.push({
-            pathname: '/GlobalChatScreen',
-            params: {
-                channelId: group.id,
-                channelName: group.name,
-                channelType: 'sport'
-            }
-        });
-    }, [router]);
+    const handleSportGroupPress = useCallback(async (group: SportGroup) => {
+        // Prevent multiple rapid clicks
+        if (navigating) return;
+        
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+
+        if (!userId) {
+            Alert.alert('Sign In Required', 'Please sign in to join sport groups');
+            return;
+        }
+
+        // Check if user is a member
+        if (!group.isMember && group.conversationId) {
+            // Ask if they want to join
+            Alert.alert(
+                'Join Group',
+                `Do you want to join ${group.name}?`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Join',
+                        onPress: async () => {
+                            try {
+                                setNavigating(true);
+                                await SportGroupService.joinSportGroup(userId, group.sport, group.city || undefined);
+                                
+                                // Refresh the sport groups
+                                const [globalGroups, cityGroups] = await Promise.all([
+                                    SportGroupService.getGlobalSportGroups(),
+                                    SportGroupService.getCitySportGroups(userCity)
+                                ]);
+
+                                const globalWithMembership = await Promise.all(
+                                    globalGroups.map(async (g) => ({
+                                        ...g,
+                                        name: g.displayName,
+                                        isMember: await SportGroupService.isGroupMember(userId, g.conversationId)
+                                    }))
+                                );
+
+                                const cityWithMembership = await Promise.all(
+                                    cityGroups.map(async (g) => ({
+                                        ...g,
+                                        name: g.displayName,
+                                        isMember: await SportGroupService.isGroupMember(userId, g.conversationId)
+                                    }))
+                                );
+
+                                setGlobalSports(globalWithMembership);
+                                setCitySports(cityWithMembership);
+
+                                Alert.alert('Success', 'You have joined the group!');
+                                
+                                // Navigate to chat
+                                router.push({
+                                    pathname: '/SportGroupChatScreen',
+                                    params: {
+                                        conversationId: group.conversationId,
+                                        groupName: group.name,
+                                        sport: group.sport,
+                                        isGlobal: String(group.isGlobal || false)
+                                    }
+                                });
+                                
+                                // Reset navigating flag after a delay
+                                setTimeout(() => setNavigating(false), 1000);
+                            } catch (error) {
+                                console.error('Error joining group:', error);
+                                Alert.alert('Error', 'Failed to join the group');
+                                setNavigating(false);
+                            }
+                        }
+                    }
+                ]
+            );
+        } else {
+            // Already a member, just navigate to chat
+            setNavigating(true);
+            router.push({
+                pathname: '/SportGroupChatScreen',
+                params: {
+                    conversationId: group.conversationId,
+                    groupName: group.name,
+                    sport: group.sport,
+                    isGlobal: String(group.isGlobal || false)
+                }
+            });
+            
+            // Reset navigating flag after a delay
+            setTimeout(() => setNavigating(false), 1000);
+        }
+    }, [router, userCity, navigating]);
 
     const handleGameChatPress = useCallback((chat: GameChat) => {
+        // Prevent multiple rapid clicks
+        if (navigating) return;
+        
+        setNavigating(true);
         router.push({
             pathname: '/GameChatScreen',
             params: {
@@ -316,11 +469,18 @@ export default function SocialScreen() {
                 status: 'upcoming'
             }
         });
-    }, [router]);
+        
+        // Reset navigating flag after a delay
+        setTimeout(() => setNavigating(false), 1000);
+    }, [router, navigating]);
 
     const handleCityPress = useCallback(() => {
         setShowCitySports(!showCitySports);
     }, [showCitySports]);
+
+    const handleGlobalPress = useCallback(() => {
+        setShowGlobalSports(!showGlobalSports);
+    }, [showGlobalSports]);
 
     // Helper function to format message time - guaranteed to return string
     const formatMessageTime = useCallback((time: Date | string | null | undefined): string => {
@@ -493,12 +653,28 @@ export default function SocialScreen() {
             onPress={() => handleSportGroupPress(group)}
         >
             <View style={socialStyles.sportGroupInfo}>
-                <Text style={socialStyles.sportGroupName}>{group.name}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={socialStyles.sportGroupName}>{group.name}</Text>
+                    {group.isMember && (
+                        <View style={{
+                            backgroundColor: colors.primary,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 8
+                        }}>
+                            <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>JOINED</Text>
+                        </View>
+                    )}
+                </View>
                 <Text style={socialStyles.sportGroupMembers}>
                     {group.memberCount.toLocaleString()} members
                 </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            <Ionicons 
+                name={group.isMember ? "chatbubbles" : "add-circle-outline"} 
+                size={24} 
+                color={group.isMember ? colors.primary : colors.textSecondary} 
+            />
         </TouchableOpacity>
     );
 
@@ -627,7 +803,7 @@ export default function SocialScreen() {
 
                 {activeTab === 'Global' && (
                     <View style={socialStyles.globalContainer}>
-                        {/* Your City - Always Expanded */}
+                        {/* Your City Sport Groups - Collapsible */}
                         <View style={socialStyles.section}>
                             <View style={socialStyles.sectionHeader}>
                                 <Text style={socialStyles.sectionTitle}>Your City</Text>
@@ -636,29 +812,14 @@ export default function SocialScreen() {
                                 </Text>
                             </View>
                             
-                            <View style={socialStyles.cityGroups}>
-                                <Text style={socialStyles.cityGroupsTitle}>Sport Groups in {userCity}</Text>
-                                {citySports.map(group => (
-                                    <SportGroupCard key={group.id} group={group} />
-                                ))}
-                            </View>
-                        </View>
-
-                        {/* Global Sport Groups - Expandable */}
-                        <View style={socialStyles.section}>
-                            <View style={socialStyles.sectionHeader}>
-                                <Text style={socialStyles.sectionTitle}>Global Sport Groups</Text>
-                                <Text style={socialStyles.sectionCount}>{globalSports.length} groups</Text>
-                            </View>
-                            
                             <TouchableOpacity 
                                 style={socialStyles.cityCard}
                                 onPress={handleCityPress}
                             >
                                 <View style={socialStyles.cityInfo}>
-                                    <Text style={socialStyles.cityName}>Global Communities</Text>
+                                    <Text style={socialStyles.cityName}>{userCity} Communities</Text>
                                     <Text style={socialStyles.cityMembers}>
-                                        {globalSports.length} sport groups
+                                        {citySports.length} sport groups
                                     </Text>
                                 </View>
                                 <Ionicons 
@@ -670,7 +831,39 @@ export default function SocialScreen() {
 
                             {showCitySports && (
                                 <View style={socialStyles.cityGroups}>
-                                    <Text style={socialStyles.cityGroupsTitle}>Global Sport Communities</Text>
+                                    {citySports.map(group => (
+                                        <SportGroupCard key={group.id} group={group} />
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Global Sport Groups - Collapsible */}
+                        <View style={socialStyles.section}>
+                            <View style={socialStyles.sectionHeader}>
+                                <Text style={socialStyles.sectionTitle}>Global Sport Groups</Text>
+                                <Text style={socialStyles.sectionCount}>{globalSports.length} groups</Text>
+                            </View>
+                            
+                            <TouchableOpacity 
+                                style={socialStyles.cityCard}
+                                onPress={handleGlobalPress}
+                            >
+                                <View style={socialStyles.cityInfo}>
+                                    <Text style={socialStyles.cityName}>Global Communities</Text>
+                                    <Text style={socialStyles.cityMembers}>
+                                        {globalSports.length} sport groups
+                                    </Text>
+                                </View>
+                                <Ionicons 
+                                    name={showGlobalSports ? "chevron-up" : "chevron-down"} 
+                                    size={20} 
+                                    color={colors.textSecondary} 
+                                />
+                            </TouchableOpacity>
+
+                            {showGlobalSports && (
+                                <View style={socialStyles.cityGroups}>
                                     {globalSports.map(group => (
                                         <SportGroupCard key={group.id} group={group} />
                                     ))}

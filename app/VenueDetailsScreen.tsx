@@ -4,11 +4,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 // 1. Import StatusBar and useSafeAreaInsets
 import { Venue } from '@/src/common/types';
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Location from 'expo-location';
+import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
 
 const { width } = Dimensions.get("window");
 
@@ -16,6 +18,13 @@ export default function VenueDetailsScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [distance, setDistance] = useState<string>('N/A');
+  const [availableCourts, setAvailableCourts] = useState<Array<{id: string; name: string; type: string}>>([]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [datePickerAnimation] = useState(new Animated.Value(0));
+  const [bookingsForDate, setBookingsForDate] = useState<any[]>([]);
   const router = useRouter();
   const params = useLocalSearchParams();
   // 2. Get the safe area inset values
@@ -24,15 +33,37 @@ export default function VenueDetailsScreen() {
   const loadVenueDetails = useCallback(async () => {
     try {
       const { VenueStorageService } = await import('@/src/common/services/venueStorage');
+      const { supabase } = await import('@/src/common/services/supabase');
       const venues = await VenueStorageService.getAllVenues();
       const venueId = params.venueId as string;
       
       const foundVenue = venues.find(v => v.id === venueId);
       if (foundVenue) {
         setVenue(foundVenue);
+        calculateVenueDistance(foundVenue);
+        
+        // Load courts for this venue from database
+        const { data: courts } = await supabase
+          .from('courts')
+          .select('id, name, type')
+          .eq('venue_id', venueId)
+          .eq('is_active', true);
+        
+        if (courts && courts.length > 0) {
+          setAvailableCourts(courts);
+        } else {
+          // Fallback to venue.courts if available
+          if (foundVenue.courts && foundVenue.courts.length > 0) {
+            setAvailableCourts(foundVenue.courts.map(c => ({
+              id: c.id || `court-${c.name}`,
+              name: c.name,
+              type: c.type
+            })));
+          }
+        }
       } else {
         // Fallback to default venue if not found
-        setVenue({
+        const defaultVenue = {
           id: '1',
           name: 'Mahindra Court',
           address: 'Mahindra University, Bahadurpally, Hyderabad',
@@ -47,7 +78,9 @@ export default function VenueDetailsScreen() {
           rating: 4.2,
           isActive: true,
           createdAt: new Date(),
-        });
+        };
+        setVenue(defaultVenue);
+        calculateVenueDistance(defaultVenue);
       }
     } catch {
       // Error loading venue details - using fallback venue
@@ -56,16 +89,319 @@ export default function VenueDetailsScreen() {
     }
   }, [params.venueId]);
 
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    } catch (error) {
+      console.log('Error getting location:', error);
+    }
+  };
+
+  const calculateVenueDistance = (venueData: Venue) => {
+    if (!userLocation || !venueData.location) {
+      setDistance('N/A');
+      return;
+    }
+
+    try {
+      let venueCoords;
+      if (typeof venueData.location === 'string') {
+        venueCoords = JSON.parse(venueData.location);
+      } else {
+        venueCoords = venueData.location;
+      }
+
+      if (venueCoords?.latitude && venueCoords?.longitude) {
+        const distanceKm = calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          venueCoords.latitude,
+          venueCoords.longitude
+        );
+        setDistance(formatDistance(distanceKm));
+      }
+    } catch (error) {
+      console.log('Error calculating distance:', error);
+      setDistance('N/A');
+    }
+  };
+
+  // Generate hourly time slots based on venue operating hours
+  const generateTimeSlots = (courtName: string) => {
+    if (!venue || !venue.operatingHours) return [];
+    
+    const { open, close } = venue.operatingHours;
+    const slots = [];
+    
+    // Parse opening time (format: "10:00" or "10:00 AM")
+    const openHour = parseInt(open.split(':')[0]);
+    const closeHour = parseInt(close.split(':')[0]);
+    
+    // Get current time info
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDay = new Date(selectedDate);
+    selectedDay.setHours(0, 0, 0, 0);
+    const isToday = selectedDay.getTime() === today.getTime();
+    
+    // If viewing today, calculate the next available hour slot
+    let startHour = openHour;
+    if (isToday) {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      // If current time is past the minute mark, start from next hour
+      // For example: if it's 2:30 PM (14:30), start from 3 PM (15:00)
+      if (currentMinute > 0) {
+        startHour = Math.max(currentHour + 1, openHour);
+      } else {
+        // If it's exactly on the hour (e.g., 2:00 PM), can start from current hour
+        startHour = Math.max(currentHour, openHour);
+      }
+      
+      console.log(`⏰ [VENUE DETAILS] Current time: ${currentHour}:${currentMinute}, Starting from hour: ${startHour}`);
+      
+      // If current time is past closing time, show no slots
+      if (startHour >= closeHour) {
+        console.log(`⏰ [VENUE DETAILS] All time slots have passed for today`);
+        return [];
+      }
+    }
+    
+    // Get bookings for this court
+    const courtBookings = bookingsForDate.filter(booking => 
+      (booking as any).court === courtName
+    );
+    
+    console.log(`⏰ [VENUE DETAILS] Generating slots for ${courtName}, bookings:`, courtBookings.length);
+    
+    // Generate hourly slots starting from startHour
+    for (let hour = startHour; hour < closeHour; hour++) {
+      const period = hour < 12 ? 'AM' : 'PM';
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      const timeStr = `${displayHour}:00 ${period}`;
+      
+      // Check if this time slot is booked
+      const booking = courtBookings.find(b => {
+        // Parse booking time (e.g., "6:00 AM")
+        const bookingTimeParts = b.time.split(' ');
+        const bookingHourStr = bookingTimeParts[0].split(':')[0];
+        const bookingPeriod = bookingTimeParts[1];
+        let bookingHour = parseInt(bookingHourStr);
+        
+        // Convert to 24-hour format
+        if (bookingPeriod === 'PM' && bookingHour !== 12) {
+          bookingHour += 12;
+        } else if (bookingPeriod === 'AM' && bookingHour === 12) {
+          bookingHour = 0;
+        }
+        
+        // Parse duration (e.g., "2 hr" -> 2)
+        const durationHours = parseInt(b.duration.split(' ')[0]);
+        
+        // Check if current hour falls within booking range
+        return hour >= bookingHour && hour < bookingHour + durationHours;
+      });
+      
+      let status = 'available';
+      let spotsLeft = 4;
+      let duration = 1;
+      let endTime = null;
+      
+      if (booking) {
+        // Determine status based on booking type
+        const bookingStatus = (booking as any).bookingStatus || 'confirmed';
+        
+        if (bookingStatus === 'confirmed' || booking.bookingType === 'Private Game') {
+          status = 'booked';
+          spotsLeft = 0;
+        } else if (booking.bookingType === 'Open Game') {
+          // Parse players (e.g., "2 players" or "1 player")
+          const playersNeeded = parseInt(booking.players || '4');
+          if (playersNeeded === 1) {
+            status = 'last-spot';
+            spotsLeft = 1;
+          } else if (playersNeeded <= 2) {
+            status = 'joining';
+            spotsLeft = playersNeeded;
+          } else {
+            status = 'joining';
+            spotsLeft = playersNeeded;
+          }
+        }
+        
+        // Check if this is the start of a multi-hour booking
+        const bookingTimeParts = booking.time.split(' ');
+        const bookingHourStr = bookingTimeParts[0].split(':')[0];
+        const bookingPeriod = bookingTimeParts[1];
+        let bookingStartHour = parseInt(bookingHourStr);
+        
+        if (bookingPeriod === 'PM' && bookingStartHour !== 12) {
+          bookingStartHour += 12;
+        } else if (bookingPeriod === 'AM' && bookingStartHour === 12) {
+          bookingStartHour = 0;
+        }
+        
+        if (hour === bookingStartHour) {
+          // This is the start of the booking
+          duration = parseInt(booking.duration.split(' ')[0]);
+          if (duration > 1) {
+            const endHour = hour + duration;
+            const endPeriod = endHour < 12 ? 'AM' : 'PM';
+            const endDisplayHour = endHour > 12 ? endHour - 12 : endHour === 0 ? 12 : endHour;
+            endTime = `${endDisplayHour}:00 ${endPeriod}`;
+          }
+        } else {
+          // This is a continuation slot, skip it
+          continue;
+        }
+      }
+      
+      slots.push({
+        time: timeStr,
+        endTime: endTime,
+        status: status,
+        price: venue.pricing.basePrice,
+        duration: duration,
+        spotsLeft: spotsLeft
+      });
+    }
+    
+    return slots;
+  };
+
+  // Generate dates for next 15 days
+  const generateDates = () => {
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 0; i < 15; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push(date);
+    }
+    
+    return dates;
+  };
+
+  // Format date for display
+  const formatDate = (date: Date) => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    } else {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;
+    }
+  };
+
+  // Open date picker with animation
+  const openDatePicker = () => {
+    setShowDatePicker(true);
+    Animated.spring(datePickerAnimation, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 8,
+    }).start();
+  };
+
+  // Close date picker with animation
+  const closeDatePicker = () => {
+    Animated.spring(datePickerAnimation, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 8,
+    }).start(() => {
+      setShowDatePicker(false);
+    });
+  };
+
+  const getSlotColor = (status: string) => {
+    switch (status) {
+      case 'booked':
+        return '#D1D5DB'; // Faded gray
+      case 'available':
+        return '#10B981'; // Green
+      case 'joining':
+        return '#F59E0B'; // Orange  
+      case 'last-spot':
+        return '#EF4444'; // Red
+      default:
+        return '#D1D5DB';
+    }
+  };
+
+  useEffect(() => {
+    getUserLocation();
+  }, []);
+
   useEffect(() => {
     loadVenueDetails();
   }, [loadVenueDetails]);
+
+  useEffect(() => {
+    if (venue && userLocation) {
+      calculateVenueDistance(venue);
+    }
+  }, [userLocation, venue]);
+
+  useEffect(() => {
+    // Load bookings when venue or date changes
+    if (venue) {
+      loadBookingsForDate();
+    }
+  }, [venue, selectedDate]);
+
+  const loadBookingsForDate = async () => {
+    if (!venue) return;
+    
+    try {
+      console.log('📅 [VENUE DETAILS] Loading bookings for date:', selectedDate.toDateString());
+      const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
+      const allBookings = await BookingStorageService.getAllBookings();
+      
+      // Filter bookings for this venue and selected date
+      const venueBookings = allBookings.filter(booking => {
+        const bookingDate = new Date(booking.date);
+        return booking.venueId === venue.id && 
+               bookingDate.toDateString() === selectedDate.toDateString();
+      });
+      
+      console.log('📅 [VENUE DETAILS] Found bookings for this date:', venueBookings.length);
+      setBookingsForDate(venueBookings);
+    } catch (error) {
+      console.error('❌ [VENUE DETAILS] Error loading bookings:', error);
+      setBookingsForDate([]);
+    }
+  };
 
   if (loading) {
     return (
       <View style={[venueDetailsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator size="large" color="#047857" />
-        <Text style={{ marginTop: 16, color: '#6B7280' }}>Loading venue details...</Text>
+        <Text style={venueDetailsStyles.loadingText}>Loading venue details...</Text>
       </View>
     );
   }
@@ -74,9 +410,9 @@ export default function VenueDetailsScreen() {
     return (
       <View style={[venueDetailsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <Text style={{ color: '#6B7280' }}>Venue not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ color: '#047857' }}>Go Back</Text>
+        <Text style={venueDetailsStyles.errorText}>Venue not found</Text>
+        <TouchableOpacity onPress={() => router.back()} style={venueDetailsStyles.goBackButton}>
+          <Text style={venueDetailsStyles.goBackText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -168,7 +504,7 @@ export default function VenueDetailsScreen() {
             >
               <Ionicons name="map-outline" size={18} color="#047857" />
               <Text style={venueDetailsStyles.locationText}>{venue.address}</Text>
-              <Text style={venueDetailsStyles.distanceText}>• 2.5 km</Text>
+              <Text style={venueDetailsStyles.distanceText}>• {distance}</Text>
             </TouchableOpacity>
             
             {/* Operating Hours */}
@@ -212,80 +548,157 @@ export default function VenueDetailsScreen() {
               <Text style={venueDetailsStyles.amenitiesTitle}>Court Availability</Text>
               <TouchableOpacity 
                 style={venueDetailsStyles.dateSelector}
-                onPress={() => {
-                  // TODO: Implement date picker modal for next 15 days
-                  // Date selection functionality will be added
-                }}
+                onPress={openDatePicker}
               >
-                <Text style={venueDetailsStyles.todayLabel}>Today</Text>
+                <Text style={venueDetailsStyles.todayLabel}>{formatDate(selectedDate)}</Text>
                 <Ionicons name="chevron-down-outline" size={16} color="#047857" />
               </TouchableOpacity>
             </View>
             
             {/* Courts with Horizontal Scrollable Time Slots */}
-            {['Court A1', 'Court B1', 'Court C1'].map((courtName, courtIndex) => (
-              <View key={courtIndex} style={venueDetailsStyles.courtSection}>
-                <Text style={venueDetailsStyles.courtTitle}>{courtName}</Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  style={venueDetailsStyles.timeSlotsScroll}
-                  contentContainerStyle={venueDetailsStyles.timeSlotsContainer}
-                >
-                  {[
-                    { time: '6:00 AM', status: 'available', price: 500 },
-                    { time: '7:00 AM', status: 'booked', price: 500 },
-                    { time: '8:00 AM', status: 'available', price: 500 },
-                    { time: '9:00 AM', status: 'openToJoin', price: 500 },
-                    { time: '10:00 AM', status: 'booked', price: 500 },
-                    { time: '11:00 AM', status: 'available', price: 500 },
-                    { time: '12:00 PM', status: 'openToJoin', price: 500 },
-                    { time: '1:00 PM', status: 'booked', price: 500 },
-                    { time: '2:00 PM', status: 'available', price: 500 },
-                  ].map((slot, timeIndex) => (
-                    <TouchableOpacity
-                      key={timeIndex}
-                      style={[
-                        venueDetailsStyles.timeSlotCard,
-                        slot.status === 'available' ? venueDetailsStyles.availableSlot : 
-                        slot.status === 'openToJoin' ? venueDetailsStyles.openToJoinSlot : 
-                        venueDetailsStyles.bookedSlot
-                      ]}
-                      onPress={() => {
-                        if (slot.status === 'available' || slot.status === 'openToJoin') {
-                          router.push({
-                            pathname: '/BookingFormScreen',
-                            params: {
-                              venueId: venue.id,
-                              venueName: venue.name,
-                              venuePrice: slot.price.toString(),
-                              ownerId: venue.ownerId,
-                              court: courtName,
-                              timeSlot: slot.time
+            {availableCourts.length > 0 ? (
+              availableCourts.map((court, courtIndex) => (
+                <View key={courtIndex} style={venueDetailsStyles.courtSection}>
+                  <Text style={venueDetailsStyles.courtTitle}>{court.name}</Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={venueDetailsStyles.timeSlotsScroll}
+                    contentContainerStyle={venueDetailsStyles.timeSlotsContainer}
+                  >
+                    {generateTimeSlots(court.name).map((slot, timeIndex) => {
+                      const cardWidth = slot.duration > 1 ? 100 + (slot.duration - 1) * 60 : 100;
+                      const slotColor = getSlotColor(slot.status);
+                      
+                      return (
+                        <TouchableOpacity
+                          key={timeIndex}
+                          style={[
+                            venueDetailsStyles.timeSlotCard,
+                            {
+                              width: cardWidth,
+                              backgroundColor: slotColor + '15',
+                              borderColor: slotColor,
+                              borderWidth: 1.5,
                             }
-                          });
-                        }
-                      }}
-                      disabled={slot.status === 'booked'}
-                    >
-                      <Text style={venueDetailsStyles.slotTime}>{slot.time}</Text>
-                      <Text style={[
-                        venueDetailsStyles.slotPrice,
-                        slot.status === 'available' ? venueDetailsStyles.availablePrice : 
-                        slot.status === 'openToJoin' ? venueDetailsStyles.openToJoinPrice :
-                        venueDetailsStyles.bookedPrice
-                      ]}>
-                        {slot.status === 'available' ? `₹${slot.price}` : 
-                         slot.status === 'openToJoin' ? 'Join Game' : 'Booked'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            ))}
+                          ]}
+                          onPress={() => {
+                            if (slot.status !== 'booked') {
+                              router.push({
+                                pathname: '/BookingFormScreen',
+                                params: {
+                                  venueId: venue.id,
+                                  venueName: venue.name,
+                                  venuePrice: slot.price.toString(),
+                                  ownerId: venue.ownerId,
+                                  court: court.name,
+                                  timeSlot: slot.time
+                                }
+                              });
+                            }
+                          }}
+                          disabled={slot.status === 'booked'}
+                        >
+                          <Text style={[
+                            venueDetailsStyles.slotTime,
+                            { color: slot.status === 'booked' ? '#9CA3AF' : '#000' }
+                          ]}>
+                            {slot.endTime ? `${slot.time} - ${slot.endTime}` : slot.time}
+                          </Text>
+                          <Text style={[
+                            venueDetailsStyles.slotPrice,
+                            { 
+                              color: slotColor,
+                              fontWeight: '600'
+                            }
+                          ]}>
+                            {slot.status === 'booked' ? 'Booked' : 
+                             slot.status === 'available' ? `₹${slot.price}` :
+                             slot.status === 'last-spot' ? '1 spot left' :
+                             'Join Game'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+                ))
+            ) : (
+              <Text style={venueDetailsStyles.noCourtsText}>
+                No courts available
+              </Text>
+            )}
           </View>
         </ScrollView>
       </View>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="none"
+        onRequestClose={closeDatePicker}
+      >
+        <TouchableOpacity 
+          style={venueDetailsStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeDatePicker}
+        >
+          <Animated.View
+            style={[
+              venueDetailsStyles.datePickerContainer,
+              {
+                transform: [{
+                  scale: datePickerAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.9, 1],
+                  })
+                }],
+                opacity: datePickerAnimation,
+              }
+            ]}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={venueDetailsStyles.datePickerHeader}>
+              <Text style={venueDetailsStyles.datePickerTitle}>
+                Select Date
+              </Text>
+            </View>
+            
+            <ScrollView style={venueDetailsStyles.datePickerScroll}>
+              {generateDates().map((date, index) => {
+                const isSelected = date.toDateString() === selectedDate.toDateString();
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      venueDetailsStyles.dateOption,
+                      isSelected && venueDetailsStyles.dateOptionSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedDate(date);
+                      // Close the picker immediately after selection
+                      closeDatePicker();
+                    }}
+                  >
+                    <Text style={[
+                      venueDetailsStyles.dateOptionText,
+                      isSelected && venueDetailsStyles.dateOptionTextSelected
+                    ]}>
+                      {formatDate(date)}
+                    </Text>
+                    {date.toDateString() !== new Date().toDateString() && (
+                      <Text style={venueDetailsStyles.dateSubtext}>
+                        {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 }

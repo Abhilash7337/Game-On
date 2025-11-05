@@ -1,4 +1,7 @@
 import { Booking } from '@/src/common/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BOOKINGS_STORAGE_KEY = '@game_on_bookings';
 
 interface BookingRequest {
   userId: string;
@@ -30,8 +33,56 @@ class BookingStorageService {
   private static listeners: (() => void)[] = [];
   private static initialized = false;
 
+  // Load bookings from AsyncStorage
+  private static async loadFromStorage(): Promise<void> {
+    try {
+      console.log('💾 [STORAGE] Loading bookings from AsyncStorage...');
+      const stored = await AsyncStorage.getItem(BOOKINGS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Convert date strings back to Date objects
+        this.bookings = parsed.map((b: any) => ({
+          ...b,
+          date: new Date(b.date),
+          createdAt: new Date(b.createdAt),
+          updatedAt: new Date(b.updatedAt),
+        }));
+        console.log('✅ [STORAGE] Loaded bookings from storage:', this.bookings.length);
+      } else {
+        console.log('ℹ️ [STORAGE] No stored bookings found');
+        this.bookings = [];
+      }
+      this.initialized = true;
+    } catch (error) {
+      console.error('❌ [STORAGE] Error loading bookings:', error);
+      this.bookings = [];
+      this.initialized = true;
+    }
+  }
+
+  // Save bookings to AsyncStorage
+  private static async saveToStorage(): Promise<void> {
+    try {
+      console.log('💾 [STORAGE] Saving bookings to AsyncStorage:', this.bookings.length);
+      await AsyncStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(this.bookings));
+      console.log('✅ [STORAGE] Bookings saved successfully');
+    } catch (error) {
+      console.error('❌ [STORAGE] Error saving bookings:', error);
+    }
+  }
+
+  // Ensure storage is loaded before any operation
+  private static async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      await this.loadFromStorage();
+    }
+  }
+
   static async createBooking(bookingData: BookingRequest): Promise<Booking> {
     try {
+      // Ensure bookings are loaded
+      await this.ensureInitialized();
+
       // Validate required fields
       if (!bookingData.userId || !bookingData.venueId || !bookingData.venueName) {
         throw new Error('User ID, venue ID, and venue name are required');
@@ -70,7 +121,10 @@ class BookingStorageService {
       };
 
       this.bookings.push(booking);
+      await this.saveToStorage(); // Persist to AsyncStorage
       this.notifyListeners();
+      
+      console.log('✅ [STORAGE] Booking added and persisted:', booking.id);
       
       // Also add to the old booking store for compatibility
       const { bookingStore } = await import('@/utils/bookingStore');
@@ -100,6 +154,8 @@ class BookingStorageService {
 
   static async getBookingsByUser(userId: string): Promise<Booking[]> {
     try {
+      await this.ensureInitialized();
+      
       if (!userId) {
         throw new Error('User ID is required');
       }
@@ -115,6 +171,8 @@ class BookingStorageService {
 
   static async getBookingsByClient(clientId: string): Promise<BookingWithNotification[]> {
     try {
+      await this.ensureInitialized();
+      
       if (!clientId) {
         throw new Error('Client ID is required');
       }
@@ -129,10 +187,24 @@ class BookingStorageService {
   }
 
   static async getPendingBookings(clientId: string): Promise<BookingWithNotification[]> {
-    return this.bookings.filter(booking => 
+    await this.ensureInitialized();
+    
+    console.log('🔍 [STORAGE] Getting pending bookings for clientId:', clientId);
+    console.log('🔍 [STORAGE] Total bookings in storage:', this.bookings.length);
+    console.log('🔍 [STORAGE] All bookings:', JSON.stringify(this.bookings.map(b => ({
+      id: b.id,
+      ownerId: b.ownerId,
+      bookingStatus: (b as any).bookingStatus,
+      venue: (b as any).venue,
+    })), null, 2));
+    
+    const pending = this.bookings.filter(booking => 
       booking.ownerId === clientId && 
       (booking as any).bookingStatus === 'pending'
     );
+    
+    console.log('✅ [STORAGE] Found pending bookings:', pending.length);
+    return pending;
   }
 
   static async updateBookingStatus(
@@ -140,6 +212,8 @@ class BookingStorageService {
     status: 'confirmed' | 'rejected', 
     message?: string
   ): Promise<Booking | null> {
+    await this.ensureInitialized();
+    
     const booking = this.bookings.find(b => b.id === bookingId);
     if (!booking) return null;
 
@@ -162,12 +236,15 @@ class BookingStorageService {
         price: booking.price,
       });
     }
-
+    
+    await this.saveToStorage(); // Persist changes
     this.notifyListeners();
     return booking;
   }
 
   static async getAllBookings(): Promise<BookingWithNotification[]> {
+    await this.ensureInitialized();
+    
     return [...this.bookings].sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
@@ -184,14 +261,19 @@ class BookingStorageService {
     this.listeners.forEach(listener => listener());
   }
 
-  // Initialize with demo data (no bookings - clean slate for testing)
-  static initializeDemoData(): void {
-    if (this.initialized) return;
-    
-    // Keep bookings array empty so user can test the complete workflow
-    // from booking creation to revenue tracking
+  // Clear all bookings (for testing/reset)
+  static async clearAllBookings(): Promise<void> {
+    console.log('🗑️ [STORAGE] Clearing all bookings...');
     this.bookings = [];
-    this.initialized = true;
+    await AsyncStorage.removeItem(BOOKINGS_STORAGE_KEY);
+    this.notifyListeners();
+    console.log('✅ [STORAGE] All bookings cleared');
+  }
+
+  // Initialize with demo data (deprecated - using AsyncStorage now)
+  static initializeDemoData(): void {
+    // No-op - bookings are now persisted in AsyncStorage
+    console.log('ℹ️ [STORAGE] initializeDemoData called (deprecated, using AsyncStorage)');
   }
 }
 
