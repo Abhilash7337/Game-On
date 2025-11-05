@@ -1,14 +1,18 @@
-import AppHeader from '@/src/common/components/AppHeader';
 import { Button } from '@/src/common/components/Button';
 import { Input } from '@/src/common/components/Input';
+import { LocationPicker } from '@/src/common/components/LocationPicker';
 import { CourtType } from '@/src/common/types';
-import { borderRadius, colors, shadows, spacing, typography } from '@/styles/theme';
+import { addVenueScreenStyles } from '@/styles/screens/AddVenueScreen';
+import { colors, spacing } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const styles = addVenueScreenStyles;
 
 interface Court {
   id: string;
@@ -20,6 +24,7 @@ interface Court {
 interface VenueFormData {
   name: string;
   address: string;
+  location: { latitude: number; longitude: number };
   description: string;
   basePrice: string;
   peakHourMultiplier: string;
@@ -55,6 +60,7 @@ const DAYS_OF_WEEK = [
 
 export default function AddVenueScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [editingCourtType, setEditingCourtType] = useState<string | null>(null);
@@ -62,6 +68,7 @@ export default function AddVenueScreen() {
   const [formData, setFormData] = useState<VenueFormData>({
     name: '',
     address: '',
+    location: { latitude: 0, longitude: 0 },
     description: '',
     basePrice: '',
     peakHourMultiplier: '1.5',
@@ -233,7 +240,9 @@ export default function AddVenueScreen() {
   const validateCurrentStep = () => {
     switch (currentStep) {
       case 1:
-        return formData.name.trim() && formData.address.trim() && formData.description.trim();
+        const hasBasicInfo = formData.name.trim() && formData.address.trim() && formData.description.trim();
+        const hasLocation = formData.location.latitude !== 0 && formData.location.longitude !== 0;
+        return hasBasicInfo && hasLocation;
       case 2:
         return formData.basePrice && parseFloat(formData.basePrice) > 0;
       case 3:
@@ -339,6 +348,22 @@ export default function AddVenueScreen() {
           leftIcon="location-outline"
           multiline
           required
+        />
+      </View>
+
+      <View style={styles.fieldSpacing}>
+        <Text style={styles.sectionLabel}>Venue Location</Text>
+        <Text style={styles.sectionSubtext}>Select your venue's exact location on the map</Text>
+        <LocationPicker
+          onLocationSelect={(location) => {
+            setFormData(prev => ({
+              ...prev,
+              location: { latitude: location.latitude, longitude: location.longitude },
+              address: location.address || prev.address,
+            }));
+          }}
+          initialLocation={formData.location.latitude !== 0 ? formData.location : undefined}
+          address={formData.address}
         />
       </View>
 
@@ -625,23 +650,26 @@ export default function AddVenueScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+    <View style={styles.container}>
+      <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: false }} />
       
-      <AppHeader 
-        title="Add New Venue"
-        subtitle={`Step ${currentStep} of 4`}
-        backgroundColor={colors.secondary}
-      >
-        <TouchableOpacity 
-          style={styles.closeButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="close-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-      </AppHeader>
+      {/* White Elevated Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add New Venue</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <Text style={styles.headerSubtitle}>Step {currentStep} of 4</Text>
+      </View>
 
-      {/* Progress Indicator */}
+      {/* Progress Indicator - 4 Dashed Lines */}
       <View style={styles.progressContainer}>
         {[1, 2, 3, 4].map((step) => (
           <View
@@ -696,320 +724,6 @@ export default function AddVenueScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    padding: spacing.sm,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  progressStep: {
-    flex: 1,
-    height: 4,
-    backgroundColor: colors.gray200,
-    borderRadius: 2,
-  },
-  progressStepActive: {
-    backgroundColor: colors.secondary,
-  },
-  formContainer: {
-    padding: spacing.xl,
-  },
-  stepContainer: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    ...shadows.md,
-  },
-  stepTitle: {
-    fontSize: typography.fontSize.xxl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  stepSubtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
-  },
-  fieldSpacing: {
-    marginBottom: spacing.lg,
-  },
-  imageSection: {
-    marginTop: spacing.lg,
-  },
-  sectionLabel: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  sectionSubtext: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  imageScrollContainer: {
-    flexDirection: 'row',
-  },
-  imageContainer: {
-    position: 'relative',
-    marginRight: spacing.md,
-  },
-  venueImage: {
-    width: 120,
-    height: 80,
-    borderRadius: borderRadius.md,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-  },
-  addImageButton: {
-    width: 120,
-    height: 80,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: colors.gray300,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addImageText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  pricingRow: {
-    flexDirection: 'row',
-  },
-  timeRow: {
-    flexDirection: 'row',
-  },
-  daysSection: {
-    marginTop: spacing.lg,
-  },
-  daysContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  dayChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    backgroundColor: colors.background,
-  },
-  dayChipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  dayChipText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: typography.fontWeight.medium,
-  },
-  dayChipTextSelected: {
-    color: colors.textInverse,
-  },
-  amenitiesSection: {
-    marginTop: spacing.lg,
-  },
-  amenitiesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  amenityChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    backgroundColor: colors.background,
-  },
-  amenityChipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  amenityChipText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  amenityChipTextSelected: {
-    color: colors.textInverse,
-  },
-  courtCard: {
-    backgroundColor: colors.backgroundTertiary,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  courtHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  courtTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  courtRow: {
-    flexDirection: 'row',
-  },
-  inputLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  courtTypeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  courtTypeChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    backgroundColor: colors.background,
-  },
-  courtTypeChipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  courtTypeChipText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-  },
-  courtTypeChipTextSelected: {
-    color: colors.textInverse,
-  },
-  addCourtButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-    gap: spacing.sm,
-  },
-  addCourtText: {
-    fontSize: typography.fontSize.base,
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
-  },
-  reviewCard: {
-    backgroundColor: colors.backgroundTertiary,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-  },
-  reviewSection: {
-    marginBottom: spacing.lg,
-  },
-  reviewSectionTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  reviewText: {
-    fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  navigationContainer: {
-    flexDirection: 'row',
-    padding: spacing.xl,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray200,
-  },
-  navButton: {
-    flex: 1,
-  },
-  prevButton: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-
-  customCourtTypeContainer: {
-    marginTop: spacing.sm,
-  },
-  customCourtTypeInput: {
-    marginBottom: spacing.sm,
-  },
-  customCourtTypeActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.sm,
-  },
-  customTypeActionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-  },
-  customTypeActionButtonPrimary: {
-    borderColor: colors.primary,
-    backgroundColor: colors.backgroundSecondary,
-  },
-  customCourtTypeChip: {
-    backgroundColor: colors.secondary,
-    borderColor: colors.secondary,
-  },
-  customCourtTypeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-    backgroundColor: colors.backgroundSecondary,
-    gap: spacing.xs,
-  },
-  customCourtTypeButtonText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
-  },
-});

@@ -1,4 +1,5 @@
 import { ClientService } from '@/src/client/services/clientApi';
+import { ClientAuthService } from '@/src/client/services/clientAuth';
 import AppHeader from '@/src/common/components/AppHeader';
 import { Booking, Venue } from '@/src/common/types';
 import {
@@ -8,7 +9,7 @@ import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ClientDashboardScreen() {
@@ -22,6 +23,7 @@ export default function ClientDashboardScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   useEffect(() => {
     initializeClientSession();
@@ -115,7 +117,7 @@ export default function ClientDashboardScreen() {
       <Text style={clientDashboardStyles.venueCourts}>{venue.courts.length} courts</Text>
       <View style={clientDashboardStyles.venueFooter}>
         <Text style={clientDashboardStyles.venueRating}>
-          ⭐ {venue.rating.toFixed(1)}
+          {venue.rating.toFixed(1)}
         </Text>
         <TouchableOpacity style={clientDashboardStyles.manageButton}>
           <Text style={clientDashboardStyles.manageButtonText}>Manage</Text>
@@ -124,20 +126,105 @@ export default function ClientDashboardScreen() {
     </View>
   );
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ClientAuthService.signOut();
+              setShowProfileMenu(false);
+              router.replace('/client-login');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={clientDashboardStyles.container} edges={['left', 'right', 'bottom']}>
       {/* Disable Expo Router default header */}
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen 
+        options={{ 
+          headerShown: false,
+          gestureEnabled: false // Disable swipe back gesture on iOS
+        }} 
+      />
       
       <AppHeader 
         title="Dashboard"
         subtitle="Manage your venues and bookings"
       >
-        {/* Notification button positioned absolutely in top right */}
-        <TouchableOpacity style={clientDashboardStyles.headerNotificationButton}>
-          <Ionicons name="notifications-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+        {/* Header Actions - Notification and Profile */}
+        <View style={clientDashboardStyles.headerActions}>
+          <TouchableOpacity style={clientDashboardStyles.headerIconButton}>
+            <Ionicons name="notifications-outline" size={26} color="#fff" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={clientDashboardStyles.headerIconButton}
+            onPress={() => setShowProfileMenu(true)}
+          >
+            <Ionicons name="person-circle-outline" size={28} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </AppHeader>
+
+      {/* Profile Menu Modal */}
+      <Modal
+        visible={showProfileMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowProfileMenu(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowProfileMenu(false)}>
+          <View style={clientDashboardStyles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={clientDashboardStyles.profileMenu}>
+                <View style={clientDashboardStyles.profileMenuHeader}>
+                  <View style={clientDashboardStyles.profileAvatar}>
+                    <Ionicons name="person" size={32} color={colors.primary} />
+                  </View>
+                  <View style={clientDashboardStyles.profileInfo}>
+                    <Text style={clientDashboardStyles.profileName}>Demo Venue Owner</Text>
+                    <Text style={clientDashboardStyles.profileEmail}>demo@gameon.com</Text>
+                  </View>
+                </View>
+                
+                <View style={clientDashboardStyles.profileMenuDivider} />
+                
+                <TouchableOpacity 
+                  style={clientDashboardStyles.profileMenuItem}
+                  onPress={() => {
+                    setShowProfileMenu(false);
+                    Alert.alert('Coming Soon', 'Profile settings will be available soon!');
+                  }}
+                >
+                  <Ionicons name="settings-outline" size={20} color={colors.textPrimary} />
+                  <Text style={clientDashboardStyles.profileMenuItemText}>Settings</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[clientDashboardStyles.profileMenuItem, clientDashboardStyles.logoutMenuItem]}
+                  onPress={handleLogout}
+                >
+                  <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+                  <Text style={clientDashboardStyles.logoutMenuItemText}>Logout</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       <ScrollView 
         style={clientDashboardStyles.content} 
