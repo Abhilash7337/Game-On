@@ -130,7 +130,17 @@ class ClientAuthService {
   // Get current session
   static async getCurrentSession() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      // Handle refresh token errors by clearing local session
+      if (error) {
+        console.error('Client session error:', error);
+        if (error.message.includes('Refresh Token') || error.message.includes('Invalid')) {
+          console.log('Clearing invalid client session');
+          await this.signOut();
+        }
+        return null;
+      }
       
       if (session && session.user) {
         // Check if this user is a client
@@ -163,6 +173,13 @@ class ClientAuthService {
       return null;
     } catch (error) {
       console.error('Client session check error:', error);
+      
+      // Handle AuthApiError specifically
+      if (error instanceof Error && error.message.includes('Refresh Token')) {
+        console.log('Handling client refresh token error, signing out');
+        await this.signOut();
+      }
+      
       return null;
     }
   }

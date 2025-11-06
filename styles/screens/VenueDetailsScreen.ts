@@ -1,9 +1,9 @@
 // VenueDetailsScreen specific styles
 import { StyleSheet } from 'react-native';
-import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 import { buttonStyles, cardStyles } from '../components/common';
 import { layoutStyles, textStyles } from '../components/layout';
 import { headerStyles } from '../components/ui';
+import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
 
@@ -35,7 +35,8 @@ export const venueDetailsStyles = StyleSheet.create({
   distanceText: {
     color: colors.textSecondary,
     fontSize: typography.fontSize.sm,
-    marginLeft: spacing.xs,
+    marginTop: spacing.xs / 2,
+    fontWeight: '500',
   },
   imageCarousel: {
     width: '100%',
@@ -90,13 +91,13 @@ export const venueDetailsStyles = StyleSheet.create({
   },
   venueLocation: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: spacing.xs,
   },
   locationText: {
-    marginLeft: spacing.xs,
     color: colors.textSecondary,
     fontSize: typography.fontSize.sm,
+    lineHeight: 20,
   },
   operatingHours: {
     flexDirection: 'row',

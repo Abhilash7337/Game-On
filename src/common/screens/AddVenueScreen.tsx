@@ -138,14 +138,53 @@ export default function AddVenueScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        const newImage = result.assets[0].uri;
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, newImage].slice(0, 8) // Limit to 8 images
-        }));
+        setLoading(true);
+        
+        try {
+          const { ImageUploadService } = await import('@/src/common/services/imageUpload');
+          
+          // Initialize bucket if needed
+          await ImageUploadService.initializeBucket();
+          
+          const uploadResult = await ImageUploadService.uploadImage(
+            result.assets[0].uri, 
+            `venue_camera_${Date.now()}.jpg`
+          );
+          
+          if (uploadResult.success && uploadResult.url) {
+            setFormData(prev => ({
+              ...prev,
+              images: [...prev.images, uploadResult.url!].slice(0, 8) // Limit to 8 images
+            }));
+          } else {
+            Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload image to cloud storage.');
+          }
+        } catch (error) {
+          Alert.alert('Upload Error', 'Failed to upload image to cloud storage.');
+        } finally {
+          setLoading(false);
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to take photo');
+      setLoading(false);
+    }
+  };
+
+  const uploadImageToCloud = async (uri: string): Promise<string | null> => {
+    try {
+      const { ImageUploadService } = await import('@/src/common/services/imageUpload');
+      const result = await ImageUploadService.uploadImage(uri, 'venue_image.jpg');
+      
+      if (result.success && result.url) {
+        return result.url;
+      } else {
+        console.error('Upload failed:', result.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      return null;
     }
   };
 
@@ -159,22 +198,66 @@ export default function AddVenueScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const newImages = result.assets.map((asset: ImagePicker.ImagePickerAsset) => asset.uri);
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, ...newImages].slice(0, 8) // Limit to 8 images
-        }));
+        setLoading(true);
+        
+        try {
+          const { ImageUploadService } = await import('@/src/common/services/imageUpload');
+          
+          // Initialize bucket if needed
+          await ImageUploadService.initializeBucket();
+          
+          // Upload all selected images
+          const uploadPromises = result.assets.map(async (asset: ImagePicker.ImagePickerAsset) => {
+            const uploadResult = await ImageUploadService.uploadImage(asset.uri, `venue_${Date.now()}.jpg`);
+            return uploadResult.success ? uploadResult.url : null;
+          });
+          
+          const uploadResults = await Promise.all(uploadPromises);
+          const successfulUploads = uploadResults.filter((url): url is string => url !== null);
+          
+          if (successfulUploads.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              images: [...prev.images, ...successfulUploads].slice(0, 8) // Limit to 8 images
+            }));
+            
+            if (successfulUploads.length < result.assets.length) {
+              Alert.alert('Partial Success', `${successfulUploads.length} of ${result.assets.length} images uploaded successfully.`);
+            }
+          } else {
+            Alert.alert('Upload Failed', 'Failed to upload images. Please try again.');
+          }
+        } catch (error) {
+          Alert.alert('Upload Error', 'Failed to upload images to cloud storage.');
+        } finally {
+          setLoading(false);
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to pick images from library');
+      setLoading(false);
     }
   };
 
-  const removeImage = (index: number) => {
+  const removeImage = async (index: number) => {
+    const imageToRemove = formData.images[index];
+    
+    // Remove from state first for immediate UI update
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
+    
+    // If it's a cloud URL, try to delete from storage
+    if (imageToRemove && (imageToRemove.includes('supabase') || imageToRemove.includes('storage'))) {
+      try {
+        const { ImageUploadService } = await import('@/src/common/services/imageUpload');
+        await ImageUploadService.deleteImage(imageToRemove);
+      } catch (error) {
+        console.error('Failed to delete image from cloud:', error);
+        // Don't show error to user since image was already removed from UI
+      }
+    }
   };
 
   const toggleAmenity = (amenity: string) => {

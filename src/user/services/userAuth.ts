@@ -117,7 +117,17 @@ class UserAuthService {
   // Get current session
   static async getCurrentSession() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      // Handle refresh token errors by clearing local session
+      if (error) {
+        console.error('Session error:', error);
+        if (error.message.includes('Refresh Token') || error.message.includes('Invalid')) {
+          console.log('Clearing invalid session');
+          await this.signOut();
+        }
+        return null;
+      }
       
       if (session && session.user) {
         // Get user profile
@@ -146,6 +156,13 @@ class UserAuthService {
       return null;
     } catch (error) {
       console.error('Session check error:', error);
+      
+      // Handle AuthApiError specifically
+      if (error instanceof Error && error.message.includes('Refresh Token')) {
+        console.log('Handling refresh token error, signing out');
+        await this.signOut();
+      }
+      
       return null;
     }
   }

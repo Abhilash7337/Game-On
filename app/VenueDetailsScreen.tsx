@@ -7,10 +7,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Animated, Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 // 1. Import StatusBar and useSafeAreaInsets
 import { Venue } from '@/src/common/types';
+import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
+import * as Location from 'expo-location';
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Location from 'expo-location';
-import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
 
 const { width } = Dimensions.get("window");
 
@@ -25,6 +25,8 @@ export default function VenueDetailsScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [datePickerAnimation] = useState(new Animated.Value(0));
   const [bookingsForDate, setBookingsForDate] = useState<any[]>([]);
+  const [allBookings, setAllBookings] = useState<any[]>([]); // Store all preloaded bookings
+  const [bookingsLoaded, setBookingsLoaded] = useState(false); // Track if bookings are loaded
   const router = useRouter();
   const params = useLocalSearchParams();
   // 2. Get the safe area inset values
@@ -91,55 +93,86 @@ export default function VenueDetailsScreen() {
 
   const getUserLocation = async () => {
     try {
+      console.log('📍 Requesting location permission...');
       const { status } = await Location.requestForegroundPermissionsAsync();
+      
       if (status !== 'granted') {
+        console.log('❌ Location permission denied');
         return;
       }
 
+      console.log('📍 Getting current location...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
 
-      setUserLocation({
+      const userCoords = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-      });
+      };
+      
+      setUserLocation(userCoords);
+      console.log('📍 User location obtained:', userCoords);
+      
     } catch (error) {
-      console.log('Error getting location:', error);
+      console.log('❌ Error getting location:', error);
     }
   };
 
   const calculateVenueDistance = (venueData: Venue) => {
     if (!userLocation || !venueData.location) {
+      console.log('⚠️ Cannot calculate distance - missing user location or venue location');
       setDistance('N/A');
       return;
     }
 
     try {
       let venueCoords;
+      
+      // Handle different location data formats
       if (typeof venueData.location === 'string') {
-        venueCoords = JSON.parse(venueData.location);
+        try {
+          venueCoords = JSON.parse(venueData.location);
+        } catch (parseError) {
+          console.log('❌ Failed to parse venue location string:', venueData.location);
+          setDistance('N/A');
+          return;
+        }
       } else {
         venueCoords = venueData.location;
       }
 
-      if (venueCoords?.latitude && venueCoords?.longitude) {
+      // Validate coordinates
+      if (venueCoords?.latitude && venueCoords?.longitude &&
+          typeof venueCoords.latitude === 'number' && 
+          typeof venueCoords.longitude === 'number' &&
+          !isNaN(venueCoords.latitude) && 
+          !isNaN(venueCoords.longitude) &&
+          venueCoords.latitude !== 0 && 
+          venueCoords.longitude !== 0) {
+        
         const distanceKm = calculateDistance(
           userLocation.latitude,
           userLocation.longitude,
           venueCoords.latitude,
           venueCoords.longitude
         );
-        setDistance(formatDistance(distanceKm));
+        
+        const formattedDistance = formatDistance(distanceKm);
+        setDistance(formattedDistance);
+        console.log(`📍 Distance calculated for ${venueData.name}: ${formattedDistance}`);
+      } else {
+        console.log('❌ Invalid venue coordinates:', venueCoords);
+        setDistance('N/A');
       }
     } catch (error) {
-      console.log('Error calculating distance:', error);
+      console.log('❌ Error calculating distance:', error);
       setDistance('N/A');
     }
   };
 
-  // Generate hourly time slots based on venue operating hours
-  const generateTimeSlots = (courtName: string) => {
+  // Generate hourly time slots based on venue operating hours (optimized for fast date switching)
+  const generateTimeSlots = useCallback((courtName: string) => {
     if (!venue || !venue.operatingHours) return [];
     
     const { open, close } = venue.operatingHours;
@@ -281,7 +314,7 @@ export default function VenueDetailsScreen() {
     }
     
     return slots;
-  };
+  }, [venue, selectedDate, bookingsForDate]); // Depend on key values for optimization
 
   // Generate dates for next 15 days
   const generateDates = () => {
@@ -367,33 +400,70 @@ export default function VenueDetailsScreen() {
   }, [userLocation, venue]);
 
   useEffect(() => {
-    // Load bookings when venue or date changes
-    if (venue) {
-      loadBookingsForDate();
+    // Preload all bookings when venue loads
+    if (venue && !bookingsLoaded) {
+      preloadAllBookings();
     }
-  }, [venue, selectedDate]);
+  }, [venue, bookingsLoaded]);
 
-  const loadBookingsForDate = async () => {
+  useEffect(() => {
+    // Filter bookings instantly when date changes (if bookings are already loaded)
+    if (bookingsLoaded && allBookings.length >= 0) {
+      filterBookingsForDate();
+    }
+  }, [selectedDate, allBookings, bookingsLoaded]);
+
+  // Preload all bookings for the next 15 days (for instant date switching)
+  const preloadAllBookings = async () => {
     if (!venue) return;
     
     try {
-      console.log('📅 [VENUE DETAILS] Loading bookings for date:', selectedDate.toDateString());
+      console.log('📅 [VENUE DETAILS] Preloading all bookings for next 15 days...');
       const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
-      const allBookings = await BookingStorageService.getAllBookings();
+      const allBookingsData = await BookingStorageService.getAllBookings();
       
-      // Filter bookings for this venue and selected date
-      const venueBookings = allBookings.filter(booking => {
+      // Generate date range for next 15 days
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setDate(today.getDate() + 15);
+      
+      // Filter bookings for this venue within the next 15 days
+      const venueBookingsInRange = allBookingsData.filter(booking => {
         const bookingDate = new Date(booking.date);
         return booking.venueId === venue.id && 
-               bookingDate.toDateString() === selectedDate.toDateString();
+               bookingDate >= today && 
+               bookingDate <= endDate;
       });
       
-      console.log('📅 [VENUE DETAILS] Found bookings for this date:', venueBookings.length);
-      setBookingsForDate(venueBookings);
+      console.log('📅 [VENUE DETAILS] Preloaded bookings:', venueBookingsInRange.length);
+      setAllBookings(venueBookingsInRange);
+      setBookingsLoaded(true);
+      
+      // Filter for current selected date
+      filterBookingsForSelectedDate(venueBookingsInRange, selectedDate);
+      
     } catch (error) {
-      console.error('❌ [VENUE DETAILS] Error loading bookings:', error);
+      console.error('❌ [VENUE DETAILS] Error preloading bookings:', error);
+      setAllBookings([]);
+      setBookingsLoaded(true);
       setBookingsForDate([]);
     }
+  };
+
+  // Instantly filter preloaded bookings for the selected date
+  const filterBookingsForDate = () => {
+    filterBookingsForSelectedDate(allBookings, selectedDate);
+  };
+
+  // Helper function to filter bookings for a specific date
+  const filterBookingsForSelectedDate = (bookings: any[], date: Date) => {
+    const filteredBookings = bookings.filter(booking => {
+      const bookingDate = new Date(booking.date);
+      return bookingDate.toDateString() === date.toDateString();
+    });
+    
+    console.log('📅 [VENUE DETAILS] Filtered bookings for', date.toDateString(), ':', filteredBookings.length);
+    setBookingsForDate(filteredBookings);
   };
 
   if (loading) {
@@ -502,9 +572,13 @@ export default function VenueDetailsScreen() {
                 // Maps functionality will be implemented with proper linking
               }}
             >
-              <Ionicons name="map-outline" size={18} color="#047857" />
-              <Text style={venueDetailsStyles.locationText}>{venue.address}</Text>
-              <Text style={venueDetailsStyles.distanceText}>• {distance}</Text>
+              <Ionicons name="map-outline" size={18} color="#047857" style={{ marginTop: 2 }} />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={venueDetailsStyles.locationText} numberOfLines={2} ellipsizeMode="tail">
+                  {venue.address}
+                </Text>
+                <Text style={venueDetailsStyles.distanceText}>• {distance}</Text>
+              </View>
             </TouchableOpacity>
             
             {/* Operating Hours */}
@@ -554,6 +628,16 @@ export default function VenueDetailsScreen() {
                 <Ionicons name="chevron-down-outline" size={16} color="#047857" />
               </TouchableOpacity>
             </View>
+            
+            {/* Loading indicator for initial booking load */}
+            {!bookingsLoaded && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                <ActivityIndicator size="small" color="#047857" />
+                <Text style={{ marginLeft: 8, color: '#6B7280', fontSize: 14 }}>
+                  Loading availability...
+                </Text>
+              </View>
+            )}
             
             {/* Courts with Horizontal Scrollable Time Slots */}
             {availableCourts.length > 0 ? (
@@ -677,8 +761,9 @@ export default function VenueDetailsScreen() {
                     ]}
                     onPress={() => {
                       setSelectedDate(date);
-                      // Close the picker immediately after selection
-                      closeDatePicker();
+                      // Close the picker immediately after selection (no animation delay)
+                      setShowDatePicker(false);
+                      datePickerAnimation.setValue(0);
                     }}
                   >
                     <Text style={[
