@@ -1,5 +1,5 @@
 import { FriendService } from '@/src/common/services/friendService';
-import { GameChatroomService, GameChatroomDisplay } from '@/src/common/services/gameChatroomService';
+import { GameChatroomService } from '@/src/common/services/gameChatroomService';
 import { SportGroupService } from '@/src/common/services/sportGroupService';
 import { supabase } from '@/src/common/services/supabase';
 import { socialStyles } from '@/styles/screens/SocialScreen';
@@ -76,7 +76,20 @@ export default function SocialScreen() {
     const loadGameChatrooms = async () => {
         try {
             const { data: userData, error: userError } = await supabase.auth.getUser();
-            if (userError || !userData?.user?.id) {
+            if (userError) {
+                console.log('⚠️ Auth error loading chatrooms:', userError.message);
+                // Handle refresh token error gracefully
+                if (userError.message.includes('Refresh Token') || userError.message.includes('Invalid')) {
+                    console.log('Clearing invalid session from social screen');
+                    await supabase.auth.signOut();
+                    router.replace('/login');
+                    return;
+                }
+                setGameChats([]);
+                return;
+            }
+            
+            if (!userData?.user?.id) {
                 console.log('⚠️ No authenticated user for chatrooms');
                 setGameChats([]);
                 return;
@@ -213,7 +226,15 @@ export default function SocialScreen() {
         // Load sport groups data
         const loadSportGroups = async () => {
             try {
-                const { data: userData } = await supabase.auth.getUser();
+                const { data: userData, error: userError } = await supabase.auth.getUser();
+                if (userError) {
+                    console.log('⚠️ Auth error loading sport groups:', userError.message);
+                    if (userError.message.includes('Refresh Token') || userError.message.includes('Invalid')) {
+                        await supabase.auth.signOut();
+                        router.replace('/login');
+                        return;
+                    }
+                }
                 const userId = userData?.user?.id;
 
                 // Initialize city sport groups if they don't exist
@@ -362,16 +383,27 @@ export default function SocialScreen() {
         // Prevent multiple rapid clicks
         if (navigating) return;
         
-        const { data: userData } = await supabase.auth.getUser();
-        const userId = userData?.user?.id;
+        try {
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            if (userError) {
+                console.log('⚠️ Auth error in sport group press:', userError.message);
+                if (userError.message.includes('Refresh Token') || userError.message.includes('Invalid')) {
+                    await supabase.auth.signOut();
+                    router.replace('/login');
+                    return;
+                }
+                Alert.alert('Authentication Error', 'Please sign in again to continue');
+                return;
+            }
 
-        if (!userId) {
-            Alert.alert('Sign In Required', 'Please sign in to join sport groups');
-            return;
-        }
+            const userId = userData?.user?.id;
+            if (!userId) {
+                Alert.alert('Sign In Required', 'Please sign in to join sport groups');
+                return;
+            }
 
-        // Check if user is a member
-        if (!group.isMember && group.conversationId) {
+            // Check if user is a member
+            if (!group.isMember && group.conversationId) {
             // Ask if they want to join
             Alert.alert(
                 'Join Group',
@@ -434,21 +466,25 @@ export default function SocialScreen() {
                     }
                 ]
             );
-        } else {
-            // Already a member, just navigate to chat
-            setNavigating(true);
-            router.push({
-                pathname: '/SportGroupChatScreen',
-                params: {
-                    conversationId: group.conversationId,
-                    groupName: group.name,
-                    sport: group.sport,
-                    isGlobal: String(group.isGlobal || false)
-                }
-            });
-            
-            // Reset navigating flag after a delay
-            setTimeout(() => setNavigating(false), 1000);
+            } else {
+                // Already a member, just navigate to chat
+                setNavigating(true);
+                router.push({
+                    pathname: '/SportGroupChatScreen',
+                    params: {
+                        conversationId: group.conversationId,
+                        groupName: group.name,
+                        sport: group.sport,
+                        isGlobal: String(group.isGlobal || false)
+                    }
+                });
+                
+                // Reset navigating flag after a delay
+                setTimeout(() => setNavigating(false), 1000);
+            }
+        } catch (error) {
+            console.error('Error handling sport group press:', error);
+            Alert.alert('Error', 'Something went wrong. Please try again.');
         }
     }, [router, userCity, navigating]);
 

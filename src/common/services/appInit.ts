@@ -33,10 +33,22 @@ class AppInitService {
       this.currentState.isLoading = true;
       this.notifyListeners();
 
+      // Initialize image storage
+      this.initializeImageStorage();
+
       // Check for existing Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (session && session.user) {
+      // Handle session errors (e.g., invalid refresh token)
+      if (sessionError) {
+        console.error('Session error during initialization:', sessionError);
+        if (sessionError.message.includes('Refresh Token') || sessionError.message.includes('Invalid')) {
+          console.log('Clearing invalid session during initialization');
+          await supabase.auth.signOut();
+        }
+      }
+      
+      if (session && session.user && !sessionError) {
         // Try to determine if this is a user or client
         const userSession = await UserAuthService.getCurrentSession();
         const clientSession = await ClientAuthService.getCurrentSession();
@@ -191,6 +203,16 @@ class AppInitService {
         await this.initialize();
       }
     });
+  }
+
+  // Initialize image storage
+  static async initializeImageStorage(): Promise<void> {
+    try {
+      const { ImageUploadService } = await import('./imageUpload');
+      await ImageUploadService.initializeBucket();
+    } catch (error) {
+      console.error('Failed to initialize image storage:', error);
+    }
   }
 }
 
