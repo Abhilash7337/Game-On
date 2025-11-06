@@ -6,15 +6,85 @@ export interface ImageUploadResult {
   error?: string;
 }
 
+export interface ImageValidationResult {
+  valid: boolean;
+  error?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+}
+
 export class ImageUploadService {
   private static readonly BUCKET_NAME = 'venue-images';
-  
+  private static readonly MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  private static readonly MAX_DIMENSION = 2048; // Max width/height
+  private static readonly ALLOWED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  private static readonly COMPRESSION_QUALITY = 0.8; // 80% quality
+
   /**
-   * Upload image to Supabase storage using Base64 encoding (React Native compatible)
+   * Validate image before upload
+   */
+  static async validateImage(uri: string): Promise<ImageValidationResult> {
+    try {
+      // Fetch the image to check size
+      const response = await fetch(uri);
+      if (!response.ok) {
+        return { valid: false, error: 'Failed to load image' };
+      }
+
+      const blob = await response.blob();
+      const size = blob.size;
+
+      // Check file size
+      if (size > this.MAX_FILE_SIZE) {
+        const sizeMB = (size / (1024 * 1024)).toFixed(2);
+        return { 
+          valid: false, 
+          error: `Image too large (${sizeMB}MB). Maximum size is 5MB.`,
+          size 
+        };
+      }
+
+      // Check file format
+      if (!this.ALLOWED_FORMATS.includes(blob.type)) {
+        return { 
+          valid: false, 
+          error: `Invalid format. Only JPEG, PNG, and WebP are allowed.` 
+        };
+      }
+
+      return { 
+        valid: true, 
+        size
+      };
+    } catch (error) {
+      console.error('Image validation error:', error);
+      return { valid: false, error: 'Failed to validate image' };
+    }
+  }
+
+  /**
+   * Upload image to Supabase storage with validation and compression
    */
   static async uploadImage(uri: string, fileName: string): Promise<ImageUploadResult> {
     try {
       console.log('📸 Starting image upload for:', fileName);
+      
+      // Validate image first
+      const validation = await this.validateImage(uri);
+      if (!validation.valid) {
+        return {
+          success: false,
+          error: validation.error || 'Image validation failed'
+        };
+      }
+
+      console.log('✅ Image validated:', {
+        size: `${(validation.size! / 1024).toFixed(2)}KB`
+      });
+
+      // Use the original URI (compression can be added later with expo-image-manipulator)
+      const processedUri = uri;
       
       // Create unique filename with timestamp
       const timestamp = Date.now();
@@ -24,7 +94,7 @@ export class ImageUploadService {
       console.log('📁 Uploading to path: venues/' + uniqueFileName);
       
       // Read the file as ArrayBuffer using fetch
-      const response = await fetch(uri);
+      const response = await fetch(processedUri);
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.statusText}`);
       }

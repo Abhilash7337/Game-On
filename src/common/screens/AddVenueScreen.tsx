@@ -320,26 +320,94 @@ export default function AddVenueScreen() {
     setCustomCourtType('');
   };
 
-  const validateCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        const hasBasicInfo = formData.name.trim() && formData.address.trim() && formData.description.trim();
-        const hasLocation = formData.location.latitude !== 0 && formData.location.longitude !== 0;
-        return hasBasicInfo && hasLocation;
-      case 2:
-        return formData.basePrice && parseFloat(formData.basePrice) > 0;
-      case 3:
-        return formData.courts.length > 0;
-      default:
-        return true;
+  // Validation helper functions
+  const validateTimeFormat = (time: string): boolean => {
+    // Validate HH:MM format (24-hour)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return timeRegex.test(time);
+  };
+
+  const validateTimeRange = (openTime: string, closeTime: string): boolean => {
+    if (!validateTimeFormat(openTime) || !validateTimeFormat(closeTime)) {
+      return false;
     }
+    
+    const [openHour, openMin] = openTime.split(':').map(Number);
+    const [closeHour, closeMin] = closeTime.split(':').map(Number);
+    
+    const openMinutes = openHour * 60 + openMin;
+    const closeMinutes = closeHour * 60 + closeMin;
+    
+    return closeMinutes > openMinutes;
+  };
+
+  const getValidationErrors = (step: number): string[] => {
+    const errors: string[] = [];
+    
+    switch (step) {
+      case 1:
+        if (!formData.name.trim()) errors.push('Venue name is required');
+        if (!formData.address.trim()) errors.push('Address is required');
+        if (!formData.description.trim()) errors.push('Description is required');
+        if (formData.location.latitude === 0 || formData.location.longitude === 0) {
+          errors.push('Please select venue location on the map');
+        }
+        if (formData.images.length === 0) {
+          errors.push('Please add at least one venue image');
+        }
+        break;
+        
+      case 2:
+        if (!formData.basePrice || parseFloat(formData.basePrice) <= 0) {
+          errors.push('Base price must be greater than 0');
+        }
+        if (!validateTimeFormat(formData.openTime)) {
+          errors.push('Opening time format is invalid (use HH:MM, e.g., 06:00)');
+        }
+        if (!validateTimeFormat(formData.closeTime)) {
+          errors.push('Closing time format is invalid (use HH:MM, e.g., 22:00)');
+        }
+        if (!validateTimeRange(formData.openTime, formData.closeTime)) {
+          errors.push('Closing time must be after opening time');
+        }
+        if (formData.operatingDays.length === 0) {
+          errors.push('Please select at least one operating day');
+        }
+        break;
+        
+      case 3:
+        if (formData.courts.length === 0) {
+          errors.push('Please add at least one court');
+        }
+        // Validate each court has a name
+        formData.courts.forEach((court, index) => {
+          if (!court.name.trim()) {
+            errors.push(`Court ${index + 1} must have a name`);
+          }
+        });
+        break;
+    }
+    
+    return errors;
+  };
+
+  const validateCurrentStep = (): boolean => {
+    const errors = getValidationErrors(currentStep);
+    return errors.length === 0;
   };
 
   const handleNext = () => {
-    if (validateCurrentStep()) {
+    const errors = getValidationErrors(currentStep);
+    
+    if (errors.length === 0) {
       setCurrentStep(prev => Math.min(prev + 1, 4));
     } else {
-      Alert.alert('Incomplete Information', 'Please fill in all required fields before proceeding.');
+      const errorMessage = errors.join('\n• ');
+      Alert.alert(
+        'Validation Error', 
+        `Please fix the following issues:\n\n• ${errorMessage}`,
+        [{ text: 'OK' }]
+      );
     }
   };
 
