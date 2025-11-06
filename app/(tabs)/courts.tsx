@@ -1,14 +1,14 @@
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { LoadingState } from '@/src/common/components/LoadingState';
+import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
 import { courtsStyles } from '@/styles/screens/CourtsScreen';
 import { Ionicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Animated, Dimensions, FlatList, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
-import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Animated, Dimensions, FlatList, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
@@ -53,10 +53,12 @@ export default function CourtsScreen() {
 
 	const getUserLocation = async () => {
 		try {
+			console.log('📍 [COURTS] Requesting location permission...');
 			// Request location permissions
 			const { status } = await Location.requestForegroundPermissionsAsync();
 			
 			if (status !== 'granted') {
+				console.log('❌ [COURTS] Location permission denied');
 				Alert.alert(
 					'Location Permission Required',
 					'Please enable location access to see distances to venues.',
@@ -65,17 +67,21 @@ export default function CourtsScreen() {
 				return;
 			}
 
+			console.log('📍 [COURTS] Getting current location...');
 			// Get current location
 			const location = await Location.getCurrentPositionAsync({
 				accuracy: Location.Accuracy.Balanced,
 			});
 
-			setUserLocation({
+			const userCoords = {
 				latitude: location.coords.latitude,
 				longitude: location.coords.longitude,
-			});
+			};
+
+			setUserLocation(userCoords);
+			console.log('📍 [COURTS] User location obtained:', userCoords);
 		} catch (error) {
-			console.log('Error getting location:', error);
+			console.log('❌ [COURTS] Error getting location:', error);
 			// Continue without location - distances won't be shown
 		}
 	};
@@ -93,30 +99,20 @@ export default function CourtsScreen() {
 			const transformedVenues = venuesData.map(venue => {
 				let distanceText = 'N/A';
 				
-				// Calculate distance if user location is available and venue has location
-				if (userLocation && venue.location) {
+				// Calculate distance if user location is available and venue has coordinates
+				if (userLocation && venue.coordinates) {
 					try {
-						// Parse venue location from JSONB format
-						let venueCoords;
-						if (typeof venue.location === 'string') {
-							// Try to parse as JSON
-							try {
-								venueCoords = JSON.parse(venue.location);
-							} catch (parseError) {
-								// If parsing fails, it might be a plain text address, not coordinates
-								console.log('Location is not JSON coordinates for venue:', venue.id);
-								venueCoords = null;
-							}
-						} else {
-							venueCoords = venue.location;
-						}
+						// Use coordinates directly from getPublicVenues
+						const venueCoords = venue.coordinates;
 						
 						// Verify we have valid coordinates
 						if (venueCoords && 
 						    typeof venueCoords.latitude === 'number' && 
 						    typeof venueCoords.longitude === 'number' &&
 						    !isNaN(venueCoords.latitude) && 
-						    !isNaN(venueCoords.longitude)) {
+						    !isNaN(venueCoords.longitude) &&
+						    venueCoords.latitude !== 0 && 
+						    venueCoords.longitude !== 0) {
 							const distanceKm = calculateDistance(
 								userLocation.latitude,
 								userLocation.longitude,
@@ -124,10 +120,17 @@ export default function CourtsScreen() {
 								venueCoords.longitude
 							);
 							distanceText = formatDistance(distanceKm);
+							console.log(`📍 Distance calculated for ${venue.name}: ${distanceText}`);
+						} else {
+							console.log('❌ Invalid coordinates for venue:', venue.name, venueCoords);
 						}
 					} catch (error) {
-						console.log('Error calculating distance for venue:', venue.id, error);
+						console.log('❌ Error calculating distance for venue:', venue.id, error);
 					}
+				} else if (!userLocation) {
+					console.log('⚠️ User location not available for distance calculation');
+				} else if (!venue.coordinates) {
+					console.log('⚠️ Venue coordinates not available for:', venue.name);
 				}
 				
 				return {
@@ -144,6 +147,11 @@ export default function CourtsScreen() {
 			});
 			
 			setVenues(transformedVenues);
+			console.log('📍 [COURTS] Transformed venues with distances:', transformedVenues.map(v => ({
+				name: v.name,
+				distance: v.distance,
+				hasCoordinates: !!v.coordinates
+			})));
 		} catch {
 			// Error loading venues - fallback to default venue
 			let distanceText = '2.5 km';
