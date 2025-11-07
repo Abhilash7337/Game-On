@@ -881,3 +881,123 @@ END $$;
 -- Test: Create a new booking and confirm it
 -- INSERT INTO bookings (user_id, court_id, booking_date, start_time, end_time, booking_type, status)
 -- VALUES ('YOUR_USER_ID', 'COURT_ID', CURRENT_DATE + 1, '10:00', '11:00', 'open', 'confirmed');
+
+
+
+
+
+-- Drop existing policy if any
+DROP POLICY IF EXISTS "Enable insert for authenticated users" ON public.booking_participants;
+
+-- Create new policy allowing authenticated users to insert their own participant records
+CREATE POLICY "Enable insert for authenticated users"
+ON public.booking_participants
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = user_id
+);
+
+
+
+CREATE OR REPLACE FUNCTION public.create_game_chat_on_booking_confirmation()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_conversation_id uuid;
+    v_conversation_name text;
+    v_venue_name text;
+    v_court_name text;
+    v_booking_date date;
+    v_booking_time time;
+    v_duration interval;
+    v_sport text;
+    v_host_id uuid;
+    v_existing_conversation_id uuid;
+BEGIN
+    IF NEW.status = 'confirmed' AND (OLD.status IS NULL OR OLD.status != 'confirmed') THEN
+        
+        SELECT id INTO v_existing_conversation_id
+        FROM public.conversations
+        WHERE booking_id = NEW.id AND type = 'game_chat';
+        
+        IF v_existing_conversation_id IS NOT NULL THEN
+            RAISE NOTICE 'Game chat already exists for booking %', NEW.id;
+            RETURN NEW;
+        END IF;
+        
+        SELECT 
+            v.name,
+            c.name,
+            b.booking_date,
+            b.start_time,
+            (b.end_time - b.start_time),
+            c.type, -- ✅ ONLY CHANGE: Get sport from court.type
+            b.user_id
+        INTO 
+            v_venue_name,
+            v_court_name,
+            v_booking_date,
+            v_booking_time,
+            v_duration,
+            v_sport,
+            v_host_id
+        FROM public.bookings b
+        JOIN public.courts c ON c.id = b.court_id
+        JOIN public.venues v ON v.id = c.venue_id
+        WHERE b.id = NEW.id;
+        
+        v_conversation_name := v_venue_name || ' - ' || v_court_name || ' (' || TO_CHAR(v_booking_date, 'DD Mon') || ')';
+        
+        INSERT INTO public.conversations (
+            type,
+            name,
+            created_by,
+            booking_id,
+            metadata,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            'game_chat',
+            v_conversation_name,
+            v_host_id,
+            NEW.id,
+            jsonb_build_object(
+                'booking_id', NEW.id,
+                'venue', v_venue_name,
+                'court', v_court_name,
+                'date', v_booking_date,
+                'time', v_booking_time,
+                'duration', EXTRACT(EPOCH FROM v_duration) / 3600,
+                'sport', v_sport,
+                'booking_type', NEW.booking_type,
+                'is_open_game', NEW.booking_type = 'open'
+            ),
+            now(),
+            now()
+        )
+        RETURNING id INTO v_conversation_id;
+        
+        INSERT INTO public.conversation_participants (
+            conversation_id,
+            user_id,
+            joined_at,
+            is_active
+        )
+        VALUES (
+            v_conversation_id,
+            v_host_id,
+            now(),
+            true
+        )
+        ON CONFLICT (conversation_id, user_id) DO NOTHING;
+        
+        RAISE NOTICE 'Created game chat % for booking %', v_conversation_id, NEW.id;
+        RAISE NOTICE 'Added host % to game chat', v_host_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$function$;

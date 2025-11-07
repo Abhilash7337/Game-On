@@ -108,6 +108,32 @@ export class VenueStorageService {
     }
   }
 
+  // Check if venue with same name and address already exists
+  static async checkDuplicateVenue(name: string, address: string, excludeId?: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('venues')
+        .select('id, name, address')
+        .ilike('name', name.trim())
+        .ilike('address', address.trim());
+
+      if (error) {
+        console.warn('Error checking duplicate venue:', error);
+        return false;
+      }
+
+      if (excludeId) {
+        // Exclude the venue being edited
+        return (data || []).some(v => v.id !== excludeId);
+      }
+
+      return (data || []).length > 0;
+    } catch (error) {
+      console.error('Error checking duplicate venue:', error);
+      return false;
+    }
+  }
+
   // Add a new venue
   static async addVenue(venue: Omit<Venue, 'id' | 'createdAt'>): Promise<Venue> {
     try {
@@ -119,6 +145,12 @@ export class VenueStorageService {
       // Validate location coordinates
       if (!venue.location || venue.location.latitude === 0 || venue.location.longitude === 0) {
         throw new Error('Please select a valid location on the map');
+      }
+
+      // Check for duplicate venue
+      const isDuplicate = await this.checkDuplicateVenue(venue.name, venue.address);
+      if (isDuplicate) {
+        throw new Error('A venue with this name and address already exists. Please use a different name or address.');
       }
 
       // Transform to Supabase schema
@@ -157,14 +189,19 @@ export class VenueStorageService {
           is_active: court.isActive !== false,
         }));
 
-        const { error: courtsError } = await supabase
+        const { data: courtsInserted, error: courtsError } = await supabase
           .from('courts')
-          .insert(courtsData);
+          .insert(courtsData)
+          .select();
 
         if (courtsError) {
-          console.error('Error inserting courts:', courtsError);
-          // Don't fail the entire operation if courts insert fails
+          console.error('❌ Error inserting courts:', courtsError);
+          // Attempt to delete the venue if courts failed
+          await supabase.from('venues').delete().eq('id', data.id);
+          throw new Error('Failed to create courts for venue. Please try again.');
         }
+
+        console.log(`✅ Successfully inserted ${courtsInserted?.length || 0} courts`);
       }
 
       // Transform back to Venue interface
@@ -199,6 +236,33 @@ export class VenueStorageService {
         throw error;
       }
       throw new Error('Failed to add venue. Please try again.');
+    }
+  }
+
+  // Fetch courts for a venue from database
+  static async getVenueCourts(venueId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('courts')
+        .select('*')
+        .eq('venue_id', venueId)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching courts:', error);
+        return [];
+      }
+
+      return (data || []).map(court => ({
+        id: court.id,
+        name: court.name,
+        venueId: court.venue_id,
+        type: court.type,
+        isActive: court.is_active
+      }));
+    } catch (error) {
+      console.error('Error fetching venue courts:', error);
+      return [];
     }
   }
 
@@ -245,18 +309,104 @@ export class VenueStorageService {
   }
 
   // Update venue
-  static async updateVenue(venueId: string, updates: Partial<Venue>): Promise<void> {
+  static async updateVenue(venueId: string, updates: Partial<Venue>): Promise<Venue> {
     try {
       if (!venueId) {
         throw new Error('Venue ID is required');
       }
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const venueIndex = venuesStorage.findIndex(venue => venue.id === venueId);
-      if (venueIndex === -1) {
-        throw new Error('Venue not found');
+
+      // Check for duplicate if name or address is being updated
+      if (updates.name || updates.address) {
+        const currentVenue = await this.getVenueById(venueId);
+        if (!currentVenue) {
+          throw new Error('Venue not found');
+        }
+
+        const nameToCheck = updates.name || currentVenue.name;
+        const addressToCheck = updates.address || currentVenue.address;
+        
+        const isDuplicate = await this.checkDuplicateVenue(nameToCheck, addressToCheck, venueId);
+        if (isDuplicate) {
+          throw new Error('A venue with this name and address already exists.');
+        }
       }
-      venuesStorage[venueIndex] = { ...venuesStorage[venueIndex], ...updates };
+
+      // Transform updates to Supabase schema
+      const supabaseUpdates: any = {};
+      if (updates.name) supabaseUpdates.name = updates.name;
+      if (updates.address) supabaseUpdates.address = updates.address;
+      if (updates.location) supabaseUpdates.location = updates.location;
+      if (updates.description) supabaseUpdates.description = updates.description;
+      if (updates.amenities) supabaseUpdates.facilities = updates.amenities;
+      if (updates.images) supabaseUpdates.images = updates.images;
+      if (updates.pricing) supabaseUpdates.pricing = updates.pricing;
+      if (updates.operatingHours) supabaseUpdates.availability = updates.operatingHours;
+      if (updates.rating !== undefined) supabaseUpdates.rating = updates.rating;
+      if (updates.isActive !== undefined) supabaseUpdates.is_active = updates.isActive;
+
+      // Update in Supabase
+      const { data, error } = await supabase
+        .from('venues')
+        .update(supabaseUpdates)
+        .eq('id', venueId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw new Error('Failed to update venue: ' + error.message);
+      }
+
+      // Update courts if provided
+      if (updates.courts) {
+        // Delete existing courts
+        await supabase.from('courts').delete().eq('venue_id', venueId);
+        
+        // Insert new courts
+        if (updates.courts.length > 0) {
+          const courtsData = updates.courts.map(court => ({
+            venue_id: venueId,
+            name: court.name,
+            type: court.type,
+            is_active: court.isActive !== false,
+          }));
+
+          const { error: courtsError } = await supabase
+            .from('courts')
+            .insert(courtsData);
+
+          if (courtsError) {
+            console.error('Error updating courts:', courtsError);
+          }
+        }
+      }
+
+      // Transform back to Venue interface
+      const updatedVenue: Venue = {
+        id: data.id,
+        name: data.name,
+        address: data.address,
+        location: data.location,
+        description: data.description,
+        amenities: data.facilities,
+        images: data.images,
+        pricing: data.pricing,
+        operatingHours: data.availability,
+        courts: updates.courts || [],
+        ownerId: data.client_id,
+        rating: data.rating,
+        isActive: data.is_active,
+        createdAt: new Date(data.created_at),
+      };
+
+      // Update local cache
+      const venueIndex = venuesStorage.findIndex(v => v.id === venueId);
+      if (venueIndex !== -1) {
+        venuesStorage[venueIndex] = updatedVenue;
+      }
+
+      console.log('✅ Venue updated successfully:', updatedVenue.name);
+      return updatedVenue;
     } catch (error) {
       console.error('Error updating venue:', error);
       if (error instanceof Error) {
@@ -266,24 +416,134 @@ export class VenueStorageService {
     }
   }
 
-  // Delete venue
+  // Get venue by ID
+  static async getVenueById(venueId: string): Promise<Venue | null> {
+    try {
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('id', venueId)
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        address: data.address,
+        location: data.location || { latitude: 0, longitude: 0 },
+        description: data.description || '',
+        amenities: data.facilities || [],
+        images: data.images || [],
+        pricing: data.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
+        operatingHours: data.availability || { open: '06:00', close: '22:00', days: [] },
+        courts: data.courts || [],
+        ownerId: data.client_id,
+        rating: data.rating || 0,
+        isActive: data.is_active !== false,
+        createdAt: new Date(data.created_at),
+      };
+    } catch (error) {
+      console.error('Error fetching venue by ID:', error);
+      return null;
+    }
+  }
+
+  // Delete venue with image cleanup
   static async deleteVenue(venueId: string): Promise<void> {
     try {
       if (!venueId) {
         throw new Error('Venue ID is required');
       }
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const initialLength = venuesStorage.length;
-      venuesStorage = venuesStorage.filter(venue => venue.id !== venueId);
-      if (venuesStorage.length === initialLength) {
+
+      // Get venue to access images for cleanup
+      const venue = await this.getVenueById(venueId);
+      if (!venue) {
         throw new Error('Venue not found');
       }
+
+      // Delete associated courts first
+      const { error: courtsError } = await supabase
+        .from('courts')
+        .delete()
+        .eq('venue_id', venueId);
+
+      if (courtsError) {
+        console.warn('Error deleting courts:', courtsError);
+        // Continue with venue deletion even if courts deletion fails
+      }
+
+      // Delete venue from database
+      const { error: venueError } = await supabase
+        .from('venues')
+        .delete()
+        .eq('id', venueId);
+
+      if (venueError) {
+        console.error('Supabase delete error:', venueError);
+        throw new Error('Failed to delete venue: ' + venueError.message);
+      }
+
+      // Delete images from storage
+      if (venue.images && venue.images.length > 0) {
+        const { ImageUploadService } = await import('./imageUpload');
+        
+        for (const imageUrl of venue.images) {
+          try {
+            await ImageUploadService.deleteImage(imageUrl);
+            console.log('🗑️ Deleted image:', imageUrl);
+          } catch (imageError) {
+            console.warn('Failed to delete image:', imageUrl, imageError);
+            // Continue even if image deletion fails
+          }
+        }
+      }
+
+      // Update local cache
+      venuesStorage = venuesStorage.filter(v => v.id !== venueId);
+      
+      console.log('✅ Venue deleted successfully:', venue.name);
     } catch (error) {
       console.error('Error deleting venue:', error);
       if (error instanceof Error) {
         throw error;
       }
       throw new Error('Failed to delete venue. Please try again.');
+    }
+  }
+
+  // Toggle venue active status
+  static async toggleVenueStatus(venueId: string): Promise<boolean> {
+    try {
+      const venue = await this.getVenueById(venueId);
+      if (!venue) {
+        throw new Error('Venue not found');
+      }
+
+      const newStatus = !venue.isActive;
+
+      const { error } = await supabase
+        .from('venues')
+        .update({ is_active: newStatus })
+        .eq('id', venueId);
+
+      if (error) {
+        throw new Error('Failed to update venue status: ' + error.message);
+      }
+
+      // Update local cache
+      const venueIndex = venuesStorage.findIndex(v => v.id === venueId);
+      if (venueIndex !== -1) {
+        venuesStorage[venueIndex].isActive = newStatus;
+      }
+
+      console.log(`✅ Venue status toggled: ${venue.name} is now ${newStatus ? 'active' : 'inactive'}`);
+      return newStatus;
+    } catch (error) {
+      console.error('Error toggling venue status:', error);
+      throw error;
     }
   }
 

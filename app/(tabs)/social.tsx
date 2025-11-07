@@ -1,7 +1,8 @@
 import { FriendService } from '@/src/common/services/friendService';
-import { GameChatroomService } from '@/src/common/services/gameChatroomService';
+import { GameConversationDisplay, ConversationService } from '@/src/common/services/conversationService'; // ✅ NEW: Supabase conversations
 import { SportGroupService } from '@/src/common/services/sportGroupService';
 import { supabase } from '@/src/common/services/supabase';
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { socialStyles } from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,8 +42,10 @@ interface SportGroup {
 
 interface GameChat {
   id: string;
+  conversationId: string;
   venue: string;
   court: string;
+  sport: string;
   date: string;
   time: string;
   duration: string;
@@ -61,6 +64,7 @@ export default function SocialScreen() {
     const [gameChats, setGameChats] = useState<GameChat[]>([]);
     const [userCity] = useState('Hyderabad'); // setUserCity removed as it's not used yet
     const [loading, setLoading] = useState(true);
+    const [dataSource, setDataSource] = useState<'cache' | 'fresh' | 'loading'>('loading');
     const [showCitySports, setShowCitySports] = useState(false);
     const [showGlobalSports, setShowGlobalSports] = useState(false);
     const [navigating, setNavigating] = useState(false);
@@ -72,7 +76,7 @@ export default function SocialScreen() {
     const [searchLoading, setSearchLoading] = useState(false);
     const [pendingRequests, setPendingRequests] = useState<any[]>([]);
 
-    // Load game chatrooms from GameChatroomService
+    // Load game chatrooms from ConversationService (Supabase)
     const loadGameChatrooms = async () => {
         try {
             const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -96,19 +100,21 @@ export default function SocialScreen() {
             }
 
             const userId = userData.user.id;
-            const chatrooms = await GameChatroomService.getUserChatrooms(userId);
+            const conversations = await ConversationService.getUserGameChats(userId); // ✅ CHANGED: Use Supabase
             
-            // Convert GameChatroomDisplay to GameChat format
-            const gameChatsData: GameChat[] = chatrooms.map(room => ({
-                id: room.id,
-                venue: room.venue,
-                court: room.court,
-                date: room.date,
-                time: room.time,
-                duration: room.duration,
-                isHost: room.isHost,
-                participants: room.participants,
-                expiresAt: room.expiresAt
+            // Convert GameConversationDisplay to GameChat format
+            const gameChatsData: GameChat[] = conversations.map(conv => ({
+                id: conv.conversationId,
+                conversationId: conv.conversationId,
+                venue: conv.venue,
+                court: conv.court,
+                sport: conv.sport,
+                date: conv.date,
+                time: conv.time,
+                duration: conv.duration,
+                isHost: conv.isHost,
+                participants: conv.participants,
+                expiresAt: new Date() // Conversations don't expire, use current date as placeholder
             }));
 
             setGameChats(gameChatsData);
@@ -124,69 +130,168 @@ export default function SocialScreen() {
         
         const loadData = async () => {
             try {
+                // ✅ OPTIMIZATION: Try cache first for instant load!
+                const cache = dataPrefetchService.getCache();
+                if (cache && dataPrefetchService.isCacheFresh()) {
+                    console.log('⚡ [SOCIAL] Using cached data - INSTANT LOAD!');
+                    
+                    if (isMounted) {
+                        // Set friends immediately from cache
+                        setFriends(cache.friends);
+                        
+                        // ✅ Set sport groups immediately from cache (already have membership info!)
+                        setGlobalSports(cache.globalSportGroups);
+                        setCitySports(cache.citySportGroups);
+                        
+                        setDataSource('cache');
+                        setLoading(false); // ✅ Show UI immediately!
+                        
+                        console.log(`✅ [SOCIAL] Loaded from cache:`, {
+                            friends: cache.friends.length,
+                            globalGroups: cache.globalSportGroups.length,
+                            cityGroups: cache.citySportGroups.length
+                        });
+                    }
+                    
+                    // ✅ Load conversation metadata in background (deferred 100ms)
+                    setTimeout(async () => {
+                        if (!isMounted) return;
+                        
+                        try {
+                            const conversationPromises = cache.friends.map(async (friend) => {
+                                try {
+                                    const { success: convSuccess, conversationInfo } = await FriendService.getFriendConversationInfo(friend.id);
+                                    return {
+                                        friendId: friend.id,
+                                        success: convSuccess,
+                                        conversationInfo
+                                    };
+                                } catch (error) {
+                                    console.error('Error loading conversation info for friend:', friend.name, error);
+                                    return { friendId: friend.id, success: false, conversationInfo: null };
+                                }
+                            });
+                            
+                            const conversationResults = await Promise.all(conversationPromises);
+                            
+                            if (isMounted) {
+                                setFriends(prevFriends => {
+                                    const updatedFriends = [...prevFriends];
+                                    
+                                    conversationResults.forEach(result => {
+                                        if (result.success && result.conversationInfo) {
+                                            const friendIndex = updatedFriends.findIndex(f => f && f.id === result.friendId);
+                                            if (friendIndex !== -1) {
+                                                updatedFriends[friendIndex] = {
+                                                    ...updatedFriends[friendIndex],
+                                                    conversationId: result.conversationInfo.conversationId,
+                                                    lastMessage: result.conversationInfo.lastMessage,
+                                                    lastMessageTime: result.conversationInfo.lastMessageTime,
+                                                    unreadCount: result.conversationInfo.unreadCount
+                                                };
+                                            }
+                                        }
+                                    });
+                                    
+                                    return updatedFriends.sort((a, b) => {
+                                        if (!a?.lastMessageTime && !b?.lastMessageTime) return 0;
+                                        if (!a?.lastMessageTime) return 1;
+                                        if (!b?.lastMessageTime) return -1;
+                                        return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
+                                    });
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error loading conversation data:', error);
+                        }
+                    }, 100);
+                    
+                    // Load pending requests in background
+                    setTimeout(async () => {
+                        const { success: requestsSuccess, requests } = await FriendService.getPendingRequests();
+                        if (requestsSuccess && requests && isMounted) {
+                            setPendingRequests(requests);
+                        }
+                    }, 200);
+                    
+                    return; // Done! Screen loaded from cache ⚡
+                }
+                
+                // ❌ Cache miss or stale - load fresh data
+                console.log('📡 [SOCIAL] Cache miss/stale, loading fresh data...');
+                setDataSource('loading');
+                
                 // Load real friends data (basic info first for fast loading)
                 const { success, friends: realFriends } = await FriendService.getFriends();
                 if (success && realFriends && isMounted) {
                     // Filter out invalid friends immediately
                     const validFriends = realFriends.filter(friend => friend && friend.id && friend.name);
                     setFriends(validFriends);
+                    setDataSource('fresh');
+                    setLoading(false); // Show friends immediately
                     
-                    // Load conversation info for all friends in parallel (much faster)
-                    try {
-                        const conversationPromises = validFriends.map(async (friend) => {
-                            try {
-                                const { success: convSuccess, conversationInfo } = await FriendService.getFriendConversationInfo(friend.id);
-                                return {
-                                    friendId: friend.id,
-                                    success: convSuccess,
-                                    conversationInfo
-                                };
-                            } catch (error) {
-                                console.error('Error loading conversation info for friend:', friend.name, error);
-                                return { friendId: friend.id, success: false, conversationInfo: null };
-                            }
-                        });
-                        
-                        const conversationResults = await Promise.all(conversationPromises);
-                        
-                        if (isMounted) {
-                            setFriends(prevFriends => {
-                                const updatedFriends = [...prevFriends];
-                                
-                                conversationResults.forEach(result => {
-                                    if (result.success && result.conversationInfo) {
-                                        const friendIndex = updatedFriends.findIndex(f => f && f.id === result.friendId);
-                                        if (friendIndex !== -1) {
-                                            updatedFriends[friendIndex] = {
-                                                ...updatedFriends[friendIndex],
-                                                conversationId: result.conversationInfo.conversationId,
-                                                lastMessage: result.conversationInfo.lastMessage,
-                                                lastMessageTime: result.conversationInfo.lastMessageTime,
-                                                unreadCount: result.conversationInfo.unreadCount
-                                            };
-                                        }
-                                    }
-                                });
-                                
-                                // Sort by last message time (most recent first)
-                                return updatedFriends.sort((a, b) => {
-                                    if (!a?.lastMessageTime && !b?.lastMessageTime) return 0;
-                                    if (!a?.lastMessageTime) return 1;
-                                    if (!b?.lastMessageTime) return -1;
-                                    return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
-                                });
+                    // Load conversation info for all friends in parallel (deferred, in background)
+                    setTimeout(async () => {
+                        try {
+                            const conversationPromises = validFriends.map(async (friend) => {
+                                try {
+                                    const { success: convSuccess, conversationInfo } = await FriendService.getFriendConversationInfo(friend.id);
+                                    return {
+                                        friendId: friend.id,
+                                        success: convSuccess,
+                                        conversationInfo
+                                    };
+                                } catch (error) {
+                                    console.error('Error loading conversation info for friend:', friend.name, error);
+                                    return { friendId: friend.id, success: false, conversationInfo: null };
+                                }
                             });
+                            
+                            const conversationResults = await Promise.all(conversationPromises);
+                            
+                            if (isMounted) {
+                                setFriends(prevFriends => {
+                                    const updatedFriends = [...prevFriends];
+                                    
+                                    conversationResults.forEach(result => {
+                                        if (result.success && result.conversationInfo) {
+                                            const friendIndex = updatedFriends.findIndex(f => f && f.id === result.friendId);
+                                            if (friendIndex !== -1) {
+                                                updatedFriends[friendIndex] = {
+                                                    ...updatedFriends[friendIndex],
+                                                    conversationId: result.conversationInfo.conversationId,
+                                                    lastMessage: result.conversationInfo.lastMessage,
+                                                    lastMessageTime: result.conversationInfo.lastMessageTime,
+                                                    unreadCount: result.conversationInfo.unreadCount
+                                                };
+                                            }
+                                        }
+                                    });
+                                    
+                                    // Sort by last message time (most recent first)
+                                    return updatedFriends.sort((a, b) => {
+                                        if (!a?.lastMessageTime && !b?.lastMessageTime) return 0;
+                                        if (!a?.lastMessageTime) return 1;
+                                        if (!b?.lastMessageTime) return -1;
+                                        return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
+                                    });
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error loading conversation data:', error);
                         }
-                    } catch (error) {
-                        console.error('Error loading conversation data:', error);
-                    }
+                    }, 100); // Defer conversation loading
+                } else {
+                    setLoading(false);
                 }
 
-                // Load pending friend requests
-                const { success: requestsSuccess, requests } = await FriendService.getPendingRequests();
-                if (requestsSuccess && requests && isMounted) {
-                    setPendingRequests(requests);
-                }
+                // Load pending friend requests (in background)
+                setTimeout(async () => {
+                    const { success: requestsSuccess, requests } = await FriendService.getPendingRequests();
+                    if (requestsSuccess && requests && isMounted) {
+                        setPendingRequests(requests);
+                    }
+                }, 200);
             } catch (error) {
                 console.error('Error loading friends data:', error);
                 // Fallback to mock data if there's an error
@@ -195,7 +300,7 @@ export default function SocialScreen() {
                         {
                             id: '1',
                             name: 'Rahul Sharma',
-                            profilePhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
+                            profilePhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face&q=80',
                             rating: 4.5,
                             isOnline: true,
                             status: 'accepted'
@@ -203,7 +308,7 @@ export default function SocialScreen() {
                         {
                             id: '2',
                             name: 'Priya Patel',
-                            profilePhoto: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face',
+                            profilePhoto: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=80&h=80&fit=crop&crop=face&q=80',
                             rating: 4.8,
                             isOnline: false,
                             status: 'accepted'
@@ -211,21 +316,36 @@ export default function SocialScreen() {
                         {
                             id: '3',
                             name: 'Arjun Kumar',
-                            profilePhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
+                            profilePhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face&q=80',
                             rating: 4.2,
                             isOnline: true,
                             status: 'accepted'
                         }
                     ]);
+                    setLoading(false);
                 }
             }
         };
 
         loadData();
 
-        // Load sport groups data
+        // Load sport groups data (deferred, in background)
         const loadSportGroups = async () => {
             try {
+                // ✅ OPTIMIZATION: Check cache first!
+                const cache = dataPrefetchService.getCache();
+                if (cache && dataPrefetchService.isCacheFresh()) {
+                    console.log('⚡ [SOCIAL] Using cached sport groups - already loaded!');
+                    // Sport groups already set from main loadData(), skip this
+                    
+                    // Still load game chatrooms if needed
+                    if (activeTab === 'Game Chats') {
+                        await loadGameChatrooms();
+                    }
+                    return;
+                }
+                
+                // Cache miss - load fresh sport groups
                 const { data: userData, error: userError } = await supabase.auth.getUser();
                 if (userError) {
                     console.log('⚠️ Auth error loading sport groups:', userError.message);
@@ -269,6 +389,17 @@ export default function SocialScreen() {
                         }))
                     );
 
+                    // Debug logging to verify conversation IDs are different
+                    console.log('🌍 Global Groups:', globalWithMembership.map(g => ({ 
+                        sport: g.sport,
+                        conversationId: g.conversationId
+                    })));
+                    console.log('🏙️ City Groups:', cityWithMembership.map(g => ({ 
+                        sport: g.sport,
+                        city: g.city,
+                        conversationId: g.conversationId
+                    })));
+
                     setGlobalSports(globalWithMembership);
                     setCitySports(cityWithMembership);
                 } else {
@@ -276,17 +407,19 @@ export default function SocialScreen() {
                     setCitySports(cityGroups.map(g => ({ ...g, name: g.displayName })));
                 }
 
-                // Load real game chatrooms
-                await loadGameChatrooms();
-                
-                setLoading(false);
+                // Load real game chatrooms (only if Game Chats tab is active)
+                if (activeTab === 'Game Chats') {
+                    await loadGameChatrooms();
+                }
             } catch (error) {
                 console.error('Error loading sport groups:', error);
-                setLoading(false);
             }
         };
 
-        loadSportGroups();
+        // Defer sport groups loading
+        setTimeout(() => {
+            loadSportGroups();
+        }, 300);
         
         // Cleanup function to prevent memory leaks
         return () => {
@@ -383,6 +516,15 @@ export default function SocialScreen() {
         // Prevent multiple rapid clicks
         if (navigating) return;
         
+        console.log(`🎯 Sport Group Clicked:`, {
+            name: group.name,
+            sport: group.sport,
+            city: group.city,
+            conversationId: group.conversationId,
+            isGlobal: group.isGlobal,
+            isMember: group.isMember
+        });
+
         try {
             const { data: userData, error: userError } = await supabase.auth.getUser();
             if (userError) {
@@ -469,6 +611,7 @@ export default function SocialScreen() {
             } else {
                 // Already a member, just navigate to chat
                 setNavigating(true);
+                console.log(`📱 Navigating to ${group.name} chat with conversation ID: ${group.conversationId} (isGlobal: ${group.isGlobal})`);
                 router.push({
                     pathname: '/SportGroupChatScreen',
                     params: {
@@ -496,12 +639,14 @@ export default function SocialScreen() {
         router.push({
             pathname: '/GameChatScreen',
             params: {
+                conversationId: chat.conversationId,
                 gameId: chat.id,
-                sport: 'Badminton', // You can add sport to GameChat interface
+                sport: chat.sport,
                 venue: chat.venue,
                 court: chat.court,
                 date: chat.date,
                 time: chat.time,
+                players: JSON.stringify([]), // Players list, will be loaded from Supabase
                 status: 'upcoming'
             }
         });

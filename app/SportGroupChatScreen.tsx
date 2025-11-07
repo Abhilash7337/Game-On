@@ -71,117 +71,44 @@ export default function SportGroupChatScreen() {
     if (!conversationId) return;
 
     try {
-      let allMessages: any[] = [];
+      console.log(`📥 Loading messages for conversation: ${conversationId} (${groupName})`);
+      
+      // Load ONLY messages from THIS conversation (no mixing!)
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          content,
+          created_at,
+          sender_id,
+          conversation_id,
+          users!messages_sender_id_fkey (
+            full_name
+          )
+        `)
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
 
-      // If viewing a city group, also fetch messages from the global group of the same sport
-      if (!isGlobal && sport) {
-        // Get the global conversation ID for this sport
-        const { data: globalGroup } = await supabase
-          .from('sport_chat_groups')
-          .select('conversation_id')
-          .eq('sport', sport)
-          .is('city', null)
-          .single();
+      if (error) throw error;
 
-        if (globalGroup?.conversation_id) {
-          // Fetch messages from both city and global conversations
-          const [cityMessages, globalMessages] = await Promise.all([
-            supabase
-              .from('messages')
-              .select(`
-                id,
-                content,
-                created_at,
-                sender_id,
-                conversation_id,
-                users!messages_sender_id_fkey (
-                  full_name
-                )
-              `)
-              .eq('conversation_id', conversationId)
-              .order('created_at', { ascending: true }),
-            supabase
-              .from('messages')
-              .select(`
-                id,
-                content,
-                created_at,
-                sender_id,
-                conversation_id,
-                users!messages_sender_id_fkey (
-                  full_name
-                )
-              `)
-              .eq('conversation_id', globalGroup.conversation_id)
-              .order('created_at', { ascending: true })
-          ]);
-
-          // Combine and sort by timestamp
-          allMessages = [
-            ...(cityMessages.data || []),
-            ...(globalMessages.data || [])
-          ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        } else {
-          // Fallback to just city messages
-          const { data } = await supabase
-            .from('messages')
-            .select(`
-              id,
-              content,
-              created_at,
-              sender_id,
-              conversation_id,
-              users!messages_sender_id_fkey (
-                full_name
-              )
-            `)
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true });
-          
-          allMessages = data || [];
-        }
-      } else {
-        // For global groups, just fetch their own messages
-        const { data, error } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            content,
-            created_at,
-            sender_id,
-            conversation_id,
-            users!messages_sender_id_fkey (
-              full_name
-            )
-          `)
-          .eq('conversation_id', conversationId)
-          .order('created_at', { ascending: true });
-
-        if (error) throw error;
-        allMessages = data || [];
-      }
-
-      const formattedMessages: Message[] = allMessages.map((msg: any) => ({
+      const formattedMessages: Message[] = (data || []).map((msg: any) => ({
         id: msg.id,
         senderId: msg.sender_id,
-        senderName: msg.users?.full_name || 'Unknown',
+        senderName: (Array.isArray(msg.users) ? msg.users[0]?.full_name : msg.users?.full_name) || 'Unknown',
         content: msg.content,
         timestamp: new Date(msg.created_at),
         isMe: msg.sender_id === userId
       }));
 
       setMessages(formattedMessages);
-      setLoading(false);
-
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      console.log(`✅ Loaded ${formattedMessages.length} messages for ${groupName}`);
     } catch (error) {
       console.error('Error loading messages:', error);
+      Alert.alert('Error', 'Failed to load messages');
+    } finally {
       setLoading(false);
     }
-  }, [conversationId, userId, isGlobal, sport]);
+  }, [conversationId, userId, groupName]);
 
   useEffect(() => {
     loadMessages();
@@ -191,128 +118,59 @@ export default function SportGroupChatScreen() {
   useEffect(() => {
     if (!conversationId || !userId) return;
 
-    const setupSubscriptions = async () => {
-      const channels: any[] = [];
+    console.log(`🔔 Setting up real-time subscription for: ${conversationId} (${groupName})`);
 
-      // Always subscribe to current conversation
-      const mainChannel = supabase
-        .channel(`sport-group-${conversationId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `conversation_id=eq.${conversationId}`
-          },
-          async (payload) => {
-            if (payload.new && typeof payload.new === 'object') {
-              const newMsg = payload.new as any;
-              
-              // Get sender name
-              const { data: senderData } = await supabase
-                .from('users')
-                .select('full_name')
-                .eq('id', newMsg.sender_id)
-                .single();
+    // Subscribe ONLY to THIS conversation's messages (no mixing!)
+    const channel = supabase
+      .channel(`sport-group-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        async (payload) => {
+          if (payload.new && typeof payload.new === 'object') {
+            const newMsg = payload.new as any;
+            
+            // Get sender name
+            const { data: senderData } = await supabase
+              .from('users')
+              .select('full_name')
+              .eq('id', newMsg.sender_id)
+              .single();
 
-              const message: Message = {
-                id: newMsg.id,
-                senderId: newMsg.sender_id,
-                senderName: senderData?.full_name || 'Unknown',
-                content: newMsg.content,
-                timestamp: new Date(newMsg.created_at),
-                isMe: newMsg.sender_id === userId
-              };
+            const message: Message = {
+              id: newMsg.id,
+              senderId: newMsg.sender_id,
+              senderName: senderData?.full_name || 'Unknown',
+              content: newMsg.content,
+              timestamp: new Date(newMsg.created_at),
+              isMe: newMsg.sender_id === userId
+            };
 
-              setMessages(prev => {
-                // Avoid duplicates
-                if (prev.some(m => m.id === message.id)) return prev;
-                return [...prev, message];
-              });
-              
-              // Scroll to bottom
-              setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-              }, 100);
-            }
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === message.id)) return prev;
+              return [...prev, message];
+            });
+            
+            // Scroll to bottom
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
           }
-        )
-        .subscribe();
-      
-      channels.push(mainChannel);
-
-      // If viewing city group, also subscribe to global group messages
-      if (!isGlobal && sport) {
-        const { data: globalGroup } = await supabase
-          .from('sport_chat_groups')
-          .select('conversation_id')
-          .eq('sport', sport)
-          .is('city', null)
-          .single();
-
-        if (globalGroup?.conversation_id) {
-          const globalChannel = supabase
-            .channel(`global-sport-${globalGroup.conversation_id}`)
-            .on(
-              'postgres_changes',
-              {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `conversation_id=eq.${globalGroup.conversation_id}`
-              },
-              async (payload) => {
-                if (payload.new && typeof payload.new === 'object') {
-                  const newMsg = payload.new as any;
-                  
-                  // Get sender name
-                  const { data: senderData } = await supabase
-                    .from('users')
-                    .select('full_name')
-                    .eq('id', newMsg.sender_id)
-                    .single();
-
-                  const message: Message = {
-                    id: newMsg.id,
-                    senderId: newMsg.sender_id,
-                    senderName: senderData?.full_name || 'Unknown',
-                    content: newMsg.content,
-                    timestamp: new Date(newMsg.created_at),
-                    isMe: newMsg.sender_id === userId
-                  };
-
-                  setMessages(prev => {
-                    // Avoid duplicates
-                    if (prev.some(m => m.id === message.id)) return prev;
-                    return [...prev, message].sort((a, b) => 
-                      a.timestamp.getTime() - b.timestamp.getTime()
-                    );
-                  });
-                  
-                  // Scroll to bottom
-                  setTimeout(() => {
-                    flatListRef.current?.scrollToEnd({ animated: true });
-                  }, 100);
-                }
-              }
-            )
-            .subscribe();
-          
-          channels.push(globalChannel);
         }
-      }
+      )
+      .subscribe();
 
-      return () => {
-        channels.forEach(channel => channel.unsubscribe());
-      };
-    };
-
-    const cleanup = setupSubscriptions();
     return () => {
-      cleanup.then(fn => fn && fn());
+      console.log(`🔕 Unsubscribing from: ${conversationId}`);
+      channel.unsubscribe();
     };
-  }, [conversationId, userId, isGlobal, sport]);
+  }, [conversationId, userId, groupName]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !userId || sending) return;

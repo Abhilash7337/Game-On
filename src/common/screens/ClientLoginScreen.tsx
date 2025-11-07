@@ -3,11 +3,12 @@ import { Button } from '@/src/common/components/Button';
 import { Input } from '@/src/common/components/Input';
 import { LoadingOverlay } from '@/src/common/components/LoadingState';
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { clientLoginScreenStyles } from '@/styles/screens/ClientLoginScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState, useRef } from 'react';
-import { Alert, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -19,6 +20,7 @@ export default function ClientLoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isPlayerMode, setIsPlayerMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Business, 1 = Player
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -29,11 +31,29 @@ export default function ClientLoginScreen() {
     address: '',
   });
 
+  useEffect(() => {
+    // Set toggle initial position based on isPlayerMode
+    toggleAnim.setValue(isPlayerMode ? 1 : 0);
+  }, []);
+
+  // Toggle thumb position interpolation
+  const toggleThumbTranslate = toggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 20], // Move 20 pixels to the right when active
+  });
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleInputFocus = () => {
+    // Scroll to show the button above keyboard
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const handleSignIn = async () => {
@@ -48,6 +68,13 @@ export default function ClientLoginScreen() {
       const result = await ClientAuthService.signIn(formData.email, formData.password);
       
       if (result && result.success) {
+        // ✅ OPTIMIZATION: Start prefetching data for player screens
+        // (Venue owners might switch to player mode)
+        console.log('🚀 [CLIENT LOGIN] Starting data prefetch...');
+        dataPrefetchService.prefetchAll().catch(err => {
+          console.warn('[CLIENT LOGIN] Prefetch failed:', err);
+        });
+        
         Alert.alert('Success', 'Welcome back to your business dashboard!', [
           {
             text: 'Continue',
@@ -122,6 +149,14 @@ export default function ClientLoginScreen() {
 
   const handlePlayerToggle = () => {
     const newPlayerMode = !isPlayerMode;
+    
+    // Animate toggle switch
+    Animated.timing(toggleAnim, {
+      toValue: newPlayerMode ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    
     setIsPlayerMode(newPlayerMode);
 
     // If switching to player mode, navigate to player login
@@ -195,7 +230,12 @@ export default function ClientLoginScreen() {
                 
                 {/* Player Toggle Switch */}
                 <View style={styles.playerToggleContainer}>
-                  <Text style={styles.toggleLabel}>Player</Text>
+                  <Text style={[
+                    styles.toggleLabel,
+                    !isPlayerMode && styles.toggleLabelActive
+                  ]}>
+                    Business
+                  </Text>
                   <TouchableOpacity 
                     style={[
                       styles.toggleSwitch,
@@ -204,11 +244,19 @@ export default function ClientLoginScreen() {
                     onPress={handlePlayerToggle}
                     activeOpacity={0.8}
                   >
-                    <View style={[
+                    <Animated.View style={[
                       styles.toggleThumb,
-                      isPlayerMode && styles.toggleThumbActive
+                      {
+                        transform: [{ translateX: toggleThumbTranslate }]
+                      }
                     ]} />
                   </TouchableOpacity>
+                  <Text style={[
+                    styles.toggleLabel,
+                    isPlayerMode && styles.toggleLabelActive
+                  ]}>
+                    Player
+                  </Text>
                 </View>
               </View>
             </View>
@@ -252,6 +300,7 @@ export default function ClientLoginScreen() {
                             placeholder="Enter your business/venue name"
                             value={formData.businessName}
                             onChangeText={(value) => handleInputChange('businessName', value)}
+                            onFocus={handleInputFocus}
                             leftIcon="business-outline"
                             required
                           />
@@ -263,6 +312,7 @@ export default function ClientLoginScreen() {
                             placeholder="Enter owner's full name"
                             value={formData.ownerName}
                             onChangeText={(value) => handleInputChange('ownerName', value)}
+                            onFocus={handleInputFocus}
                             leftIcon="person-outline"
                             required
                           />
@@ -274,6 +324,7 @@ export default function ClientLoginScreen() {
                             placeholder="Enter your business address"
                             value={formData.address}
                             onChangeText={(value) => handleInputChange('address', value)}
+                            onFocus={handleInputFocus}
                             leftIcon="location-outline"
                             multiline
                             required
@@ -288,6 +339,7 @@ export default function ClientLoginScreen() {
                         placeholder="Enter your business email"
                         value={formData.email}
                         onChangeText={(value) => handleInputChange('email', value)}
+                        onFocus={handleInputFocus}
                         leftIcon="mail-outline"
                         keyboardType="email-address"
                         autoCapitalize="none"
@@ -302,6 +354,7 @@ export default function ClientLoginScreen() {
                           placeholder="Enter your business phone"
                           value={formData.phone}
                           onChangeText={(value) => handleInputChange('phone', value)}
+                          onFocus={handleInputFocus}
                           leftIcon="call-outline"
                           keyboardType="phone-pad"
                           required
@@ -315,6 +368,7 @@ export default function ClientLoginScreen() {
                         placeholder="Enter your password"
                         value={formData.password}
                         onChangeText={(value) => handleInputChange('password', value)}
+                        onFocus={handleInputFocus}
                         leftIcon="lock-closed-outline"
                         secureTextEntry
                         required
@@ -328,6 +382,7 @@ export default function ClientLoginScreen() {
                           placeholder="Confirm your password"
                           value={formData.confirmPassword}
                           onChangeText={(value) => handleInputChange('confirmPassword', value)}
+                          onFocus={handleInputFocus}
                           leftIcon="lock-closed-outline"
                           secureTextEntry
                           required

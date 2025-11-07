@@ -69,92 +69,40 @@ export default function ClientBookingRequestsScreen() {
     };
 
     const handleApproveBooking = async (booking: BookingWithNotification) => {
-        Alert.alert(
-            'Approve Booking',
-            `Approve booking for ${booking.venue} on ${booking.date.toLocaleDateString()} at ${booking.time}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Approve',
-                    style: 'default',
-                    onPress: async () => {
-                        try {
-                            const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
-                            const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
-                            const { GameChatroomService } = await import('@/src/common/services/gameChatroomService');
-                            
-                            // Update booking status to confirmed
-                            await BookingStorageService.updateBookingStatus(booking.id, 'confirmed');
-                            
-                            // Create game chatroom automatically (with null checks)
-                            if (booking.venue && booking.court) {
-                                const chatroom = await GameChatroomService.createChatroom(
-                                    booking.id,
-                                    booking.venue,
-                                    booking.court,
-                                    booking.date,
-                                    booking.time,
-                                    booking.duration,
-                                    booking.userId
-                                );
-                                
-                                console.log('✅ Game chatroom created:', chatroom.id);
-                            } else {
-                                console.warn('⚠️ Cannot create chatroom: missing venue or court info');
-                            }
-                            
-                            // Send confirmation notification
-                            await ClientNotificationService.sendConfirmationNotification(booking.userId, booking);
-                            
-                            Alert.alert(
-                                'Success', 
-                                'Booking approved! A game chatroom has been created for the players.'
-                            );
-                            loadPendingBookings();
-                        } catch (error) {
-                            console.error('❌ Error approving booking:', error);
-                            Alert.alert('Error', 'Failed to approve booking');
-                        }
-                    }
-                }
-            ]
-        );
+        // ✅ REMOVE CONFIRMATION - Approve immediately
+        try {
+            const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
+            
+            console.log('✅ [BOOKING REQUESTS] Approving booking:', booking.id);
+            
+            // Update booking status to confirmed
+            // ✅ Database trigger auto-creates game chat conversation
+            await BookingStorageService.updateBookingStatus(booking.id, 'confirmed');
+            
+            console.log('✅ [BOOKING REQUESTS] Booking approved successfully');
+            Alert.alert('Success', 'Booking approved! A game chat has been created.');
+            loadPendingBookings();
+        } catch (error) {
+            console.error('❌ [BOOKING REQUESTS] Error approving booking:', error);
+            Alert.alert('Error', 'Failed to approve booking');
+        }
     };
 
     const handleRejectBooking = async (booking: BookingWithNotification) => {
-        Alert.prompt(
-            'Reject Booking',
-            'Please provide a reason for rejection:',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Reject',
-                    style: 'destructive',
-                    onPress: async (reason?: string) => {
-                        if (!reason?.trim()) {
-                            Alert.alert('Error', 'Please provide a reason for rejection');
-                            return;
-                        }
-                        
-                        try {
-                            const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
-                            const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
-                            
-                            await BookingStorageService.updateBookingStatus(booking.id, 'rejected');
-                            await ClientNotificationService.sendRejectionNotification(booking.userId, booking, reason);
-                            
-                            Alert.alert('Success', 'Booking rejected');
-                            loadPendingBookings();
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to reject booking');
-                        }
-                    }
-                }
-            ],
-            'plain-text',
-            '',
-            'default'
-        );
+        // ✅ REMOVE CONFIRMATION - Reject immediately
+        try {
+            const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
+            
+            console.log('🚫 [BOOKING REQUESTS] Rejecting booking:', booking.id);
+            await BookingStorageService.updateBookingStatus(booking.id, 'cancelled'); // ✅ Use 'cancelled' not 'rejected'
+            console.log('✅ [BOOKING REQUESTS] Booking rejected');
+            
+            Alert.alert('Success', 'Booking rejected');
+            loadPendingBookings();
+        } catch (error) {
+            console.error('❌ [BOOKING REQUESTS] Error rejecting booking:', error);
+            Alert.alert('Error', 'Failed to reject booking');
+        }
     };
 
     const renderBookingItem = ({ item }: { item: BookingWithNotification }) => (

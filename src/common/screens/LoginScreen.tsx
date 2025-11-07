@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { useLoadingStates } from '@/src/common/hooks/useAsyncOperation';
 import { GoogleAuthService } from '@/src/common/services/googleAuth';
 import { UserAuthService } from '@/src/user/services/userAuth';
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { colors } from '@/styles/theme';
 import { loginScreenStyles } from '@/styles/screens/LoginScreen';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,12 +35,16 @@ export default function LoginScreen() {
   const slideAnim = useRef(new Animated.Value(0)).current; // Start at 0, no slide-in
   const scaleAnim = useRef(new Animated.Value(1)).current; // Start at 1, no scale-in
   const logoRotateAnim = useRef(new Animated.Value(0)).current;
+  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Player, 1 = Business
 
   useEffect(() => {
     // Set initial values without animation
     fadeAnim.setValue(1);
     slideAnim.setValue(0);
     scaleAnim.setValue(1);
+    
+    // Set toggle initial position based on isBusinessMode
+    toggleAnim.setValue(isBusinessMode ? 1 : 0);
     
     // Only keep subtle logo rotation
     Animated.loop(
@@ -56,11 +61,24 @@ export default function LoginScreen() {
     outputRange: ['0deg', '360deg'],
   });
 
+  // Toggle thumb position interpolation
+  const toggleThumbTranslate = toggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 20], // Move 20 pixels to the right when active
+  });
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleInputFocus = () => {
+    // Scroll to show the button above keyboard
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const handleSignIn = async () => {
@@ -75,10 +93,28 @@ export default function LoginScreen() {
       const result = await UserAuthService.signIn(formData.email, formData.password);
       
       if (result && result.success) {
+        // ✅ OPTIMIZATION: Start prefetching data IMMEDIATELY (before navigation)
+        console.log('🚀 [LOGIN] Starting data prefetch...');
+        const prefetchStartTime = Date.now();
+        
+        // Start prefetch but DON'T wait for it - show success dialog immediately
+        dataPrefetchService.prefetchAll().then(() => {
+          const duration = Date.now() - prefetchStartTime;
+          console.log(`✅ [LOGIN] Prefetch completed in ${duration}ms`);
+        }).catch(err => {
+          console.warn('[LOGIN] Background prefetch failed:', err);
+          // Non-critical - home screen will trigger if this fails
+        });
+        
+        // Show success alert immediately (prefetch runs in background)
         Alert.alert('Success', 'Welcome back!', [
           {
             text: 'Continue',
-            onPress: () => router.replace('/(tabs)')
+            onPress: () => {
+              // By the time user clicks Continue and reaches home,
+              // prefetch should be 80-100% complete!
+              router.replace('/(tabs)');
+            }
           }
         ]);
       } else {
@@ -144,6 +180,14 @@ export default function LoginScreen() {
 
   const handleBusinessToggle = () => {
     const newBusinessMode = !isBusinessMode;
+    
+    // Animate toggle switch
+    Animated.timing(toggleAnim, {
+      toValue: newBusinessMode ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    
     setIsBusinessMode(newBusinessMode);
 
     // If switching to business mode, navigate to client login
@@ -264,7 +308,12 @@ export default function LoginScreen() {
               
               {/* Traditional Toggle Switch */}
               <View style={loginScreenStyles.businessToggleContainer}>
-                <Text style={loginScreenStyles.toggleLabel}>Business</Text>
+                <Text style={[
+                  loginScreenStyles.toggleLabel,
+                  !isBusinessMode && loginScreenStyles.toggleLabelActive
+                ]}>
+                  Player
+                </Text>
                 <TouchableOpacity 
                   style={[
                     loginScreenStyles.toggleSwitch,
@@ -273,11 +322,19 @@ export default function LoginScreen() {
                   onPress={handleBusinessToggle}
                   activeOpacity={0.8}
                 >
-                  <View style={[
+                  <Animated.View style={[
                     loginScreenStyles.toggleThumb,
-                    isBusinessMode && loginScreenStyles.toggleThumbActive
+                    {
+                      transform: [{ translateX: toggleThumbTranslate }]
+                    }
                   ]} />
                 </TouchableOpacity>
+                <Text style={[
+                  loginScreenStyles.toggleLabel,
+                  isBusinessMode && loginScreenStyles.toggleLabelActive
+                ]}>
+                  Business
+                </Text>
               </View>
             </View>
           </Animated.View>
@@ -331,6 +388,7 @@ export default function LoginScreen() {
                       placeholder="Enter your full name"
                       value={formData.fullName}
                       onChangeText={(value) => handleInputChange('fullName', value)}
+                      onFocus={handleInputFocus}
                       leftIcon="person-outline"
                       required
                     />
@@ -343,6 +401,7 @@ export default function LoginScreen() {
                     placeholder="Enter your email"
                     value={formData.email}
                     onChangeText={(value) => handleInputChange('email', value)}
+                    onFocus={handleInputFocus}
                     leftIcon="mail-outline"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -357,6 +416,7 @@ export default function LoginScreen() {
                     placeholder="Enter your password"
                     value={formData.password}
                     onChangeText={(value) => handleInputChange('password', value)}
+                    onFocus={handleInputFocus}
                     leftIcon="lock-closed-outline"
                     secureTextEntry
                     required
@@ -370,6 +430,7 @@ export default function LoginScreen() {
                       placeholder="Confirm your password"
                       value={formData.confirmPassword}
                       onChangeText={(value) => handleInputChange('confirmPassword', value)}
+                      onFocus={handleInputFocus}
                       leftIcon="lock-closed-outline"
                       secureTextEntry
                       required

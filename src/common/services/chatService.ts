@@ -286,14 +286,16 @@ export class ChatService {
           if (payload.new && typeof payload.new === 'object') {
             const newData = payload.new as any;
             
+            // Get current user FIRST before any async operations
+            const { data: { user } } = await supabase.auth.getUser();
+            const currentUserId = user?.id;
+            
             // Get sender name
             const { data: userData } = await supabase
               .from('users')
               .select('full_name')
               .eq('id', newData.sender_id)
               .single();
-
-            const { data: { user } } = await supabase.auth.getUser();
             
             const message: Message = {
               id: newData.id,
@@ -304,7 +306,7 @@ export class ChatService {
               messageType: newData.message_type,
               metadata: newData.metadata,
               timestamp: new Date(newData.created_at),
-              isMe: newData.sender_id === user?.id
+              isMe: newData.sender_id === currentUserId // Use captured user ID
             };
 
             onNewMessage(message);

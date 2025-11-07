@@ -3,7 +3,7 @@ import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,20 +13,13 @@ import {
   Alert,
   Modal,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-interface Message {
-  id: string;
-  text: string;
-  timestamp: Date;
-  username: string;
-  userId: string;
-  isMe: boolean;
-  type: 'message' | 'score' | 'system';
-  score?: { team1: number; team2: number };
-}
+import { messageService, FormattedMessage } from '@/src/common/services/messageService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/src/common/services/supabase';
 
 interface GameDetails {
   id: string;
@@ -47,82 +40,129 @@ export default function GameChatScreen() {
   
   const [message, setMessage] = useState('');
   const [showGameDetails, setShowGameDetails] = useState(false);
-  
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Game chat created',
-      timestamp: new Date(Date.now() - 86400000),
-      username: 'System',
-      userId: 'system',
-      isMe: false,
-      type: 'system'
-    },
-    {
-      id: '2',
-      text: 'Hey everyone! Looking forward to the game tomorrow',
-      timestamp: new Date(Date.now() - 3600000),
-      username: 'Alex',
-      userId: '1',
-      isMe: false,
-      type: 'message'
-    },
-    {
-      id: '3',
-      text: 'I\'ll bring extra water bottles',
-      timestamp: new Date(Date.now() - 3000000),
-      username: 'You',
-      userId: 'me',
-      isMe: true,
-      type: 'message'
-    },
-    {
-      id: '4',
-      text: 'Score Update',
-      timestamp: new Date(Date.now() - 1800000),
-      username: 'Mike',
-      userId: '2',
-      isMe: false,
-      type: 'score',
-      score: { team1: 15, team2: 12 }
-    }
-  ]);
+  const [messages, setMessages] = useState<FormattedMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [conversationId, setConversationId] = useState<string>('');
+  const messageChannelRef = useRef<any>(null);
 
-  // Mock game data
+  // Parse game data from params (passed from social tab)
   const gameDetails: GameDetails = {
-    id: params.gameId as string || '1',
-    sport: params.sport as string || 'Badminton',
-    venue: params.venue as string || 'Sports Complex',
-    court: params.court as string || 'Court 2',
-    date: params.date as string || '2024-10-22',
-    time: params.time as string || '6:00 PM',
-    players: ['You', 'Alex', 'Mike', 'Sarah'],
+    id: params.gameId as string || '',
+    sport: params.sport as string || 'Game',
+    venue: params.venue as string || 'Venue',
+    court: params.court as string || 'Court',
+    date: params.date as string || new Date().toISOString().split('T')[0],
+    time: params.time as string || '12:00 PM',
+    players: params.players ? JSON.parse(params.players as string) : [],
     status: (params.status as 'upcoming' | 'live' | 'completed') || 'upcoming'
   };
 
-  const sendMessage = () => {
-    if (message.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: message.trim(),
-        timestamp: new Date(),
-        username: 'You',
-        userId: 'me',
-        isMe: true,
-        type: 'message'
-      };
+  // Load current user and messages
+  useEffect(() => {
+    loadUserAndMessages();
+    
+    return () => {
+      // Cleanup subscription on unmount
+      if (messageChannelRef.current) {
+        messageService.unsubscribeFromMessages(messageChannelRef.current);
+      }
+    };
+  }, []);
+
+  const loadUserAndMessages = async () => {
+    try {
+      setLoading(true);
       
-      setMessages(prev => [...prev, newMessage]);
-      setMessage('');
+      // Get current user - try user_session first (for player login)
+      let userId = null;
+      const userSession = await AsyncStorage.getItem('user_session');
+      if (userSession) {
+        const user = JSON.parse(userSession);
+        userId = user.id;
+      }
       
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      // If no user_session, try clientId (for business login)
+      if (!userId) {
+        userId = await AsyncStorage.getItem('clientId');
+      }
+      
+      // If still no user, try Supabase auth
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+      }
+      
+      if (!userId) {
+        Alert.alert('Error', 'User not logged in');
+        router.back();
+        return;
+      }
+      setCurrentUserId(userId);
+
+      // Get conversation ID from params
+      const convId = params.conversationId as string;
+      if (!convId) {
+        Alert.alert('Error', 'Invalid conversation');
+        router.back();
+        return;
+      }
+      setConversationId(convId);
+
+      // Load existing messages
+      const msgs = await messageService.getConversationMessages(convId, userId);
+      setMessages(msgs);
+
+      // Subscribe to new messages
+      const channel = messageService.subscribeToMessages(
+        convId,
+        userId,
+        (newMessage) => {
+          setMessages(prev => [...prev, newMessage]);
+          setTimeout(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        }
+      );
+      messageChannelRef.current = channel;
+
+      // Mark messages as read
+      await messageService.markAsRead(convId, userId);
+
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      Alert.alert('Error', 'Failed to load messages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (message.trim() && !sending) {
+      try {
+        setSending(true);
+        const messageText = message.trim();
+        setMessage(''); // Clear input immediately
+        
+        await messageService.sendMessage(conversationId, currentUserId, messageText);
+        
+        // Message will appear via subscription
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        Alert.alert('Error', 'Failed to send message');
+        setMessage(message); // Restore message on error
+      } finally {
+        setSending(false);
+      }
     }
   };
 
 
-  const rescheduleGame = () => {
+  const rescheduleGame = async () => {
     Alert.alert(
       'Reschedule Game',
       'Request to reschedule this game?',
@@ -130,17 +170,15 @@ export default function GameChatScreen() {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Request', 
-          onPress: () => {
-            const systemMessage: Message = {
-              id: Date.now().toString(),
-              text: 'You requested to reschedule the game. Waiting for other players to respond.',
-              timestamp: new Date(),
-              username: 'System',
-              userId: 'system',
-              isMe: false,
-              type: 'system'
-            };
-            setMessages(prev => [...prev, systemMessage]);
+          onPress: async () => {
+            try {
+              await messageService.sendSystemMessage(
+                conversationId,
+                `${gameDetails.sport} game reschedule requested. Waiting for other players to respond.`
+              );
+            } catch (error) {
+              console.error('Error sending reschedule request:', error);
+            }
           }
         }
       ]
@@ -156,8 +194,8 @@ export default function GameChatScreen() {
         { 
           text: 'Rate Now', 
           onPress: () => {
-            // Navigate to rating screen
-            router.push('/rate-players');
+            // TODO: Navigate to rating screen when implemented
+            Alert.alert('Coming Soon', 'Player rating feature is coming soon!');
           }
         }
       ]
@@ -188,7 +226,7 @@ export default function GameChatScreen() {
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
+  const renderMessage = ({ item }: { item: FormattedMessage }) => {
     if (item.type === 'system') {
       return (
         <View style={gameChatStyles.systemMessage}>
@@ -281,48 +319,63 @@ export default function GameChatScreen() {
 
       </View>
 
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        style={gameChatStyles.messagesList}
-        contentContainerStyle={gameChatStyles.messagesContent}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      {/* Input */}
-      <View style={[gameChatStyles.inputContainer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <View style={gameChatStyles.inputWrapper}>
-          <TextInput
-            style={gameChatStyles.textInput}
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Coordinate with your team..."
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            maxLength={300}
-          />
-          
-          <TouchableOpacity 
-            style={[
-              gameChatStyles.sendButton,
-              message.trim() && gameChatStyles.sendButtonActive
-            ]}
-            onPress={sendMessage}
-            disabled={!message.trim()}
-            activeOpacity={0.8}
-          >
-            <Ionicons 
-              name="send" 
-              size={20} 
-              color={message.trim() ? '#FFFFFF' : colors.textSecondary} 
-            />
-          </TouchableOpacity>
+      {/* Loading Indicator */}
+      {loading ? (
+        <View style={gameChatStyles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={gameChatStyles.loadingText}>Loading messages...</Text>
         </View>
-      </View>
+      ) : (
+        <>
+          {/* Messages */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            style={gameChatStyles.messagesList}
+            contentContainerStyle={gameChatStyles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
+
+          {/* Input */}
+          <View style={[gameChatStyles.inputContainer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+            <View style={gameChatStyles.inputWrapper}>
+              <TextInput
+                style={gameChatStyles.textInput}
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Coordinate with your team..."
+                placeholderTextColor={colors.textSecondary}
+                multiline
+                maxLength={300}
+                editable={!sending}
+              />
+              
+              <TouchableOpacity 
+                style={[
+                  gameChatStyles.sendButton,
+                  (message.trim() && !sending) && gameChatStyles.sendButtonActive
+                ]}
+                onPress={sendMessage}
+                disabled={!message.trim() || sending}
+                activeOpacity={0.8}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons 
+                    name="send" 
+                    size={20} 
+                    color={message.trim() ? '#FFFFFF' : colors.textSecondary} 
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
 
       {/* Game Details Modal */}
       <Modal

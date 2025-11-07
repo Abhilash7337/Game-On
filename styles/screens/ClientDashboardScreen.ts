@@ -287,6 +287,12 @@ export const clientDashboardStyles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     color: colors.textTertiary,
   },
+  bookingFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
   actionButton: {
     flex: 1,
     marginHorizontal: spacing.xs,

@@ -1,6 +1,7 @@
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { LoadingState } from '@/src/common/components/LoadingState';
 import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { courtsStyles } from '@/styles/screens/CourtsScreen';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -24,34 +25,111 @@ export default function CourtsScreen() {
 		image: string | any;
 		images?: string[];
 		distance?: string;
+		coordinates?: {latitude: number; longitude: number};
 	}[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [expandedVenue, setExpandedVenue] = useState<string | null>(null);
 	const [animationValues] = useState<{[key: string]: Animated.Value}>({});
 	const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+	const [dataSource, setDataSource] = useState<'cache' | 'fresh' | 'loading'>('loading');
 	const insets = useSafeAreaInsets();
 	const { width } = Dimensions.get('window');
 
 	useEffect(() => {
-		getUserLocation();
+		const initializeScreen = async () => {
+			setLoading(true);
+			
+			// ✅ OPTIMIZATION: Try cache first for instant load!
+			const cache = dataPrefetchService.getCache();
+			if (cache && dataPrefetchService.isCacheFresh()) {
+				console.log('⚡ [COURTS] Using cached data - INSTANT LOAD!');
+				
+				// Set venues and location from cache immediately
+				const venuesWithDistance = cache.venues.map(v => {
+					let distanceText = 'N/A';
+					
+					if (cache.userLocation && v.location) {
+						try {
+							// Parse location if it's a string
+							let venueCoords = v.location;
+							if (typeof v.location === 'string') {
+								venueCoords = JSON.parse(v.location);
+							}
+							
+							const distance = calculateDistance(
+								cache.userLocation.latitude,
+								cache.userLocation.longitude,
+								venueCoords.latitude,
+								venueCoords.longitude
+							);
+							distanceText = formatDistance(distance);
+						} catch (error) {
+							console.log('Distance calculation error for venue:', v.name);
+						}
+					}
+					
+					return {
+						id: v.id,
+						name: v.name,
+						rating: v.rating || 0,
+						reviews: 0,
+						location: v.address || '',
+						price: v.pricing?.basePrice || 0,
+						image: v.images && v.images.length > 0 
+							? `${v.images[0]}?w=300&h=150&q=80`
+							: require('@/assets/images/partial-react-logo.png'),
+						images: v.images || [],
+						coordinates: v.location,
+						distance: distanceText,
+					};
+				});
+				
+				setVenues(venuesWithDistance);
+				setUserLocation(cache.userLocation);
+				setDataSource('cache');
+				setLoading(false);
+				
+				console.log(`✅ [COURTS] Loaded ${venuesWithDistance.length} venues from cache in <100ms`);
+				return; // Done! Screen shows instantly ⚡
+			}
+			
+			// ❌ Cache miss or stale - load fresh data
+			console.log('📡 [COURTS] Cache miss/stale, loading fresh data...');
+			setDataSource('loading');
+			
+			// Get location permission and data BEFORE loading venues
+			const coords = await getUserLocation();
+			
+			// Now load venues with the location we just got
+			await loadVenues(false, coords);
+			
+			setDataSource('fresh');
+			setLoading(false);
+		};
+		
+		initializeScreen();
 	}, []);
-
-	useEffect(() => {
-		loadVenues();
-	}, [userLocation]); // Reload venues when user location changes
 
 	// Refresh venues when screen comes into focus and reset expanded state
 	useFocusEffect(
 		useCallback(() => {
-			getUserLocation();
-			loadVenues();
-			// Reset expanded venue when screen comes into focus
+			// ✅ OPTIMIZATION: Only reload if cache is stale or we're using fresh data
+			const shouldRefresh = dataSource === 'fresh' || !dataPrefetchService.isCacheFresh();
+			
+			if (shouldRefresh && dataSource === 'cache') {
+				console.log('🔄 [COURTS] Cache is stale, refreshing...');
+				loadVenues(false, userLocation);
+			} else if (dataSource === 'cache') {
+				console.log('⚡ [COURTS] Cache still fresh, no reload needed!');
+			}
+			
+			// Always reset expanded venue when screen comes into focus
 			setExpandedVenue(null);
-		}, [])
+		}, [dataSource, userLocation])
 	);
 
-	const getUserLocation = async () => {
+	const getUserLocation = async (): Promise<{latitude: number; longitude: number} | null> => {
 		try {
 			console.log('📍 [COURTS] Requesting location permission...');
 			// Request location permissions
@@ -59,18 +137,14 @@ export default function CourtsScreen() {
 			
 			if (status !== 'granted') {
 				console.log('❌ [COURTS] Location permission denied');
-				Alert.alert(
-					'Location Permission Required',
-					'Please enable location access to see distances to venues.',
-					[{ text: 'OK' }]
-				);
-				return;
+				// Don't show alert, just silently fail - distances will show as N/A
+				return null;
 			}
 
 			console.log('📍 [COURTS] Getting current location...');
-			// Get current location
+			// Get current location with lower accuracy for faster response
 			const location = await Location.getCurrentPositionAsync({
-				accuracy: Location.Accuracy.Balanced,
+				accuracy: Location.Accuracy.Low, // Changed from Balanced to Low for faster response
 			});
 
 			const userCoords = {
@@ -78,18 +152,26 @@ export default function CourtsScreen() {
 				longitude: location.coords.longitude,
 			};
 
-			setUserLocation(userCoords);
 			console.log('📍 [COURTS] User location obtained:', userCoords);
+			
+			// Set location state immediately
+			setUserLocation(userCoords);
+			
+			return userCoords;
 		} catch (error) {
 			console.log('❌ [COURTS] Error getting location:', error);
 			// Continue without location - distances won't be shown
+			return null;
 		}
 	};
 
-	const loadVenues = async (isRefresh = false) => {
+	const loadVenues = async (isRefresh = false, locationCoords?: {latitude: number; longitude: number} | null) => {
 		if (isRefresh) {
 			setRefreshing(true);
 		}
+		
+		// Use passed location or state location
+		const currentLocation = locationCoords || userLocation;
 		
 		try {
 			const { VenueStorageService } = await import('@/src/common/services/venueStorage');
@@ -100,7 +182,7 @@ export default function CourtsScreen() {
 				let distanceText = 'N/A';
 				
 				// Calculate distance if user location is available and venue has coordinates
-				if (userLocation && venue.coordinates) {
+				if (currentLocation && venue.coordinates) {
 					try {
 						// Use coordinates directly from getPublicVenues
 						const venueCoords = venue.coordinates;
@@ -114,8 +196,8 @@ export default function CourtsScreen() {
 						    venueCoords.latitude !== 0 && 
 						    venueCoords.longitude !== 0) {
 							const distanceKm = calculateDistance(
-								userLocation.latitude,
-								userLocation.longitude,
+								currentLocation.latitude,
+								currentLocation.longitude,
 								venueCoords.latitude,
 								venueCoords.longitude
 							);
@@ -123,26 +205,31 @@ export default function CourtsScreen() {
 							console.log(`📍 Distance calculated for ${venue.name}: ${distanceText}`);
 						} else {
 							console.log('❌ Invalid coordinates for venue:', venue.name, venueCoords);
+							distanceText = 'N/A';
 						}
 					} catch (error) {
 						console.log('❌ Error calculating distance for venue:', venue.id, error);
+						distanceText = 'N/A';
 					}
-				} else if (!userLocation) {
+				} else if (!currentLocation) {
 					console.log('⚠️ User location not available for distance calculation');
+					distanceText = 'N/A';
 				} else if (!venue.coordinates) {
 					console.log('⚠️ Venue coordinates not available for:', venue.name);
+					distanceText = 'N/A';
 				}
 				
 				return {
 					...venue,
 					image: venue.image || require('../../assets/images/partial-react-logo.png'),
 					images: venue.images || [
-						'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=400&h=200&fit=crop',
-						'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=200&fit=crop',
-						'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=200&fit=crop',
-						'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=400&h=200&fit=crop',
+						'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=150&fit=crop&q=80',
+						'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=150&fit=crop&q=80',
+						'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=150&fit=crop&q=80',
+						'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=150&fit=crop&q=80',
 					],
 					distance: distanceText,
+					coordinates: venue.coordinates,
 				};
 			});
 			
@@ -179,10 +266,10 @@ export default function CourtsScreen() {
 					price: 170,
 					image: require('../../assets/images/partial-react-logo.png'),
 					images: [
-						'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=400&h=200&fit=crop',
-						'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=200&fit=crop',
-						'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=200&fit=crop',
-						'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=400&h=200&fit=crop',
+						'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=150&fit=crop&q=80',
+						'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=150&fit=crop&q=80',
+						'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=150&fit=crop&q=80',
+						'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=150&fit=crop&q=80',
 					],
 					distance: distanceText,
 				},
@@ -194,6 +281,8 @@ export default function CourtsScreen() {
 	};
 
 	const onRefresh = () => {
+		console.log('🔄 [COURTS] Manual refresh triggered');
+		setDataSource('loading'); // Force fresh data load
 		loadVenues(true);
 	};
 
@@ -285,27 +374,37 @@ export default function CourtsScreen() {
 				}
 				renderItem={({ item }) => (
 					<View>
-						{/* Main Venue Card */}
-						<View style={courtsStyles.venueCard}>
-							{/* Image Container with Preview Button */}
-							<View style={courtsStyles.imageContainer}>
+						{/* Main Venue Card - Make entire card clickable */}
+						<TouchableOpacity 
+							style={courtsStyles.venueCard}
+							activeOpacity={0.7}
+							onPress={() => router.push({ pathname: '/VenueDetailsScreen', params: { venueId: item.id } })}
+						>
+							{/* Image Container - Clickable for preview */}
+							<TouchableOpacity 
+								style={courtsStyles.imageContainer}
+								activeOpacity={0.9}
+								onPress={(e) => {
+									e.stopPropagation();
+									toggleImagePreview(item.id);
+								}}
+							>
 								<Image 
 									source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
-									style={courtsStyles.venueImage} 
+									style={courtsStyles.venueImage}
+									resizeMode="cover"
+									defaultSource={require('../../assets/images/partial-react-logo.png')}
 								/>
 								{/* Preview Button Overlay at Bottom of Image */}
-								<TouchableOpacity 
-									style={courtsStyles.imagePreviewButton}
-									onPress={() => toggleImagePreview(item.id)}
-								>
+								<View style={courtsStyles.imagePreviewButton}>
 									<Text style={courtsStyles.imagePreviewText}>Preview</Text>
 									<Ionicons 
 										name={expandedVenue === item.id ? "chevron-up-outline" : "chevron-down-outline"} 
 										size={12} 
 										color="#FFFFFF" 
 									/>
-								</TouchableOpacity>
-							</View>
+								</View>
+							</TouchableOpacity>
 							
 							<View style={courtsStyles.venueInfo}>
 								<View style={courtsStyles.venueHeader}>
@@ -323,15 +422,12 @@ export default function CourtsScreen() {
 								
 								<View style={courtsStyles.venueBottomRow}>
 									<Text style={courtsStyles.venuePrice}>₹{item.price}/hr</Text>
-									<TouchableOpacity
-										style={courtsStyles.bookBtn}
-										onPress={() => router.push({ pathname: '/VenueDetailsScreen', params: { venueId: item.id } })}
-									>
+									<View style={courtsStyles.bookBtn}>
 										<Text style={courtsStyles.bookBtnText}>Book Now</Text>
-									</TouchableOpacity>
+									</View>
 								</View>
 							</View>
-						</View>
+						</TouchableOpacity>
 						
 						{/* Expandable Image Preview */}
 						{expandedVenue === item.id && (
@@ -356,6 +452,7 @@ export default function CourtsScreen() {
 											key={index}
 											source={{ uri: imageUrl }}
 											style={[courtsStyles.previewImage, { width: width * 0.7 }]}
+											resizeMode="cover"
 										/>
 									))}
 								</ScrollView>
