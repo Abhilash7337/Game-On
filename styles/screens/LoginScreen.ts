@@ -81,7 +81,11 @@ export const loginScreenStyles = StyleSheet.create({
   toggleLabel: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: 'rgba(255, 255, 255, 0.9)', // Semi-transparent white
+    color: 'rgba(255, 255, 255, 0.5)', // Dimmed when inactive
+  },
+  toggleLabelActive: {
+    color: 'rgba(255, 255, 255, 1)', // Bright white when active
+    fontWeight: typography.fontWeight.bold,
   },
   toggleSwitch: {
     width: 44,
@@ -99,7 +103,6 @@ export const loginScreenStyles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
-    alignSelf: 'flex-start', // Start position (Personal)
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -111,10 +114,6 @@ export const loginScreenStyles = StyleSheet.create({
         elevation: 3,
       },
     }),
-  },
-  toggleThumbActive: {
-    alignSelf: 'flex-end', // End position (Business)
-    backgroundColor: colors.primary, // Green thumb when active
   },
   // Fixed Hero Section — fills the green area and aligns text to bottom
   fixedHeroSection: {

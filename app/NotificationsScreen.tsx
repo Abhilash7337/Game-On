@@ -21,10 +21,12 @@ export default function NotificationsScreen() {
         if (isRefresh) setRefreshing(true);
         
         try {
-            const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
+            // NOTIFICATIONS DISABLED - COMMENTED OUT
+            // const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
             // In real app, get user ID from session
-            const userNotifications = await ClientNotificationService.getUserNotifications('current-user');
-            setNotifications(userNotifications);
+            // const userNotifications = await ClientNotificationService.getUserNotifications('current-user');
+            // setNotifications(userNotifications);
+            setNotifications([]); // Empty array - notifications disabled
         } catch (error) {
             console.error('Error loading notifications:', error);
         } finally {
@@ -35,9 +37,11 @@ export default function NotificationsScreen() {
 
     const markAsRead = async (notificationId: string) => {
         try {
-            const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
-            await ClientNotificationService.markAsRead(notificationId);
-            loadNotifications();
+            // NOTIFICATIONS DISABLED - COMMENTED OUT
+            // const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
+            // await ClientNotificationService.markAsRead(notificationId);
+            // loadNotifications();
+            console.log('Notification mark as read disabled');
         } catch (error) {
             console.error('Error marking notification as read:', error);
         }

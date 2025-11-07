@@ -1,7 +1,6 @@
-import { ClientService } from '@/src/client/services/clientApi';
 import { ClientAuthService } from '@/src/client/services/clientAuth';
+import { AnalyticsService } from '@/src/client/services/analyticsService';
 import AppHeader from '@/src/common/components/AppHeader';
-import { Booking, Venue } from '@/src/common/types';
 import {
   clientDashboardStyles
 } from '@/styles/screens/ClientDashboardScreen';
@@ -12,18 +11,40 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+interface DashboardAnalytics {
+  todayBookings: number;
+  pendingRequests: number;
+  totalRevenue: number;
+  activeVenues: number;
+}
+
+interface TodayBooking {
+  id: string;
+  venueName: string;
+  courtName: string;
+  userName: string;
+  startTime: string;
+  endTime: string;
+  duration: string;
+  bookingType: string;
+  playerCount: number;
+  totalAmount: number;
+  status: string;
+  paymentStatus: string;
+}
+
 export default function ClientDashboardScreen() {
   const router = useRouter();
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
-  const [revenue, setRevenue] = useState({
-    today: 0,
-    thisMonth: 0,
-    growth: 0,
+  const [analytics, setAnalytics] = useState<DashboardAnalytics>({
+    todayBookings: 0,
+    pendingRequests: 0,
+    totalRevenue: 0,
+    activeVenues: 0
   });
+  const [todayBookingsList, setTodayBookingsList] = useState<TodayBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
 
   useEffect(() => {
     initializeClientSession();
@@ -53,42 +74,27 @@ export default function ClientDashboardScreen() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Initialize demo booking data and get services
-      const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
-      const { ClientSessionManager } = await import('@/src/client/services/clientSession');
-      BookingStorageService.initializeDemoData();
-      
-      // Load client's venues
-      const venuesResponse = await ClientService.getClientVenues();
-      if (venuesResponse.success && venuesResponse.data) {
-        setVenues(venuesResponse.data);
-      }
-
-      // Load today's bookings
-      const bookingsResponse = await ClientService.getTodayBookings();
-      if (bookingsResponse.success && bookingsResponse.data) {
-        setTodayBookings(bookingsResponse.data);
-        console.log('Today Bookings:', bookingsResponse.data);
-      }
-
-      // Load revenue data
-      const revenueResponse = await ClientService.getRevenueStats();
-      if (revenueResponse.success && revenueResponse.data) {
-        setRevenue(revenueResponse.data);
-      }
-
-      // Load pending booking requests count
+      // Get current client ID
       const { supabase } = await import('@/src/common/services/supabase');
       const { data: { user } } = await supabase.auth.getUser();
-      const clientId = user?.id;
       
-      console.log('📊 [DASHBOARD] Loading pending count for client:', clientId);
-      
-      if (clientId) {
-        const pendingBookings = await BookingStorageService.getPendingBookings(clientId);
-        console.log('📊 [DASHBOARD] Pending bookings count:', pendingBookings.length);
-        setPendingRequestsCount(pendingBookings.length);
+      if (!user?.id) {
+        console.error('❌ [DASHBOARD] No authenticated user');
+        return;
       }
+
+      setClientId(user.id);
+      console.log('📊 [DASHBOARD] Loading analytics for client:', user.id);
+
+      // Fetch real-time analytics from Supabase
+      const analyticsData = await AnalyticsService.getDashboardAnalytics(user.id);
+      setAnalytics(analyticsData);
+
+      // Fetch today's bookings list
+      const bookings = await AnalyticsService.getTodayBookingsList(user.id);
+      setTodayBookingsList(bookings);
+
+      console.log('✅ [DASHBOARD] Analytics loaded:', analyticsData);
     } catch (error) {
       console.error('❌ [DASHBOARD] Error loading dashboard data:', error);
       Alert.alert('Error', 'Failed to load dashboard data');
@@ -97,48 +103,28 @@ export default function ClientDashboardScreen() {
     }
   };
 
-  const StatCard = ({ title, value, icon, change }: {
+  const StatCard = ({ title, value, icon, color }: {
     title: string;
     value: string;
     icon: keyof typeof Ionicons.glyphMap;
-    change?: string;
+    color?: string;
   }) => (
     <View style={clientDashboardStyles.statCard}>
       <View style={clientDashboardStyles.statHeader}>
-        <Ionicons name={icon} size={24} color={colors.primary} />
-        {change && (
-          <Text style={[clientDashboardStyles.change, { color: change.startsWith('+') ? colors.success : colors.error }]}>
-            {change}
-          </Text>
-        )}
+        <Ionicons name={icon} size={24} color={color || colors.primary} />
       </View>
       <Text style={clientDashboardStyles.statValue}>{value}</Text>
       <Text style={clientDashboardStyles.statTitle}>{title}</Text>
     </View>
   );
 
-  const VenueCard = ({ venue }: { venue: Venue }) => (
-    <View style={clientDashboardStyles.venueCard}>
-      <View style={clientDashboardStyles.venueHeader}>
-        <Text style={clientDashboardStyles.venueName}>{venue.name}</Text>
-        <View style={[clientDashboardStyles.statusBadge, { backgroundColor: venue.isActive ? colors.success + '20' : colors.error + '20' }]}>
-          <Text style={[clientDashboardStyles.statusText, { color: venue.isActive ? colors.success : colors.error }]}>
-            {venue.isActive ? 'Active' : 'Inactive'}
-          </Text>
-        </View>
-      </View>
-      <Text style={clientDashboardStyles.venueAddress}>{venue.address}</Text>
-      <Text style={clientDashboardStyles.venueCourts}>{venue.courts.length} courts</Text>
-      <View style={clientDashboardStyles.venueFooter}>
-        <Text style={clientDashboardStyles.venueRating}>
-          {venue.rating.toFixed(1)}
-        </Text>
-        <TouchableOpacity style={clientDashboardStyles.manageButton}>
-          <Text style={clientDashboardStyles.manageButtonText}>Manage</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -253,28 +239,31 @@ export default function ClientDashboardScreen() {
         }
       >
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Only Important Metrics */}
         <View style={clientDashboardStyles.statsContainer}>
           <StatCard
-            title="Today's Revenue"
-            value={`₹${revenue.today.toLocaleString()}`}
-            icon="cash-outline"
-            change={`+${revenue.growth}%`}
+            title="Today's Bookings"
+            value={analytics.todayBookings.toString()}
+            icon="calendar-outline"
+            color={colors.primary}
           />
           <StatCard
-            title="Today's Bookings"
-            value={todayBookings.length.toString()}
-            icon="calendar-outline"
+            title="Pending Requests"
+            value={analytics.pendingRequests.toString()}
+            icon="mail-outline"
+            color="#F59E0B"
+          />
+          <StatCard
+            title="Total Revenue"
+            value={`₹${analytics.totalRevenue.toLocaleString()}`}
+            icon="cash-outline"
+            color="#10B981"
           />
           <StatCard
             title="Active Venues"
-            value={venues.filter(v => v.isActive).length.toString()}
+            value={analytics.activeVenues.toString()}
             icon="location-outline"
-          />
-          <StatCard
-            title="Monthly Revenue"
-            value={`₹${revenue.thisMonth.toLocaleString()}`}
-            icon="trending-up-outline"
+            color="#8B5CF6"
           />
         </View>
 
@@ -283,7 +272,7 @@ export default function ClientDashboardScreen() {
           <Text style={clientDashboardStyles.sectionTitle}>Quick Actions</Text>
           
           <View style={clientDashboardStyles.quickActionsGrid}>
-            {/* First Row - Primary Actions */}
+            {/* Primary Actions */}
             <View style={clientDashboardStyles.quickActions}>
               <TouchableOpacity
                 style={clientDashboardStyles.modernActionButton}
@@ -309,70 +298,68 @@ export default function ClientDashboardScreen() {
                     <Text style={clientDashboardStyles.modernButtonTextOutline}>Requests</Text>
                   </View>
                 </TouchableOpacity>
-                {pendingRequestsCount > 0 && (
+                {analytics.pendingRequests > 0 && (
                   <View style={clientDashboardStyles.badge}>
                     <Text style={clientDashboardStyles.badgeText}>
-                      {pendingRequestsCount}
+                      {analytics.pendingRequests}
                     </Text>
                   </View>
                 )}
               </View>
             </View>
-            
-            {/* Second Row - Secondary Actions */}
-            <TouchableOpacity
-              style={clientDashboardStyles.modernActionButtonFull}
-              onPress={() => Alert.alert('Analytics', 'Analytics functionality coming soon!')}
-            >
-              <View style={clientDashboardStyles.modernButtonContentHorizontal}>
-                <View style={clientDashboardStyles.modernButtonIconOutline}>
-                  <Ionicons name="analytics-outline" size={24} color={colors.primary} />
-                </View>
-                <Text style={clientDashboardStyles.modernButtonTextOutline}>View Analytics</Text>
-              </View>
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Your Venues */}
-        <View style={clientDashboardStyles.section}>
-          <View style={clientDashboardStyles.sectionHeader}>
-            <Text style={clientDashboardStyles.sectionTitle}>Your Venues</Text>
-            <TouchableOpacity>
-              <Text style={clientDashboardStyles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          {venues.map((venue) => (
-            <VenueCard key={venue.id} venue={venue} />
-          ))}
-        </View>
-
-        {/* Recent Bookings */}
+        {/* Today's Bookings Detail */}
         <View style={clientDashboardStyles.section}>
           <Text style={clientDashboardStyles.sectionTitle}>Today's Bookings</Text>
-          {todayBookings.length === 0 ? (
+          {todayBookingsList.length === 0 ? (
             <View style={clientDashboardStyles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
               <Text style={clientDashboardStyles.emptyText}>No bookings today</Text>
             </View>
           ) : (
-            todayBookings.map((booking) => {
-              const bookingWithDetails = booking as any; // Type assertion for additional fields
-              return (
-                <View key={booking.id} style={clientDashboardStyles.bookingCard}>
-                  <View style={clientDashboardStyles.bookingHeader}>
-                    <Text style={clientDashboardStyles.bookingTime}>{booking.time}</Text>
-                    <Text style={clientDashboardStyles.bookingPrice}>₹{booking.price}</Text>
-                  </View>
-                  <Text style={clientDashboardStyles.bookingCourt}>
-                    {bookingWithDetails.venue || 'Unknown Venue'} - {bookingWithDetails.court || booking.courtId}
+            todayBookingsList.map((booking) => (
+              <View key={booking.id} style={clientDashboardStyles.bookingCard}>
+                <View style={clientDashboardStyles.bookingHeader}>
+                  <Text style={clientDashboardStyles.bookingTime}>
+                    {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                   </Text>
-                  <Text style={clientDashboardStyles.bookingDuration}>
-                    {booking.duration} • {booking.bookingType}
-                  </Text>
+                  <Text style={clientDashboardStyles.bookingPrice}>₹{booking.totalAmount}</Text>
                 </View>
-              );
-            })
+                <Text style={clientDashboardStyles.bookingCourt}>
+                  {booking.venueName} - {booking.courtName}
+                </Text>
+                <View style={clientDashboardStyles.bookingFooter}>
+                  <Text style={clientDashboardStyles.bookingDuration}>
+                    {booking.userName} • {booking.playerCount} {booking.playerCount > 1 ? 'players' : 'player'}
+                  </Text>
+                  <View style={[
+                    clientDashboardStyles.statusBadge, 
+                    { 
+                      backgroundColor: booking.status === 'confirmed' 
+                        ? colors.success + '20' 
+                        : booking.status === 'pending' 
+                        ? '#F59E0B20' 
+                        : colors.error + '20' 
+                    }
+                  ]}>
+                    <Text style={[
+                      clientDashboardStyles.statusText, 
+                      { 
+                        color: booking.status === 'confirmed' 
+                          ? colors.success 
+                          : booking.status === 'pending' 
+                          ? '#F59E0B' 
+                          : colors.error 
+                      }
+                    ]}>
+                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))
           )}
         </View>
       </ScrollView>

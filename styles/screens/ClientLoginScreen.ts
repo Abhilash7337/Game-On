@@ -54,7 +54,11 @@ export const clientLoginScreenStyles = StyleSheet.create({
   toggleLabel: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.5)', // Dimmed when inactive
+  },
+  toggleLabelActive: {
+    color: 'rgba(255, 255, 255, 1)', // Bright white when active
+    fontWeight: typography.fontWeight.bold,
   },
   toggleSwitch: {
     width: 44,
@@ -72,7 +76,6 @@ export const clientLoginScreenStyles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
-    alignSelf: 'flex-start',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -84,10 +87,6 @@ export const clientLoginScreenStyles = StyleSheet.create({
         elevation: 3,
       },
     }),
-  },
-  toggleThumbActive: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.secondary,
   },
   keyboardView: {
     flex: 1,

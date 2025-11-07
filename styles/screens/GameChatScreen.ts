@@ -371,4 +371,15 @@ export const gameChatStyles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: typography.fontWeight.semibold,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  loadingText: {
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
 });

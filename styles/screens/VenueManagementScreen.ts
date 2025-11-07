@@ -110,15 +110,15 @@ export const venueManagementStyles = StyleSheet.create({
   },
 
   venueName: {
-    fontSize: typography.sizes.lg,
-    fontFamily: fontWeight.bold,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 4,
   },
 
   venueAddress: {
-    fontSize: typography.sizes.sm,
-    fontFamily: fontWeight.regular,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.normal,
     color: colors.textSecondary,
   },
 
@@ -127,8 +127,8 @@ export const venueManagementStyles = StyleSheet.create({
   },
 
   statusLabel: {
-    fontSize: typography.sizes.xs,
-    fontFamily: fontWeight.medium,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
     color: colors.textSecondary,
     marginBottom: 4,
   },
@@ -152,8 +152,8 @@ export const venueManagementStyles = StyleSheet.create({
   },
 
   statText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: fontWeight.medium,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
     color: colors.textSecondary,
   },
 
@@ -181,8 +181,8 @@ export const venueManagementStyles = StyleSheet.create({
   },
 
   editButtonText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: fontWeight.semibold,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
 
@@ -193,8 +193,8 @@ export const venueManagementStyles = StyleSheet.create({
   },
 
   deleteButtonText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: fontWeight.semibold,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
     color: '#EF4444',
   },
 
@@ -207,16 +207,16 @@ export const venueManagementStyles = StyleSheet.create({
   },
 
   emptyTitle: {
-    fontSize: typography.sizes.xl,
-    fontFamily: fontWeight.bold,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
     color: colors.textPrimary,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
 
   emptyText: {
-    fontSize: typography.sizes.md,
-    fontFamily: fontWeight.regular,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.normal,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
@@ -233,8 +233,8 @@ export const venueManagementStyles = StyleSheet.create({
   },
 
   emptyButtonText: {
-    fontSize: typography.sizes.md,
-    fontFamily: fontWeight.semibold,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
     color: colors.background,
   },
 });

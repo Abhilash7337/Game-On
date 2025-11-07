@@ -30,6 +30,7 @@ export default function BookingFormScreen() {
     const venuePrice = parseInt(params.venuePrice as string) || 500;
     const ownerId = params.ownerId as string;
     const preSelectedCourt = params.court as string;
+    const preSelectedCourtId = params.courtId as string; // Real court UUID from database
     const preSelectedTime = params.timeSlot as string;
     
     const [courts, setCourts] = useState<string[]>([]);
@@ -40,6 +41,7 @@ export default function BookingFormScreen() {
     const [timeSlotStatuses, setTimeSlotStatuses] = useState<{[key: string]: {status: string; spotsLeft: number}}>({});
     
     const [court, setCourt] = useState<string>(preSelectedCourt || '');
+    const [courtId, setCourtId] = useState<string>(preSelectedCourtId || ''); // Store actual court UUID
     const [date, setDate] = useState(new Date());
     const [showDate, setShowDate] = useState(false);
     const [time, setTime] = useState<string>(preSelectedTime || '');
@@ -94,24 +96,87 @@ export default function BookingFormScreen() {
     };
 
     const loadTimeSlotStatuses = async () => {
-        // Mock data - In real app, fetch from database based on bookings
-        const statuses: {[key: string]: {status: string; spotsLeft: number}} = {};
-        const timeSlots = ['6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM'];
-        
-        timeSlots.forEach(slot => {
-            const random = Math.random();
-            if (random > 0.8) {
-                statuses[slot] = { status: 'booked', spotsLeft: 0 }; // Fully booked
-            } else if (random > 0.6) {
-                statuses[slot] = { status: 'available', spotsLeft: 4 }; // Available (green)
-            } else if (random > 0.4) {
-                statuses[slot] = { status: 'joining', spotsLeft: 2 }; // Available to join (orange)
-            } else {
-                statuses[slot] = { status: 'last-spot', spotsLeft: 1 }; // 1 spot left (red)
+        try {
+            // Fetch real bookings from Supabase for this venue and date
+            const { supabase } = await import('@/src/common/services/supabase');
+            const dateStr = date.toISOString().split('T')[0];
+            
+            const { data: bookings, error } = await supabase
+                .from('bookings')
+                .select('start_time, end_time, booking_type, player_count, status')
+                .eq('venue_id', venueId)
+                .eq('booking_date', dateStr)
+                .in('status', ['pending', 'confirmed']);
+
+            if (error) {
+                console.error('❌ Error loading time slot statuses:', error);
+                // Fallback to all available if error
+                const statuses: {[key: string]: {status: string; spotsLeft: number}} = {};
+                times.forEach(slot => {
+                    statuses[slot] = { status: 'available', spotsLeft: 4 };
+                });
+                setTimeSlotStatuses(statuses);
+                return;
             }
-        });
-        
-        setTimeSlotStatuses(statuses);
+
+            const statuses: {[key: string]: {status: string; spotsLeft: number}} = {};
+            
+            times.forEach(slot => {
+                // Parse the slot time to compare with bookings
+                const slotParts = slot.split(' ');
+                const timePart = slotParts[0];
+                const period = slotParts[1];
+                
+                let [hours, minutes] = timePart.split(':').map(Number);
+                
+                if (period === 'PM' && hours !== 12) {
+                    hours += 12;
+                } else if (period === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+                
+                const slotTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+                
+                // Check if this time slot overlaps with any booking
+                const booking = bookings?.find(b => {
+                    const bookingStart = b.start_time;
+                    const bookingEnd = b.end_time;
+                    return slotTime >= bookingStart && slotTime < bookingEnd;
+                });
+                
+                if (booking) {
+                    // Time slot is occupied
+                    if (booking.booking_type === 'Private Game' || booking.status === 'confirmed') {
+                        statuses[slot] = { status: 'booked', spotsLeft: 0 };
+                    } else if (booking.booking_type === 'Open Game') {
+                        const playerCount = booking.player_count || 4;
+                        if (playerCount === 1) {
+                            statuses[slot] = { status: 'last-spot', spotsLeft: 1 };
+                        } else if (playerCount <= 2) {
+                            statuses[slot] = { status: 'joining', spotsLeft: playerCount };
+                        } else {
+                            statuses[slot] = { status: 'joining', spotsLeft: playerCount };
+                        }
+                    } else {
+                        statuses[slot] = { status: 'available', spotsLeft: 4 };
+                    }
+                } else {
+                    // Time slot is available
+                    statuses[slot] = { status: 'available', spotsLeft: 4 };
+                }
+            });
+            
+            setTimeSlotStatuses(statuses);
+            console.log('✅ Loaded time slot statuses from database');
+        } catch (error) {
+            console.error('❌ Error in loadTimeSlotStatuses:', error);
+            // Fallback to all available
+            const statuses: {[key: string]: {status: string; spotsLeft: number}} = {};
+            times.forEach(slot => {
+                statuses[slot] = { status: 'available', spotsLeft: 4 };
+            });
+            setTimeSlotStatuses(statuses);
+        }
     };
 
     const getTimeSlotColor = (timeSlot: string) => {
@@ -140,18 +205,63 @@ export default function BookingFormScreen() {
     const loadVenueCourts = async () => {
         try {
             const { VenueStorageService } = await import('@/src/common/services/venueStorage');
-            const venues = await VenueStorageService.getAllVenues();
-            const venue = venues.find(v => v.id === venueId);
+            const { supabase } = await import('@/src/common/services/supabase');
             
-            if (venue && venue.courts.length > 0) {
-                setCourts(venue.courts.map(court => court.name));
+            // Fetch courts with UUIDs from database
+            const { data: courtsData, error } = await supabase
+                .from('courts')
+                .select('id, name')
+                .eq('venue_id', venueId)
+                .eq('is_active', true);
+            
+            if (!error && courtsData && courtsData.length > 0) {
+                setCourts(courtsData.map(c => c.name));
+                
+                // If pre-selected court exists, set its UUID
+                if (preSelectedCourt && !courtId) {
+                    const selectedCourtData = courtsData.find(c => c.name === preSelectedCourt);
+                    if (selectedCourtData) {
+                        setCourtId(selectedCourtData.id);
+                    }
+                }
             } else {
-                // Default courts if none specified
-                setCourts(['Court A1', 'Court A2', 'Court B1', 'Court B2']);
+                // Fallback to venue storage service
+                const venues = await VenueStorageService.getAllVenues();
+                const venue = venues.find(v => v.id === venueId);
+                
+                if (venue && venue.courts.length > 0) {
+                    setCourts(venue.courts.map(court => court.name));
+                } else {
+                    // Default courts if none specified
+                    setCourts(['Court A1', 'Court A2', 'Court B1', 'Court B2']);
+                }
             }
         } catch (error) {
             console.error('Error loading venue courts:', error);
             setCourts(['Court A1', 'Court A2', 'Court B1', 'Court B2']);
+        }
+    };
+
+    // Handle court selection - also fetch the court UUID
+    const handleCourtSelection = async (courtName: string) => {
+        setCourt(courtName);
+        
+        // Fetch the court UUID for this court name
+        try {
+            const { supabase } = await import('@/src/common/services/supabase');
+            const { data: courtData } = await supabase
+                .from('courts')
+                .select('id')
+                .eq('venue_id', venueId)
+                .eq('name', courtName)
+                .single();
+            
+            if (courtData) {
+                setCourtId(courtData.id);
+                console.log('🎾 [BOOKING FORM] Selected court UUID:', courtData.id);
+            }
+        } catch (error) {
+            console.error('Error fetching court UUID:', error);
         }
     };
 
@@ -273,24 +383,73 @@ export default function BookingFormScreen() {
             
             // Get the actual authenticated user ID
             const { supabase } = await import('@/src/common/services/supabase');
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            
+            if (authError) {
+                console.error('❌ [BOOKING] Auth error:', authError.message);
+                Alert.alert(
+                    'Authentication Required', 
+                    'Please sign in to make a booking.',
+                    [
+                        { 
+                            text: 'Sign In', 
+                            onPress: () => router.push('/login')
+                        },
+                        { text: 'Cancel', style: 'cancel' }
+                    ]
+                );
+                return;
+            }
             
             console.log('👤 [BOOKING] Authenticated user:', user?.id);
             
             if (!user) {
-                Alert.alert('Authentication Error', 'You must be logged in to make a booking.');
+                Alert.alert(
+                    'Authentication Required',
+                    'Please sign in to make a booking.',
+                    [
+                        { 
+                            text: 'Sign In', 
+                            onPress: () => router.push('/login')
+                        },
+                        { text: 'Cancel', style: 'cancel' }
+                    ]
+                );
+                return;
+            }
+
+            // Check for booking conflicts BEFORE creating booking
+            const { BookingStorageService } = await import('../src/common/services/bookingStorage');
+            const durationHours = parseInt(duration.split(' ')[0]) || 1;
+            
+            // Use the actual court UUID if available, otherwise it will be looked up
+            const conflictCourtId = courtId || `${venueId}-${court}`;
+            
+            const hasConflict = await BookingStorageService.checkBookingConflict(
+                venueId,
+                conflictCourtId,
+                date,
+                time,
+                durationHours
+            );
+
+            if (hasConflict) {
+                Alert.alert(
+                    'Time Slot Unavailable',
+                    'This time slot is already booked. Please select a different time or court.',
+                    [{ text: 'OK' }]
+                );
                 return;
             }
 
             // Create booking request (pending approval)
-            const { BookingStorageService } = await import('../src/common/services/bookingStorage');
-            
             const bookingData = {
                 userId: user.id, // Use actual user ID from Supabase auth
                 venueId: venueId,
                 venueName: venueName,
                 ownerId: ownerId,
                 court: court,
+                courtId: courtId, // Pass the real court UUID if we have it
                 date: date,
                 time: time,
                 duration: duration,
@@ -315,11 +474,11 @@ export default function BookingFormScreen() {
             
             console.log('✅ [BOOKING] Booking created:', booking.id);
             
-            // Send notification to client
-            const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
-            await ClientNotificationService.sendBookingRequest(ownerId, booking);
+            // Send notification to client - COMMENTED OUT
+            // const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
+            // await ClientNotificationService.sendBookingRequest(ownerId, booking);
 
-            console.log('📧 [BOOKING] Notification sent to owner:', ownerId);
+            console.log('📧 [BOOKING] Notification disabled (commented out)');
 
             Alert.alert(
                 'Booking Request Sent!',
@@ -546,7 +705,7 @@ export default function BookingFormScreen() {
                     value={court}
                     placeholder="Select Court"
                     options={courts}
-                    onSelect={setCourt}
+                    onSelect={handleCourtSelection}
                     visible={showCourtModal}
                     onClose={() => setShowCourtModal(false)}
                 />
