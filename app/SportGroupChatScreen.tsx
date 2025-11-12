@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { supabase } from '@/src/common/services/supabase';
+import { styles } from '@/styles/screens/SportGroupChatScreen';
+import { colors } from '@/styles/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Alert,
-  Keyboard
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { supabase } from '@/src/common/services/supabase';
-import { colors } from '@/styles/theme';
-import { styles } from '@/styles/screens/SportGroupChatScreen';
 
 interface Message {
   id: string;
@@ -39,12 +40,16 @@ export default function SportGroupChatScreen() {
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [showInfo, setShowInfo] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const sendButtonScale = useRef(new Animated.Value(1)).current;
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   // Get current user
   useEffect(() => {
@@ -198,97 +203,110 @@ export default function SportGroupChatScreen() {
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
-    <View
-      style={[
-        styles.messageContainer,
-        item.isMe ? styles.messageContainerMe : styles.messageContainerOther
-      ]}
-    >
+    <View style={item.isMe ? styles.myMessage : styles.theirMessage}>
       {!item.isMe && (
-        <Text style={styles.senderName}>
-          {item.senderName}
-        </Text>
+        <Text style={styles.messageUsername}>{item.senderName}</Text>
       )}
-      <View
-        style={[
-          styles.messageBubble,
-          item.isMe ? styles.messageBubbleMe : styles.messageBubbleOther
-        ]}
-      >
-        <Text style={[
-          styles.messageText,
-          item.isMe ? styles.messageTextMe : styles.messageTextOther
-        ]}>
-          {item.content}
-        </Text>
-        <Text
-          style={[
-            styles.messageTimestamp,
-            item.isMe ? styles.messageTimestampMe : styles.messageTimestampOther
-          ]}
-        >
-          {item.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </View>
+      <Text style={item.isMe ? styles.myMessageText : styles.theirMessageText}>
+        {item.content}
+      </Text>
+      <Text style={item.isMe ? styles.myMessageTime : styles.theirMessageTime}>
+        {item.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+      </Text>
     </View>
   );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.channelInfo}>
+            <View style={styles.channelIcon}>
+              <Ionicons name="people" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.channelDetails}>
+              <Text style={styles.channelName}>{groupName}</Text>
+              <Text style={styles.memberCount}>Loading...</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading messages...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
+      <StatusBar style="light" />
+      
       {/* Header */}
-      <View
-        style={[
-          styles.headerContainer,
-          { paddingTop: insets.top + 8 }
-        ]}
-      >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>
-            {groupName}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {isGlobal ? '🌍 Global Chat' : '📍 City-wide Chat'}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={() => setShowInfo(!showInfo)} style={styles.infoButton}>
-          <Ionicons name="information-circle-outline" size={26} color={colors.textPrimary} />
+        
+        <TouchableOpacity 
+          style={styles.channelInfo}
+          onPress={() => setShowInfo(!showInfo)}
+        >
+          <View style={styles.channelIcon}>
+            <Ionicons name="people" size={20} color={colors.primary} />
+          </View>
+          
+          <View style={styles.channelDetails}>
+            <Text style={styles.channelName}>{groupName}</Text>
+            <Text style={styles.memberCount}>
+              {isGlobal ? '🌍 Global Chat' : '📍 City-wide Chat'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.headerAction}
+          onPress={() => setShowInfo(!showInfo)}
+        >
+          <Ionicons name="information-circle-outline" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
-      {/* Messages List */}
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-        />
+      {/* Messages */}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        renderItem={renderMessage}
+        style={styles.messagesList}
+        contentContainerStyle={styles.messagesContent}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+      />
 
-        {/* Input Area */}
-        <View
-          style={[
-            styles.inputContainer,
-            { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 12 }
-          ]}
-        >
+      {/* Input */}
+      <View style={[
+        styles.inputContainer,
+        { paddingBottom: Math.max(insets.bottom, 10) }
+      ]}>
+        <View style={styles.inputWrapper}>
           <TextInput
             style={styles.textInput}
             placeholder="Type a message..."
@@ -296,23 +314,31 @@ export default function SportGroupChatScreen() {
             value={newMessage}
             onChangeText={setNewMessage}
             multiline
+            maxLength={300}
+            editable={!sending}
           />
+          
           <TouchableOpacity
             onPress={sendMessage}
             disabled={!newMessage.trim() || sending}
             style={[
               styles.sendButton,
-              newMessage.trim() ? styles.sendButtonActive : styles.sendButtonInactive
+              (newMessage.trim() && !sending) && styles.sendButtonActive
             ]}
+            activeOpacity={0.8}
           >
             {sending ? (
-              <ActivityIndicator size="small" color="#FFF" />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Ionicons name="send" size={20} color="#FFF" />
+              <Ionicons 
+                name="send" 
+                size={20} 
+                color={(newMessage.trim() && !sending) ? colors.primary : colors.textSecondary} 
+              />
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
