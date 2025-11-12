@@ -1,10 +1,10 @@
-import { StyleSheet, Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
 export const globalChatStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -64,6 +64,10 @@ export const globalChatStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  messagesContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   messagesList: {
     flex: 1,
   },
@@ -71,16 +75,41 @@ export const globalChatStyles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  messageContainer: {
+  myMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#10b981',
+    borderRadius: 18,
+    borderBottomRightRadius: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    maxWidth: '75%',
+    marginVertical: spacing.xs / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  theirMessage: {
+    alignSelf: 'flex-start',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: spacing.md,
-    marginVertical: spacing.xs,
+    borderRadius: 18,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    maxWidth: '75%',
+    marginVertical: spacing.xs / 2,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.08,
         shadowRadius: 2,
       },
       android: {
@@ -88,58 +117,31 @@ export const globalChatStyles = StyleSheet.create({
       },
     }),
   },
-  messageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  username: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
-  },
-  location: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.normal,
-    color: colors.textSecondary,
-  },
-  messageActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  timestamp: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-  },
-  reportButton: {
-    padding: spacing.xs / 2,
-  },
   messageText: {
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  myMessageText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.base,
     lineHeight: 20,
+    marginBottom: 2,
   },
-  messageFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-  },
-  sportTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary + '10',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-    borderRadius: 12,
-    gap: spacing.xs / 2,
-  },
-  sportTagText: {
+  myMessageTime: {
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: typography.fontSize.xs,
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
+    alignSelf: 'flex-end',
+  },
+  theirMessageText: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.base,
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  theirMessageTime: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.xs,
+    alignSelf: 'flex-end',
   },
   inputContainer: {
     backgroundColor: '#FFFFFF',
@@ -172,7 +174,7 @@ export const globalChatStyles = StyleSheet.create({
     color: colors.textPrimary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    maxHeight: 80,
+    maxHeight: 100,
     minHeight: 40,
   },
   sendButton: {
@@ -184,7 +186,14 @@ export const globalChatStyles = StyleSheet.create({
     backgroundColor: '#e2e8f0',
   },
   sendButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: 'transparent',
+  },
+  sendButtonGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,

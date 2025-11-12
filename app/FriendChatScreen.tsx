@@ -3,7 +3,7 @@ import { Message } from '@/src/common/services/supabase';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -80,6 +80,11 @@ export default function FriendChatScreen() {
           if (messagesSuccess && loadedMessages) {
             setMessages(loadedMessages);
             setHasMoreMessages(loadedMessages.length === 30);
+            
+            // Mark messages as read when chat is opened
+            console.log('🔄 Marking messages as read for conversation:', convId);
+            const markReadResult = await ChatService.markAsRead(convId);
+            console.log('✅ Mark as read result:', markReadResult);
             
             // Immediate scroll without delay for faster UX
             requestAnimationFrame(() => {
@@ -161,6 +166,21 @@ export default function FriendChatScreen() {
       keyboardHideListener.remove();
     };
   }, []);
+
+  // Mark messages as read when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      if (conversationId) {
+        console.log('🔄 [FOCUS] Marking messages as read for conversation:', conversationId);
+        // Mark messages as read when user returns to this screen
+        ChatService.markAsRead(conversationId).then(result => {
+          console.log('✅ [FOCUS] Mark as read result:', result);
+        }).catch(error => {
+          console.error('❌ [FOCUS] Error marking messages as read:', error);
+        });
+      }
+    }, [conversationId])
+  );
 
   const sendMessage = useCallback(async () => {
     if (!message.trim() || !conversationId) return;

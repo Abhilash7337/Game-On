@@ -1,25 +1,28 @@
-import { gameChatStyles } from '../styles/screens/GameChatScreen';
+import { FormattedMessage, messageService } from '@/src/common/services/messageService';
+import { supabase } from '@/src/common/services/supabase';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  Alert,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { messageService, FormattedMessage } from '@/src/common/services/messageService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/src/common/services/supabase';
+import { gameChatStyles } from '../styles/screens/GameChatScreen';
 
 interface GameDetails {
   id: string;
@@ -39,6 +42,7 @@ export default function GameChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   
   const [message, setMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const [showGameDetails, setShowGameDetails] = useState(false);
   const [messages, setMessages] = useState<FormattedMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,9 @@ export default function GameChatScreen() {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [conversationId, setConversationId] = useState<string>('');
   const messageChannelRef = useRef<any>(null);
+  const sendButtonScale = useRef(new Animated.Value(1)).current;
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   // Parse game data from params (passed from social tab)
   const gameDetails: GameDetails = {
@@ -68,6 +75,36 @@ export default function GameChatScreen() {
       if (messageChannelRef.current) {
         messageService.unsubscribeFromMessages(messageChannelRef.current);
       }
+    };
+  }, []);
+
+  // Enhanced keyboard handling for Android stability
+  useEffect(() => {
+    const keyboardShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => {
+        const keyboardH = event.endCoordinates.height;
+        setKeyboardHeight(keyboardH);
+        setIsKeyboardVisible(true);
+        
+        // Scroll to bottom when keyboard shows
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, Platform.OS === 'ios' ? 50 : 200);
+      }
+    );
+
+    const keyboardHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setIsKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardShowListener.remove();
+      keyboardHideListener.remove();
     };
   }, []);
 
@@ -138,28 +175,49 @@ export default function GameChatScreen() {
     }
   };
 
-  const sendMessage = async () => {
-    if (message.trim() && !sending) {
-      try {
-        setSending(true);
-        const messageText = message.trim();
-        setMessage(''); // Clear input immediately
-        
-        await messageService.sendMessage(conversationId, currentUserId, messageText);
-        
-        // Message will appear via subscription
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      } catch (error) {
-        console.error('Error sending message:', error);
-        Alert.alert('Error', 'Failed to send message');
-        setMessage(message); // Restore message on error
-      } finally {
-        setSending(false);
-      }
+  const sendMessage = useCallback(async () => {
+    if (!message.trim() || sending) return;
+
+    // Quick button animation
+    Animated.timing(sendButtonScale, {
+      toValue: 0.8,
+      duration: 50,
+      useNativeDriver: true,
+    }).start(() => {
+      Animated.timing(sendButtonScale, {
+        toValue: 1,
+        duration: 50,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    const messageText = message.trim();
+    setMessage('');
+    setIsTyping(false);
+    
+    try {
+      setSending(true);
+      await messageService.sendMessage(conversationId, currentUserId, messageText);
+      
+      // Message will appear via subscription
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
+      // Restore message text on error
+      setMessage(messageText);
+      setIsTyping(messageText.length > 0);
+    } finally {
+      setSending(false);
     }
-  };
+  }, [message, conversationId, currentUserId, sending]);
+
+  const handleTextChange = useCallback((text: string) => {
+    setMessage(text);
+    setIsTyping(text.trim().length > 0);
+  }, []);
 
 
   const rescheduleGame = async () => {
@@ -260,21 +318,16 @@ export default function GameChatScreen() {
       );
     }
 
+    // Regular message with FriendChatScreen layout
     return (
-      <View style={[
-        gameChatStyles.messageContainer,
-        item.isMe ? gameChatStyles.myMessage : gameChatStyles.theirMessage
-      ]}>
+      <View style={item.isMe ? gameChatStyles.myMessage : gameChatStyles.theirMessage}>
         {!item.isMe && (
           <Text style={gameChatStyles.messageUsername}>{item.username}</Text>
         )}
-        <Text style={[
-          gameChatStyles.messageText,
-          item.isMe ? gameChatStyles.myMessageText : gameChatStyles.theirMessageText
-        ]}>
+        <Text style={item.isMe ? gameChatStyles.myMessageText : gameChatStyles.theirMessageText}>
           {item.text}
         </Text>
-        <Text style={gameChatStyles.timestamp}>
+        <Text style={item.isMe ? gameChatStyles.myMessageTime : gameChatStyles.theirMessageTime}>
           {formatTime(item.timestamp)}
         </Text>
       </View>
@@ -284,8 +337,8 @@ export default function GameChatScreen() {
   return (
     <KeyboardAvoidingView 
       style={gameChatStyles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
     >
       <StatusBar style="light" />
       
@@ -334,44 +387,82 @@ export default function GameChatScreen() {
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
             style={gameChatStyles.messagesList}
-            contentContainerStyle={gameChatStyles.messagesContent}
+            contentContainerStyle={[
+              gameChatStyles.messagesContent,
+              { 
+                paddingBottom: isKeyboardVisible ? 10 : 20,
+                flexGrow: 1
+              }
+            ]}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           />
 
           {/* Input */}
-          <View style={[gameChatStyles.inputContainer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+          <View style={[
+            gameChatStyles.inputContainer, 
+            { 
+              paddingTop: isKeyboardVisible ? 10 : 16,
+              paddingBottom: isKeyboardVisible ? 
+                (Platform.OS === 'ios' ? 5 : 8) : 
+                Math.max(insets.bottom, 12)
+            }
+          ]}>
             <View style={gameChatStyles.inputWrapper}>
               <TextInput
                 style={gameChatStyles.textInput}
                 value={message}
-                onChangeText={setMessage}
+                onChangeText={handleTextChange}
                 placeholder="Coordinate with your team..."
                 placeholderTextColor={colors.textSecondary}
                 multiline
                 maxLength={300}
                 editable={!sending}
+                onFocus={() => {
+                  // Scroll to bottom when input is focused
+                  setTimeout(() => {
+                    flatListRef.current?.scrollToEnd({ animated: true });
+                  }, Platform.OS === 'ios' ? 300 : 100);
+                }}
+                blurOnSubmit={false}
+                enablesReturnKeyAutomatically={true}
+                returnKeyType="send"
+                onSubmitEditing={() => {
+                  if (message.trim()) {
+                    sendMessage();
+                  }
+                }}
               />
               
-              <TouchableOpacity 
-                style={[
-                  gameChatStyles.sendButton,
-                  (message.trim() && !sending) && gameChatStyles.sendButtonActive
-                ]}
-                onPress={sendMessage}
-                disabled={!message.trim() || sending}
-                activeOpacity={0.8}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Ionicons 
-                    name="send" 
-                    size={20} 
-                    color={message.trim() ? '#FFFFFF' : colors.textSecondary} 
-                  />
-                )}
-              </TouchableOpacity>
+              <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
+                <TouchableOpacity 
+                  style={[
+                    gameChatStyles.sendButton,
+                    isTyping && gameChatStyles.sendButtonActive
+                  ]}
+                  onPress={sendMessage}
+                  disabled={!message.trim() || sending}
+                  activeOpacity={0.8}
+                >
+                  {sending ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : isTyping ? (
+                    <LinearGradient
+                      colors={['#10b981', '#059669']}
+                      style={gameChatStyles.sendButtonGradient}
+                    >
+                      <Ionicons name="send" size={20} color="#FFFFFF" />
+                    </LinearGradient>
+                  ) : (
+                    <Ionicons 
+                      name="send" 
+                      size={20} 
+                      color={colors.textSecondary} 
+                    />
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           </View>
         </>

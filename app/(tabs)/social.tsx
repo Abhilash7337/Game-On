@@ -1,8 +1,8 @@
+import { ConversationService } from '@/src/common/services/conversationService'; // ✅ NEW: Supabase conversations
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { FriendService } from '@/src/common/services/friendService';
-import { GameConversationDisplay, ConversationService } from '@/src/common/services/conversationService'; // ✅ NEW: Supabase conversations
 import { SportGroupService } from '@/src/common/services/sportGroupService';
 import { supabase } from '@/src/common/services/supabase';
-import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { socialStyles } from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -478,6 +478,48 @@ export default function SocialScreen() {
                     }
                 }
             )
+            // Listen for conversation_participants updates (when messages are marked as read)
+            .on('postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'conversation_participants'
+                },
+                async (payload) => {
+                    console.log('🔄 [SOCIAL] Received conversation_participants update:', payload);
+                    if (payload.new && typeof payload.new === 'object') {
+                        const updatedParticipant = payload.new as any;
+                        
+                        // Check if this is for a conversation with one of our friends
+                        const friendWithConversation = friends.find(f => f.conversationId === updatedParticipant.conversation_id);
+                        if (friendWithConversation) {
+                            console.log('📱 [SOCIAL] Updating unread count for friend:', friendWithConversation.name);
+                            // Re-calculate unread count for this friend
+                            try {
+                                const { success, conversationInfo } = await FriendService.getFriendConversationInfo(friendWithConversation.id);
+                                console.log('📊 [SOCIAL] New conversation info:', conversationInfo);
+                                if (success && conversationInfo) {
+                                    setFriends(prevFriends => {
+                                        return prevFriends.map(friend => 
+                                            friend.id === friendWithConversation.id 
+                                                ? {
+                                                    ...friend,
+                                                    lastMessage: conversationInfo.lastMessage,
+                                                    lastMessageTime: conversationInfo.lastMessageTime,
+                                                    unreadCount: conversationInfo.unreadCount
+                                                }
+                                                : friend
+                                        );
+                                    });
+                                    console.log('✅ [SOCIAL] Updated friend unread count to:', conversationInfo.unreadCount);
+                                }
+                            } catch (error) {
+                                console.error('❌ [SOCIAL] Error updating friend read status:', error);
+                            }
+                        }
+                    }
+                }
+            )
             .subscribe();
 
         return () => {
@@ -490,8 +532,62 @@ export default function SocialScreen() {
         useCallback(() => {
             if (activeTab === 'Game Chats') {
                 loadGameChatrooms();
+            } else if (activeTab === 'Friends' && friends.length > 0) {
+                // Refresh unread counts when returning to friends tab
+                const refreshUnreadCounts = async () => {
+                    try {
+                        const conversationPromises = friends.map(async (friend) => {
+                            if (!friend?.id || !friend?.conversationId) return null;
+                            
+                            try {
+                                const { success, conversationInfo } = await FriendService.getFriendConversationInfo(friend.id);
+                                return {
+                                    friendId: friend.id,
+                                    success,
+                                    conversationInfo
+                                };
+                            } catch (error) {
+                                console.error('Error refreshing unread for friend:', friend.name, error);
+                                return null;
+                            }
+                        });
+                        
+                        const results = await Promise.all(conversationPromises);
+                        
+                        setFriends(prevFriends => {
+                            const updatedFriends = [...prevFriends];
+                            
+                            results.forEach(result => {
+                                if (result?.success && result.conversationInfo) {
+                                    const friendIndex = updatedFriends.findIndex(f => f?.id === result.friendId);
+                                    if (friendIndex !== -1) {
+                                        updatedFriends[friendIndex] = {
+                                            ...updatedFriends[friendIndex],
+                                            lastMessage: result.conversationInfo.lastMessage,
+                                            lastMessageTime: result.conversationInfo.lastMessageTime,
+                                            unreadCount: result.conversationInfo.unreadCount
+                                        };
+                                    }
+                                }
+                            });
+                            
+                            return updatedFriends.sort((a, b) => {
+                                if (!a?.lastMessageTime && !b?.lastMessageTime) return 0;
+                                if (!a?.lastMessageTime) return 1;
+                                if (!b?.lastMessageTime) return -1;
+                                return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
+                            });
+                        });
+                    } catch (error) {
+                        console.error('Error refreshing unread counts:', error);
+                    }
+                };
+                
+                // Debounce the refresh to avoid too many API calls
+                const timeoutId = setTimeout(refreshUnreadCounts, 500);
+                return () => clearTimeout(timeoutId);
             }
-        }, [activeTab])
+        }, [activeTab, friends.length])
     );
 
     const handleFriendPress = useCallback((friend: Friend) => {

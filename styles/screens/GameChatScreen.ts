@@ -1,10 +1,10 @@
-import { StyleSheet, Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
 export const gameChatStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -74,6 +74,10 @@ export const gameChatStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  messagesContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   messagesList: {
     flex: 1,
   },
@@ -81,17 +85,41 @@ export const gameChatStyles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  messageContainer: {
-    marginVertical: spacing.xs,
-    maxWidth: '80%',
+  myMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#10b981',
+    borderRadius: 18,
+    borderBottomRightRadius: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    maxWidth: '75%',
+    marginVertical: spacing.xs / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  theirMessage: {
+    alignSelf: 'flex-start',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: spacing.md,
+    borderRadius: 18,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    maxWidth: '75%',
+    marginVertical: spacing.xs / 2,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.08,
         shadowRadius: 2,
       },
       android: {
@@ -99,30 +127,37 @@ export const gameChatStyles = StyleSheet.create({
       },
     }),
   },
-  myMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.primary + '10',
-    borderBottomRightRadius: 4,
+  messageText: {
+    fontSize: typography.fontSize.base,
+    lineHeight: 22,
   },
-  theirMessage: {
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
+  myMessageText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.base,
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  myMessageTime: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: typography.fontSize.xs,
+    alignSelf: 'flex-end',
+  },
+  theirMessageText: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.base,
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  theirMessageTime: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.xs,
+    alignSelf: 'flex-end',
   },
   messageUsername: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: colors.primary,
     marginBottom: spacing.xs / 2,
-  },
-  messageText: {
-    fontSize: typography.fontSize.base,
-    lineHeight: 20,
-  },
-  myMessageText: {
-    color: colors.textPrimary,
-  },
-  theirMessageText: {
-    color: colors.textPrimary,
   },
   timestamp: {
     fontSize: typography.fontSize.xs,
@@ -225,7 +260,7 @@ export const gameChatStyles = StyleSheet.create({
     color: colors.textPrimary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    maxHeight: 80,
+    maxHeight: 100,
     minHeight: 40,
   },
   sendButton: {
@@ -238,6 +273,13 @@ export const gameChatStyles = StyleSheet.create({
   },
   sendButtonActive: {
     backgroundColor: colors.primary,
+  },
+  sendButtonGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -296,80 +338,6 @@ export const gameChatStyles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.primary,
     fontWeight: typography.fontWeight.medium,
-  },
-  scoreModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: spacing.xl,
-    width: '90%',
-  },
-  scoreModalTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  scoreInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  scoreInputGroup: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  scoreInputLabel: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  scoreInput: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 12,
-    width: 60,
-    height: 60,
-    textAlign: 'center',
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  scoreInputSeparator: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textSecondary,
-    marginHorizontal: spacing.lg,
-  },
-  scoreModalActions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  scoreModalCancel: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  scoreModalCancelText: {
-    fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    fontWeight: typography.fontWeight.medium,
-  },
-  scoreModalUpdate: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-  },
-  scoreModalUpdateText: {
-    fontSize: typography.fontSize.base,
-    color: '#FFFFFF',
-    fontWeight: typography.fontWeight.semibold,
   },
   loadingContainer: {
     flex: 1,
