@@ -1,13 +1,13 @@
 import { ClientAuthService } from '@/src/client/services/clientAuth';
 import { Button } from '@/src/common/components/Button';
+import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { Input } from '@/src/common/components/Input';
 import { LoadingOverlay } from '@/src/common/components/LoadingState';
-import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { clientLoginScreenStyles } from '@/styles/screens/ClientLoginScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

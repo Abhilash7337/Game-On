@@ -1,17 +1,17 @@
 import { Button } from '@/src/common/components/Button';
+import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { Input } from '@/src/common/components/Input';
 import { LoadingOverlay } from '@/src/common/components/LoadingState';
-import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { useLoadingStates } from '@/src/common/hooks/useAsyncOperation';
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { GoogleAuthService } from '@/src/common/services/googleAuth';
 import { UserAuthService } from '@/src/user/services/userAuth';
-import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
-import { colors } from '@/styles/theme';
 import { loginScreenStyles } from '@/styles/screens/LoginScreen';
+import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState, useEffect, useRef } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { height: screenHeight } = Dimensions.get('window');
