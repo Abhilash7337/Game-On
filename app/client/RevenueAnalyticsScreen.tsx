@@ -1,6 +1,5 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import { supabase } from '@/src/common/services/supabase';
-import { revenueAnalyticsStyles } from '../../styles/screens/RevenueAnalyticsScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
@@ -15,6 +14,7 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { revenueAnalyticsStyles } from '../../styles/screens/RevenueAnalyticsScreen';
 
 interface VenueRevenue {
   id: string;
