@@ -49,6 +49,7 @@ export default function GameChatScreen() {
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [conversationId, setConversationId] = useState<string>('');
+  const [bookingId, setBookingId] = useState<string>('');
   const messageChannelRef = useRef<any>(null);
   const sendButtonScale = useRef(new Animated.Value(1)).current;
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -146,6 +147,20 @@ export default function GameChatScreen() {
         return;
       }
       setConversationId(convId);
+
+      // Get booking_id from conversation
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('booking_id')
+        .eq('id', convId)
+        .single();
+
+      if (convError) {
+        console.error('Error fetching conversation:', convError);
+      } else if (conversation?.booking_id) {
+        setBookingId(conversation.booking_id);
+        console.log('📋 [GAME_CHAT] Loaded booking_id:', conversation.booking_id);
+      }
 
       // Load existing messages
       const msgs = await messageService.getConversationMessages(convId, userId);
@@ -370,6 +385,25 @@ export default function GameChatScreen() {
           </View>
         </TouchableOpacity>
 
+        {/* Rating Button */}
+        <TouchableOpacity
+          style={gameChatStyles.ratingButton}
+          onPress={() => {
+            if (!bookingId) {
+              Alert.alert('Error', 'Booking information not available');
+              return;
+            }
+            router.push({
+              pathname: '/RatePlayersScreen',
+              params: {
+                conversationId: conversationId,
+                bookingId: bookingId
+              }
+            });
+          }}
+        >
+          <Ionicons name="stats-chart" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       {/* Loading Indicator */}

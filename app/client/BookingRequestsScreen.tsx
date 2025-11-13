@@ -16,6 +16,7 @@ export default function ClientBookingRequestsScreen() {
     const [pendingBookings, setPendingBookings] = useState<BookingWithNotification[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [processingBookingIds, setProcessingBookingIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         loadPendingBookings();
@@ -69,7 +70,14 @@ export default function ClientBookingRequestsScreen() {
     };
 
     const handleApproveBooking = async (booking: BookingWithNotification) => {
-        // ✅ REMOVE CONFIRMATION - Approve immediately
+        // Prevent duplicate processing
+        if (processingBookingIds.has(booking.id)) {
+            console.log('⚠️ [BOOKING REQUESTS] Already processing booking:', booking.id);
+            return;
+        }
+
+        setProcessingBookingIds(prev => new Set(prev).add(booking.id));
+        
         try {
             const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
             
@@ -85,11 +93,24 @@ export default function ClientBookingRequestsScreen() {
         } catch (error) {
             console.error('❌ [BOOKING REQUESTS] Error approving booking:', error);
             Alert.alert('Error', 'Failed to approve booking');
+        } finally {
+            setProcessingBookingIds(prev => {
+                const next = new Set(prev);
+                next.delete(booking.id);
+                return next;
+            });
         }
     };
 
     const handleRejectBooking = async (booking: BookingWithNotification) => {
-        // ✅ REMOVE CONFIRMATION - Reject immediately
+        // Prevent duplicate processing
+        if (processingBookingIds.has(booking.id)) {
+            console.log('⚠️ [BOOKING REQUESTS] Already processing booking:', booking.id);
+            return;
+        }
+
+        setProcessingBookingIds(prev => new Set(prev).add(booking.id));
+        
         try {
             const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
             
@@ -102,6 +123,12 @@ export default function ClientBookingRequestsScreen() {
         } catch (error) {
             console.error('❌ [BOOKING REQUESTS] Error rejecting booking:', error);
             Alert.alert('Error', 'Failed to reject booking');
+        } finally {
+            setProcessingBookingIds(prev => {
+                const next = new Set(prev);
+                next.delete(booking.id);
+                return next;
+            });
         }
     };
 
@@ -147,19 +174,33 @@ export default function ClientBookingRequestsScreen() {
             
             <View style={styles.actionButtons}>
                 <TouchableOpacity
-                    style={[styles.actionButton, styles.rejectButton]}
+                    style={[
+                        styles.actionButton, 
+                        styles.rejectButton,
+                        processingBookingIds.has(item.id) && { opacity: 0.5 }
+                    ]}
                     onPress={() => handleRejectBooking(item)}
+                    disabled={processingBookingIds.has(item.id)}
                 >
                     <Ionicons name="close" size={16} color="#EF4444" />
-                    <Text style={styles.rejectButtonText}>Reject</Text>
+                    <Text style={styles.rejectButtonText}>
+                        {processingBookingIds.has(item.id) ? 'Processing...' : 'Reject'}
+                    </Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity
-                    style={[styles.actionButton, styles.approveButton]}
+                    style={[
+                        styles.actionButton, 
+                        styles.approveButton,
+                        processingBookingIds.has(item.id) && { opacity: 0.5 }
+                    ]}
                     onPress={() => handleApproveBooking(item)}
+                    disabled={processingBookingIds.has(item.id)}
                 >
                     <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                    <Text style={styles.approveButtonText}>Approve</Text>
+                    <Text style={styles.approveButtonText}>
+                        {processingBookingIds.has(item.id) ? 'Processing...' : 'Approve'}
+                    </Text>
                 </TouchableOpacity>
             </View>
         </View>

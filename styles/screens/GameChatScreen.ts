@@ -74,6 +74,13 @@ export const gameChatStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  ratingButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
+  },
   messagesContainer: {
     flex: 1,
     backgroundColor: '#f8fafc',
