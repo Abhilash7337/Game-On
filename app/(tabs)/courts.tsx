@@ -36,6 +36,75 @@ export default function CourtsScreen() {
 	const insets = useSafeAreaInsets();
 	const { width } = Dimensions.get('window');
 
+	// ✅ Background refresh on tab focus
+	useFocusEffect(
+		useCallback(() => {
+			const cache = dataPrefetchService.getCache();
+			const cacheAge = dataPrefetchService.getCacheAge();
+			
+			// If cache older than 2 minutes, refresh in background
+			if (cacheAge > 2 * 60 * 1000) {
+				console.log('🔄 [COURTS] Cache stale, refreshing in background...');
+				dataPrefetchService.prefetchAll().then(() => {
+					// Update venues from fresh cache
+					const freshCache = dataPrefetchService.getCache();
+					if (freshCache) {
+						const venuesWithDistance = freshCache.venues.map(v => {
+							let distanceText = 'N/A';
+							
+							if (freshCache.userLocation && v.location) {
+								try {
+									// Parse location if it's a string
+									let venueCoords = v.location;
+									if (typeof v.location === 'string') {
+										venueCoords = JSON.parse(v.location);
+									}
+									
+									// Handle different coordinate formats
+									let venueLat, venueLng;
+									if (venueCoords.coordinates) {
+										// GeoJSON format: [longitude, latitude]
+										venueLat = venueCoords.coordinates[1];
+										venueLng = venueCoords.coordinates[0];
+									} else if (venueCoords.latitude && venueCoords.longitude) {
+										// Direct lat/lng object
+										venueLat = venueCoords.latitude;
+										venueLng = venueCoords.longitude;
+									}
+									
+									if (venueLat && venueLng) {
+										const distance = calculateDistance(
+											freshCache.userLocation.latitude,
+											freshCache.userLocation.longitude,
+											venueLat,
+											venueLng
+										);
+										distanceText = formatDistance(distance);
+									}
+								} catch (error) {
+									console.log('⚠️ [COURTS] Distance calculation error for venue:', v.name);
+								}
+							}
+							
+							return {
+								...v,
+								distance: distanceText,
+								coordinates: v.location && v.location.coordinates ? {
+									latitude: v.location.coordinates[1],
+									longitude: v.location.coordinates[0]
+								} : undefined
+							};
+						});
+						setVenues(venuesWithDistance);
+						console.log('✅ [COURTS] Background refresh completed');
+					}
+				}).catch(err => {
+					console.error('❌ [COURTS] Background refresh failed:', err);
+				});
+			}
+		}, [])
+	);
+
 	useEffect(() => {
 		const initializeScreen = async () => {
 			setLoading(true);

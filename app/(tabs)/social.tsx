@@ -75,6 +75,7 @@ export default function SocialScreen() {
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+    const [processingFriendRequestIds, setProcessingFriendRequestIds] = useState<Set<string>>(new Set());
 
     // Load game chatrooms from ConversationService (Supabase)
     const loadGameChatrooms = async () => {
@@ -124,6 +125,32 @@ export default function SocialScreen() {
             setGameChats([]);
         }
     };
+
+    // ✅ Background refresh on tab focus
+    useFocusEffect(
+        useCallback(() => {
+            const cache = dataPrefetchService.getCache();
+            const cacheAge = dataPrefetchService.getCacheAge();
+            
+            // If cache older than 2 minutes, refresh in background
+            if (cacheAge > 2 * 60 * 1000) {
+                console.log('🔄 [SOCIAL] Cache stale, refreshing in background...');
+                dataPrefetchService.prefetchAll().then(() => {
+                    // Update from fresh cache
+                    const freshCache = dataPrefetchService.getCache();
+                    if (freshCache) {
+                        setFriends(freshCache.friends);
+                        setGlobalSports(freshCache.globalSportGroups);
+                        setCitySports(freshCache.citySportGroups);
+                        console.log('✅ [SOCIAL] Background refresh completed');
+                    }
+                });
+            }
+            
+            // Always refresh game chats on focus (real-time data)
+            loadGameChatrooms();
+        }, [])
+    );
 
     useEffect(() => {
         let isMounted = true;
@@ -826,6 +853,14 @@ export default function SocialScreen() {
     }, []);
 
     const handleAcceptFriendRequest = useCallback(async (friendshipId: string) => {
+        // Prevent duplicate processing
+        if (processingFriendRequestIds.has(friendshipId)) {
+            console.log('⚠️ [SOCIAL] Already processing friend request:', friendshipId);
+            return;
+        }
+
+        setProcessingFriendRequestIds(prev => new Set(prev).add(friendshipId));
+        
         try {
             const { success, error } = await FriendService.acceptFriendRequest(friendshipId);
             if (success) {
@@ -846,6 +881,12 @@ export default function SocialScreen() {
         } catch (error) {
             console.error('Accept friend request error:', error);
             Alert.alert('Error', 'Failed to accept friend request');
+        } finally {
+            setProcessingFriendRequestIds(prev => {
+                const next = new Set(prev);
+                next.delete(friendshipId);
+                return next;
+            });
         }
     }, []);
 
@@ -1045,10 +1086,16 @@ export default function SocialScreen() {
                                             <Text style={socialStyles.pendingRequestEmail}>{request.user.email}</Text>
                                         </View>
                                         <TouchableOpacity 
-                                            style={socialStyles.acceptButton}
+                                            style={[
+                                                socialStyles.acceptButton,
+                                                processingFriendRequestIds.has(request.friendshipId) && { opacity: 0.5 }
+                                            ]}
                                             onPress={() => handleAcceptFriendRequest(request.friendshipId)}
+                                            disabled={processingFriendRequestIds.has(request.friendshipId)}
                                         >
-                                            <Text style={socialStyles.acceptButtonText}>Accept</Text>
+                                            <Text style={socialStyles.acceptButtonText}>
+                                                {processingFriendRequestIds.has(request.friendshipId) ? 'Processing...' : 'Accept'}
+                                            </Text>
                                         </TouchableOpacity>
                                     </View>
                                 ))}

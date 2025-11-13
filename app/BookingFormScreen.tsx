@@ -50,6 +50,9 @@ export default function BookingFormScreen() {
     const [skillLevel, setSkillLevel] = useState<string>('');
     const [players, setPlayers] = useState<string>('');
 
+    // Submitting state to prevent double-clicks
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     // Modal states for custom dropdowns
     const [showCourtModal, setShowCourtModal] = useState(false);
     const [showTimeModal, setShowTimeModal] = useState(false);
@@ -64,7 +67,7 @@ export default function BookingFormScreen() {
         loadTimeSlotStatuses();
         setDurations(['1 hr', '2 hr', '3 hr']);
         setSkillLevels(['Beginner', 'Intermediate', 'Advanced']);
-        setPlayersRequired(['2', '4', '6', '8']);
+        setPlayersRequired(['1', '2', '3', '4', '5']); // ✅ Support 1-5 players
     }, []);
 
     const loadVenueOperatingHours = async () => {
@@ -373,11 +376,18 @@ export default function BookingFormScreen() {
     };
 
     const handleBooking = async () => {
+        // Early return if already submitting
+        if (isSubmitting) {
+            console.log('⚠️ [BOOKING] Already submitting, ignoring duplicate click');
+            return;
+        }
+
         if (!isFormValid) {
             Alert.alert('Incomplete Form', 'Please fill all required fields.');
             return;
         }
 
+        setIsSubmitting(true);
         try {
             console.log('🎯 [BOOKING] Starting booking process...');
             
@@ -402,6 +412,13 @@ export default function BookingFormScreen() {
             }
             
             console.log('👤 [BOOKING] Authenticated user:', user?.id);
+            console.log('📍 [BOOKING] Venue details:', {
+                venueId,
+                venueName,
+                ownerId,
+                court,
+                courtId
+            });
             
             if (!user) {
                 Alert.alert(
@@ -461,18 +478,33 @@ export default function BookingFormScreen() {
                 paymentStatus: 'pending' as const,
             };
 
-            console.log('📋 [BOOKING] Booking data:', JSON.stringify({
+            console.log('📋 [BOOKING] Creating booking with data:', {
                 userId: bookingData.userId,
                 venueId: bookingData.venueId,
                 venueName: bookingData.venueName,
-                ownerId: bookingData.ownerId,
                 court: bookingData.court,
+                courtId: bookingData.courtId,
+                date: bookingData.date.toISOString(),
+                time: bookingData.time,
+                duration: bookingData.duration,
+                bookingType: bookingData.bookingType,
+                skillLevel: bookingData.skillLevel,
+                players: bookingData.players,
+                price: bookingData.price,
                 status: bookingData.status,
-            }, null, 2));
+            });
 
             const booking = await BookingStorageService.createBooking(bookingData);
             
-            console.log('✅ [BOOKING] Booking created:', booking.id);
+            console.log('✅ [BOOKING] Booking created successfully:', {
+                bookingId: booking.id,
+                status: booking.status,
+                bookingStatus: (booking as any).bookingStatus,
+                venueId: booking.venueId,
+                courtId: booking.courtId,
+                date: booking.date.toISOString(),
+                time: booking.time
+            });
             
             // Send notification to client - COMMENTED OUT
             // const { ClientNotificationService } = await import('@/src/client/services/clientNotificationService');
@@ -493,6 +525,8 @@ export default function BookingFormScreen() {
         } catch (error) {
             console.error('❌ [BOOKING] Error creating booking:', error);
             Alert.alert('Error', 'Failed to create booking request. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -688,13 +722,13 @@ export default function BookingFormScreen() {
                     <TouchableOpacity
                         style={[
                             buttonStyles.primary,
-                            { backgroundColor: isFormValid ? colors.primary : colors.gray300 }
+                            { backgroundColor: (isFormValid && !isSubmitting) ? colors.primary : colors.gray300 }
                         ]}
                         onPress={handleBooking}
-                        disabled={!isFormValid}
+                        disabled={!isFormValid || isSubmitting}
                     >
                         <Text style={[buttonStyles.primaryText, { color: colors.background }]}>
-                            Request Booking - ₹{calculatePrice()}
+                            {isSubmitting ? 'Processing...' : `Request Booking - ₹${calculatePrice()}`}
                         </Text>
                     </TouchableOpacity>
                 </View>

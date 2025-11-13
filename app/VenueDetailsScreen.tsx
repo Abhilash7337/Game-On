@@ -3,7 +3,7 @@ import {
 } from '@/styles/screens/VenueDetailsScreen';
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 // 1. Import StatusBar and useSafeAreaInsets
 import { Venue } from '@/src/common/types';
@@ -27,6 +27,8 @@ export default function VenueDetailsScreen() {
   const [bookingsForDate, setBookingsForDate] = useState<any[]>([]);
   const [allBookings, setAllBookings] = useState<any[]>([]); // Store all preloaded bookings
   const [bookingsLoaded, setBookingsLoaded] = useState(false); // Track if bookings are loaded
+  const [currentUserId, setCurrentUserId] = useState<string>(''); // Store current user ID
+  const bookingSubscriptionRef = useRef<any>(null); // Real-time subscription reference
   const router = useRouter();
   const params = useLocalSearchParams();
   // 2. Get the safe area inset values
@@ -254,7 +256,21 @@ export default function VenueDetailsScreen() {
       (booking as any).court === courtName
     );
     
-    console.log(`⏰ [VENUE DETAILS] Generating slots for ${courtName}, bookings:`, courtBookings.length);
+    console.log(`⏰ [VENUE DETAILS] Generating slots for ${courtName}:`);
+    console.log(`  - Total bookings for date: ${bookingsForDate.length}`);
+    console.log(`  - Bookings for this court: ${courtBookings.length}`);
+    if (courtBookings.length > 0) {
+      courtBookings.forEach((b: any, idx: number) => {
+        console.log(`  - Booking ${idx + 1}:`, {
+          id: b.id,
+          time: b.time,
+          status: b.status,
+          bookingType: b.bookingType,
+          players: b.players,
+          userId: b.userId
+        });
+      });
+    }
     
     // Generate hourly slots starting from startHour
     for (let hour = startHour; hour < closeHour; hour++) {
@@ -293,36 +309,74 @@ export default function VenueDetailsScreen() {
         // ✅ FIX: Check the correct field - 'status' not 'bookingStatus'
         const bookingStatus = (booking as any).status || 'pending';
         const bookingType = (booking as any).bookingType || 'Private Game';
+        const playersNeeded = parseInt((booking as any).players || '4');
+        const bookingUserId = (booking as any).userId;
         
-        // ✅ CONFIRMED bookings are ALWAYS greyed out (booked)
+        console.log(`  📋 [TIME SLOT ${timeStr}] Booking found:`, {
+          bookingId: (booking as any).id,
+          bookingStatus,
+          bookingType,
+          playersNeeded,
+          bookingUserId,
+          currentUserId
+        });
+        
+        // ✅ CHECK IF CURRENT USER IS THE HOST
+        const isHost = bookingUserId === currentUserId;
+        
+        // ✅ CONFIRMED bookings are ALWAYS shown (with proper status)
         if (bookingStatus === 'confirmed') {
           // Private games = fully booked (greyed out)
           if (bookingType === 'Private Game') {
             status = 'booked';
             spotsLeft = 0;
+            console.log(`  ⚪ Private Game → BOOKED (grey)`);
           } 
-          // Open games = show available spots
+          // Open games = check if user is host or can join
           else if (bookingType === 'Open Game') {
-            const playersNeeded = parseInt((booking as any).players || '4');
-            if (playersNeeded === 1) {
-              status = 'last-spot';
-              spotsLeft = 1;
-            } else if (playersNeeded <= 2) {
-              status = 'joining';
-              spotsLeft = playersNeeded;
-            } else {
-              status = 'joining';
-              spotsLeft = playersNeeded;
+            // If user is the HOST, show as booked (your game)
+            if (isHost) {
+              status = 'booked';
+              spotsLeft = 0;
+              console.log(`  ⚪ Your Open Game (HOST) → BOOKED (grey, your game)`);
+            }
+            // If user is NOT the host, show join options based on spots available
+            else {
+              // ✅ Color logic based on spots remaining (1-5 players supported)
+              if (playersNeeded === 0) {
+                // Game is full
+                status = 'booked';
+                spotsLeft = 0;
+                console.log(`  ⚪ Open Game FULL → BOOKED (grey)`);
+              } else if (playersNeeded === 1) {
+                // Last spot available - RED (urgent)
+                status = 'last-spot';
+                spotsLeft = 1;
+                console.log(`  🔴 Open Game → LAST SPOT (red, 1 spot left)`);
+              } else if (playersNeeded === 2) {
+                // 2 spots left - ORANGE (filling up)
+                status = 'joining';
+                spotsLeft = 2;
+                console.log(`  🟠 Open Game → JOINING (orange, 2 spots left)`);
+              } else if (playersNeeded >= 3) {
+                // 3+ spots left - ORANGE (plenty of space)
+                status = 'joining';
+                spotsLeft = playersNeeded;
+                console.log(`  🟠 Open Game → JOINING (orange, ${playersNeeded} spots left)`);
+              }
             }
           }
         } 
-        // ⏳ PENDING bookings DON'T block slots (conflict resolution happens on approval)
+        // ⏳ PENDING bookings SHOULD show as booked (waiting for approval)
         else if (bookingStatus === 'pending') {
-          status = 'available';
+          status = 'booked';
+          spotsLeft = 0;
+          console.log(`  ⏳ Pending booking → BOOKED (grey, waiting approval)`);
         }
-        // ❌ REJECTED bookings don't affect availability
-        else if (bookingStatus === 'rejected') {
+        // ❌ REJECTED/CANCELLED bookings don't affect availability
+        else if (bookingStatus === 'rejected' || bookingStatus === 'cancelled') {
           status = 'available';
+          console.log(`  ✅ Rejected/Cancelled → AVAILABLE (green)`);
         }
         
         // Check if this is the start of a multi-hour booking
@@ -443,6 +497,14 @@ export default function VenueDetailsScreen() {
         console.log('⚡ [VENUE DETAILS] Loading all data in parallel...');
         const startTime = Date.now();
         
+        // ✅ Get current user ID first
+        const { supabase } = await import('@/src/common/services/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUserId(user.id);
+          console.log('👤 [VENUE DETAILS] Current user ID:', user.id);
+        }
+        
         // Run ALL async operations in parallel
         const [
           venueResult,
@@ -467,6 +529,9 @@ export default function VenueDetailsScreen() {
         if (bookingsResult.status === 'rejected') {
           console.error('Bookings loading failed:', bookingsResult.reason);
         }
+
+        // ✅ Set up real-time subscription after initial load
+        setupRealtimeSubscription();
         
       } catch (error) {
         console.error('❌ [VENUE DETAILS] Error loading data:', error);
@@ -476,6 +541,14 @@ export default function VenueDetailsScreen() {
     };
     
     loadAllData();
+
+    // ✅ Cleanup subscription on unmount
+    return () => {
+      if (bookingSubscriptionRef.current) {
+        console.log('🧹 [VENUE DETAILS] Cleaning up real-time subscription');
+        bookingSubscriptionRef.current.unsubscribe();
+      }
+    };
   }, []);
 
   // Refresh bookings when screen comes into focus (e.g., after making a booking)
@@ -505,6 +578,7 @@ export default function VenueDetailsScreen() {
       
       // Need venue ID to filter bookings
       const venueId = params.venueId as string;
+      console.log('🏢 [VENUE DETAILS] Venue ID:', venueId);
       
       // Generate date range for next 15 days
       const today = new Date();
@@ -512,7 +586,14 @@ export default function VenueDetailsScreen() {
       const endDate = new Date(today);
       endDate.setDate(today.getDate() + 15);
       
+      const dateRange = {
+        start: today.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
+      };
+      console.log('📅 [VENUE DETAILS] Date range:', dateRange);
+      
       // ✅ OPTIMIZATION: Query ONLY this venue's bookings directly from DB (10-50x faster!)
+      // ✅ ALSO count participants for accurate spot tracking
       const { data: venueBookings, error } = await supabase
         .from('bookings')
         .select(`
@@ -534,19 +615,86 @@ export default function VenueDetailsScreen() {
           )
         `)
         .eq('venue_id', venueId)
-        .gte('booking_date', today.toISOString().split('T')[0])
-        .lte('booking_date', endDate.toISOString().split('T')[0])
+        .gte('booking_date', dateRange.start)
+        .lte('booking_date', dateRange.end)
         .order('booking_date', { ascending: true });
       
       if (error) {
-        console.error('❌ Error loading venue bookings:', error);
+        console.error('❌ [VENUE DETAILS] Error loading venue bookings:', error);
+        console.error('❌ [VENUE DETAILS] Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         setAllBookings([]);
         setBookingsLoaded(true);
         return;
       }
       
+      console.log(`📊 [VENUE DETAILS] Raw bookings from DB: ${venueBookings?.length || 0}`);
+      if (venueBookings && venueBookings.length > 0) {
+        console.log('📋 [VENUE DETAILS] First booking sample:', {
+          id: venueBookings[0].id,
+          status: venueBookings[0].status,
+          booking_type: venueBookings[0].booking_type,
+          booking_date: venueBookings[0].booking_date,
+          user_id: venueBookings[0].user_id,
+          player_count: venueBookings[0].player_count
+        });
+        console.log('📋 [VENUE DETAILS] All booking dates:', venueBookings.map((b: any) => b.booking_date));
+      } else {
+        console.warn('⚠️ [VENUE DETAILS] No bookings found for venue:', venueId);
+        console.warn('⚠️ [VENUE DETAILS] This could be due to:');
+        console.warn('  1. RLS (Row Level Security) policies blocking the query');
+        console.warn('  2. No bookings exist for this venue');
+        console.warn('  3. Bookings exist but outside the date range');
+      }
+      
+      // ✅ For each open game booking, count actual participants
+      const bookingsWithParticipants = await Promise.all(
+        (venueBookings || []).map(async (booking: any) => {
+          // ✅ For open games, player_count in DB already stores "spots still needed"
+          // Just fetch participant count for logging/debugging purposes
+          let actualPlayerCount = booking.player_count;
+          
+          // If it's an open game, count participants from booking_participants table (for logging)
+          if (booking.booking_type === 'open' && booking.status === 'confirmed') {
+            const { data: participants, error: partError } = await supabase
+              .from('booking_participants')
+              .select('id')
+              .eq('booking_id', booking.id)
+              .eq('status', 'confirmed'); // ✅ Use 'confirmed' status
+            
+            if (!partError && participants) {
+              // ✅ player_count in DB = spots still needed (don't recalculate!)
+              const spotsNeeded = booking.player_count || 0;
+              const currentPlayers = participants.length + 1; // +1 for host
+              
+              console.log(`🎮 [BOOKING ${booking.id.substring(0, 8)}] Participant count:`, {
+                spotsNeeded: spotsNeeded,
+                participants: participants.length,
+                host: 1,
+                currentPlayers: currentPlayers,
+                totalSlots: currentPlayers + spotsNeeded
+              });
+              
+              // ✅ Use the DB value directly (it's already correct)
+              actualPlayerCount = spotsNeeded;
+            }
+          }
+          
+          return {
+            ...booking,
+            player_count: actualPlayerCount
+          };
+        })
+      );
+      
+      console.log(`✅ [VENUE DETAILS] Processed ${bookingsWithParticipants.length} bookings with participant data`);
+      
       // Transform to expected format
-      const transformedBookings = (venueBookings || []).map((booking: any) => {
+      const transformedBookings = bookingsWithParticipants.map((booking: any) => {
         // Convert DB time format (HH:MM:SS) to display format (H:MM AM/PM)
         const convertToDisplayTime = (dbTime: string) => {
           if (!dbTime) return '';
@@ -577,6 +725,19 @@ export default function VenueDetailsScreen() {
       const duration = Date.now() - startTime;
       console.log(`✅ [VENUE DETAILS] Loaded ${transformedBookings.length} bookings in ${duration}ms`);
       
+      if (transformedBookings.length > 0) {
+        console.log('📋 [VENUE DETAILS] Sample transformed booking:', {
+          id: transformedBookings[0].id?.substring(0, 8),
+          court: transformedBookings[0].court,
+          date: transformedBookings[0].date,
+          time: transformedBookings[0].time,
+          status: transformedBookings[0].status,
+          bookingType: transformedBookings[0].bookingType,
+          players: transformedBookings[0].players,
+          userId: transformedBookings[0].userId?.substring(0, 8)
+        });
+      }
+      
       setAllBookings(transformedBookings);
       setBookingsLoaded(true);
       
@@ -591,6 +752,59 @@ export default function VenueDetailsScreen() {
     }
   };
 
+  // ✅ Set up real-time subscription for booking changes
+  const setupRealtimeSubscription = async () => {
+    try {
+      // Cleanup existing subscription
+      if (bookingSubscriptionRef.current) {
+        bookingSubscriptionRef.current.unsubscribe();
+      }
+
+      const { supabase } = await import('@/src/common/services/supabase');
+      const venueId = params.venueId as string;
+
+      console.log('📡 [VENUE DETAILS] Setting up real-time subscription for venue:', venueId);
+
+      // Subscribe to booking changes for this venue
+      bookingSubscriptionRef.current = supabase
+        .channel(`venue-bookings-${venueId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to INSERT, UPDATE, DELETE
+            schema: 'public',
+            table: 'bookings',
+            filter: `venue_id=eq.${venueId}`
+          },
+          (payload: any) => {
+            console.log('🔔 [VENUE DETAILS] Booking change detected:', payload.eventType);
+            console.log('📦 [VENUE DETAILS] Payload:', {
+              event: payload.eventType,
+              bookingId: payload.new?.id || payload.old?.id,
+              status: payload.new?.status || payload.old?.status,
+              bookingDate: payload.new?.booking_date || payload.old?.booking_date
+            });
+            
+            // Reload bookings to get fresh data
+            console.log('🔄 [VENUE DETAILS] Refreshing bookings due to real-time update...');
+            preloadAllBookings();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ [VENUE DETAILS] Real-time subscription active');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ [VENUE DETAILS] Real-time subscription error');
+          } else if (status === 'TIMED_OUT') {
+            console.warn('⚠️ [VENUE DETAILS] Real-time subscription timed out');
+          }
+        });
+
+    } catch (error) {
+      console.error('❌ [VENUE DETAILS] Failed to set up real-time subscription:', error);
+    }
+  };
+
   // Instantly filter preloaded bookings for the selected date
   const filterBookingsForDate = () => {
     filterBookingsForSelectedDate(allBookings, selectedDate);
@@ -598,12 +812,30 @@ export default function VenueDetailsScreen() {
 
   // Helper function to filter bookings for a specific date
   const filterBookingsForSelectedDate = (bookings: any[], date: Date) => {
+    const dateStr = date.toDateString();
     const filteredBookings = bookings.filter(booking => {
       const bookingDate = new Date(booking.date);
-      return bookingDate.toDateString() === date.toDateString();
+      const matches = bookingDate.toDateString() === dateStr;
+      return matches;
     });
     
-    console.log('📅 [VENUE DETAILS] Filtered bookings for', date.toDateString(), ':', filteredBookings.length);
+    console.log(`📅 [VENUE DETAILS] Filtering for ${dateStr}:`, {
+      totalBookings: bookings.length,
+      matchingBookings: filteredBookings.length
+    });
+    
+    if (filteredBookings.length > 0) {
+      console.log('📋 [VENUE DETAILS] Filtered bookings:', 
+        filteredBookings.map((b: any) => ({
+          id: b.id?.substring(0, 8),
+          court: b.court,
+          time: b.time,
+          status: b.status,
+          bookingType: b.bookingType
+        }))
+      );
+    }
+    
     setBookingsForDate(filteredBookings);
   };
 
@@ -808,7 +1040,11 @@ export default function VenueDetailsScreen() {
                             }
                           ]}
                           onPress={() => {
-                            if (slot.status !== 'booked') {
+                            if (slot.status === 'booked') {
+                              // Booked slots are disabled
+                              return;
+                            } else if (slot.status === 'available') {
+                              // Available slots - open booking form
                               router.push({
                                 pathname: '/BookingFormScreen',
                                 params: {
@@ -817,10 +1053,25 @@ export default function VenueDetailsScreen() {
                                   venuePrice: slot.price.toString(),
                                   ownerId: venue.ownerId,
                                   court: court.name,
-                                  courtId: court.uuid || court.id, // Pass the actual court UUID
+                                  courtId: court.uuid || court.id,
                                   timeSlot: slot.time
                                 }
                               });
+                            } else if (slot.status === 'joining' || slot.status === 'last-spot') {
+                              // Joining/last-spot slots - open join game screen
+                              // Need to get the booking ID for this time slot
+                              const booking = bookingsForDate.find(b => 
+                                (b as any).court === court.name && (b as any).time === slot.time
+                              );
+                              
+                              if (booking && (booking as any).id) {
+                                router.push({
+                                  pathname: '/JoinGameScreen' as any,
+                                  params: {
+                                    bookingId: (booking as any).id
+                                  }
+                                });
+                              }
                             }
                           }}
                           disabled={slot.status === 'booked'}

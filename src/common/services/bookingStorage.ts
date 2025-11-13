@@ -876,6 +876,294 @@ class BookingStorageService {
     // No-op - bookings are now persisted in AsyncStorage
     console.log('ℹ️ [STORAGE] initializeDemoData called (deprecated, using AsyncStorage)');
   }
+
+  // ✅ NEW: Join an open game (add user to booking_participants)
+  static async joinOpenGame(bookingId: string, userId: string): Promise<boolean> {
+    try {
+      console.log(`🎮 [STORAGE] User ${userId} joining booking ${bookingId}...`);
+      const { supabase } = await import('./supabase');
+      
+      // Check if user is already a participant
+      const { data: existingParticipant } = await supabase
+        .from('booking_participants')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .eq('user_id', userId)
+        .single();
+      
+      if (existingParticipant) {
+        console.log('⚠️ [STORAGE] User is already a participant');
+        return false;
+      }
+      
+      // Get booking details to check availability
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select('booking_type, player_count, user_id')
+        .eq('id', bookingId)
+        .single();
+      
+      if (bookingError || !booking) {
+        console.error('❌ [STORAGE] Booking not found:', bookingError);
+        return false;
+      }
+      
+      // Check if it's an open game
+      if (booking.booking_type !== 'open') {
+        console.error('❌ [STORAGE] Not an open game');
+        return false;
+      }
+      
+      // player_count in DB stores "spots still needed" (not total players)
+      const spotsStillNeeded = booking.player_count || 0;
+      
+      console.log(`📊 [STORAGE] Current spots needed: ${spotsStillNeeded}`);
+      
+      if (spotsStillNeeded <= 0) {
+        console.error('❌ [STORAGE] No spots available (game is full)');
+        return false;
+      }
+      
+      // Add participant
+      const { error: insertError } = await supabase
+        .from('booking_participants')
+        .insert([{
+          booking_id: bookingId,
+          user_id: userId,
+          status: 'confirmed', // ✅ Use 'confirmed' to match bookings table constraint
+          joined_at: new Date().toISOString()
+        }]);
+      
+      if (insertError) {
+        console.error('❌ [STORAGE] Error adding participant:', insertError);
+        return false;
+      }
+      
+      // Decrement player_count by 1 (one less spot needed)
+      const newPlayerCount = spotsStillNeeded - 1;
+      await supabase
+        .from('bookings')
+        .update({ player_count: newPlayerCount })
+        .eq('id', bookingId);
+      
+      console.log(`✅ [STORAGE] User joined game! Spots remaining: ${newPlayerCount}`);
+      
+      // ✅ ADD USER TO GAME CONVERSATION (CHATROOM)
+      try {
+        console.log(`💬 [STORAGE] Adding user to game conversation...`);
+        
+        // Get or create conversation for this booking
+        const { data: existingConversation } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('booking_id', bookingId)
+          .eq('type', 'game') // ✅ Use 'game' type for booking conversations
+          .single();
+        
+        let conversationId = existingConversation?.id;
+        
+        // If no conversation exists, create one
+        if (!conversationId) {
+          console.log(`📝 [STORAGE] Creating new conversation for booking ${bookingId}...`);
+          
+          const { data: newConversation, error: conversationError } = await supabase
+            .from('conversations')
+            .insert([{
+              booking_id: bookingId,
+              name: `Game Chat`,
+              type: 'game', // ✅ Use 'game' type
+              created_by: booking.user_id, // Host is the creator
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+            .select('id')
+            .single();
+          
+          if (conversationError) {
+            console.error('⚠️ [STORAGE] Failed to create conversation:', conversationError);
+          } else {
+            conversationId = newConversation?.id;
+            console.log(`✅ [STORAGE] Created conversation: ${conversationId}`);
+            
+            // Add host to the conversation
+            const { error: hostError } = await supabase
+              .from('conversation_participants')
+              .insert([{
+                conversation_id: conversationId,
+                user_id: booking.user_id,
+                joined_at: new Date().toISOString(),
+                is_active: true
+              }]);
+            
+            if (hostError) {
+              console.error('⚠️ [STORAGE] Failed to add host to conversation:', hostError);
+            } else {
+              console.log(`✅ [STORAGE] Host added to conversation`);
+            }
+          }
+        }
+        
+        // Add joining user to conversation
+        if (conversationId) {
+          const { error: participantError } = await supabase
+            .from('conversation_participants')
+            .insert([{
+              conversation_id: conversationId,
+              user_id: userId,
+              joined_at: new Date().toISOString(),
+              is_active: true
+            }]);
+          
+          if (participantError) {
+            console.error('⚠️ [STORAGE] Failed to add user to conversation:', participantError);
+          } else {
+            console.log(`✅ [STORAGE] User added to conversation: ${conversationId}`);
+          }
+        }
+      } catch (chatError) {
+        console.error('⚠️ [STORAGE] Error managing conversation:', chatError);
+        // Don't fail the entire join operation if chat fails
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ [STORAGE] Error joining game:', error);
+      return false;
+    }
+  }
+
+  // ✅ NEW: Get booking details with participants
+  static async getBookingWithParticipants(bookingId: string): Promise<any | null> {
+    try {
+      const { supabase } = await import('./supabase');
+      
+      console.log(`📖 [STORAGE] Fetching booking details for: ${bookingId}`);
+      
+      // Fetch booking details
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          venues!inner(name, address),
+          courts!inner(name, type),
+          users!bookings_user_id_fkey(id, full_name, avatar, email)
+        `)
+        .eq('id', bookingId)
+        .single();
+      
+      if (bookingError || !booking) {
+        console.error('❌ [STORAGE] Booking not found:', bookingError);
+        return null;
+      }
+      
+      // Fetch participants
+      const { data: participants, error: participantsError } = await supabase
+        .from('booking_participants')
+        .select(`
+          *,
+          users!booking_participants_user_id_fkey(id, full_name, avatar, email)
+        `)
+        .eq('booking_id', bookingId)
+        .eq('status', 'confirmed'); // ✅ Use 'confirmed' status
+      
+      if (participantsError) {
+        console.error('❌ [STORAGE] Error fetching participants:', participantsError);
+      }
+      
+      const participantCount = participants?.length || 0;
+      const spotsNeeded = booking.player_count || 0;
+      const currentPlayers = participantCount + 1; // +1 for host
+      const totalSlots = currentPlayers + spotsNeeded;
+      
+      console.log(`📊 [STORAGE] Booking player counts:`, {
+        host: 1,
+        participants: participantCount,
+        currentPlayers: currentPlayers,
+        spotsNeeded: spotsNeeded,
+        totalSlots: totalSlots
+      });
+      
+      return {
+        id: booking.id,
+        venueId: booking.venue_id,
+        venueName: booking.venues?.name,
+        venueAddress: booking.venues?.address,
+        courtId: booking.court_id,
+        courtName: booking.courts?.name,
+        courtType: booking.courts?.type,
+        date: booking.booking_date,
+        startTime: this.formatTimeFromDB(booking.start_time),
+        endTime: this.formatTimeFromDB(booking.end_time),
+        duration: booking.duration,
+        bookingType: this.fromDbBookingType(booking.booking_type),
+        skillLevel: booking.skill_level,
+        totalAmount: parseFloat(booking.total_amount || 0),
+        status: booking.status,
+        paymentStatus: booking.payment_status,
+        host: {
+          id: booking.users?.id,
+          name: booking.users?.full_name,
+          avatar: booking.users?.avatar,
+          email: booking.users?.email
+        },
+        participants: participants?.map(p => ({
+          id: p.users?.id,
+          name: p.users?.full_name,
+          avatar: p.users?.avatar,
+          email: p.users?.email,
+          joinedAt: p.joined_at
+        })) || [],
+        spotsNeeded: spotsNeeded,
+        currentPlayers: currentPlayers
+      };
+    } catch (error) {
+      console.error('❌ [STORAGE] Error fetching booking with participants:', error);
+      return null;
+    }
+  }
+
+  // ✅ NEW: Leave an open game (remove from booking_participants)
+  static async leaveOpenGame(bookingId: string, userId: string): Promise<boolean> {
+    try {
+      console.log(`🚪 [STORAGE] User ${userId} leaving booking ${bookingId}...`);
+      const { supabase } = await import('./supabase');
+      
+      // Remove participant
+      const { error: deleteError } = await supabase
+        .from('booking_participants')
+        .delete()
+        .eq('booking_id', bookingId)
+        .eq('user_id', userId);
+      
+      if (deleteError) {
+        console.error('❌ [STORAGE] Error removing participant:', deleteError);
+        return false;
+      }
+      
+      // Get booking details
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('player_count')
+        .eq('id', bookingId)
+        .single();
+      
+      if (booking) {
+        // Increase player_count (one more spot available)
+        const newPlayerCount = (booking.player_count || 0) + 1;
+        await supabase
+          .from('bookings')
+          .update({ player_count: newPlayerCount })
+          .eq('id', bookingId);
+        
+        console.log(`✅ [STORAGE] User left game! Spots now available: ${newPlayerCount}`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ [STORAGE] Error leaving game:', error);
+      return false;
+    }
+  }
 }
 
 export { BookingStorageService };

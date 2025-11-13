@@ -6,8 +6,8 @@ import {
 } from '@/styles/screens/ClientDashboardScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Stack, useRouter, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -43,13 +43,32 @@ export default function ClientDashboardScreen() {
   });
   const [todayBookingsList, setTodayBookingsList] = useState<TodayBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
+  const bookingSubscriptionRef = useRef<any>(null);
 
   useEffect(() => {
     initializeClientSession();
     loadDashboardData();
+    
+    return () => {
+      // Cleanup subscription on unmount
+      if (bookingSubscriptionRef.current) {
+        bookingSubscriptionRef.current.unsubscribe();
+      }
+    };
   }, []);
+
+  // ✅ Refresh dashboard when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (clientId) {
+        console.log('🔄 [DASHBOARD] Screen focused, refreshing data...');
+        loadDashboardData();
+      }
+    }, [clientId])
+  );
 
   const initializeClientSession = async () => {
     // Check if client is authenticated
@@ -72,7 +91,13 @@ export default function ClientDashboardScreen() {
   };
 
   const loadDashboardData = async () => {
-    setLoading(true);
+    // Use refreshing state if already loaded, otherwise use loading
+    if (analytics.todayBookings > 0 || analytics.pendingRequests > 0) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
     try {
       // Get current client ID
       const { supabase } = await import('@/src/common/services/supabase');
@@ -95,11 +120,67 @@ export default function ClientDashboardScreen() {
       setTodayBookingsList(bookings);
 
       console.log('✅ [DASHBOARD] Analytics loaded:', analyticsData);
+
+      // ✅ Set up real-time subscription for booking updates
+      setupRealtimeSubscription(user.id);
+
     } catch (error) {
       console.error('❌ [DASHBOARD] Error loading dashboard data:', error);
       Alert.alert('Error', 'Failed to load dashboard data');
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const setupRealtimeSubscription = async (userId: string) => {
+    try {
+      // Cleanup existing subscription
+      if (bookingSubscriptionRef.current) {
+        bookingSubscriptionRef.current.unsubscribe();
+      }
+
+      const { supabase } = await import('@/src/common/services/supabase');
+
+      // Get all venues owned by this client
+      const { data: venues } = await supabase
+        .from('venues')
+        .select('id')
+        .eq('client_id', userId);
+
+      if (!venues || venues.length === 0) {
+        console.log('⚠️ [DASHBOARD] No venues found for real-time subscription');
+        return;
+      }
+
+      const venueIds = venues.map(v => v.id);
+      console.log(`📡 [DASHBOARD] Setting up real-time for ${venueIds.length} venues`);
+
+      // Subscribe to booking changes for all client's venues
+      bookingSubscriptionRef.current = supabase
+        .channel('dashboard-bookings')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'bookings'
+          },
+          (payload: any) => {
+            // Check if the booking is for one of this client's venues
+            const bookingVenueId = payload.new?.venue_id || payload.old?.venue_id;
+            if (venueIds.includes(bookingVenueId)) {
+              console.log('🔔 [DASHBOARD] Booking change detected:', payload.eventType);
+              // Reload dashboard data when bookings change
+              loadDashboardData();
+            }
+          }
+        )
+        .subscribe();
+
+      console.log('✅ [DASHBOARD] Real-time subscription active');
+    } catch (error) {
+      console.error('❌ [DASHBOARD] Failed to set up real-time subscription:', error);
     }
   };
 
@@ -231,7 +312,7 @@ export default function ClientDashboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
+            refreshing={refreshing}
             onRefresh={loadDashboardData}
             colors={[colors.primary]}
             tintColor={colors.primary}
