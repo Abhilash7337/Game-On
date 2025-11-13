@@ -1,14 +1,14 @@
-import { ClientAuthService } from '@/src/client/services/clientAuth';
 import { AnalyticsService } from '@/src/client/services/analyticsService';
+import { ClientAuthService } from '@/src/client/services/clientAuth';
 import AppHeader from '@/src/common/components/AppHeader';
 import {
   clientDashboardStyles
 } from '@/styles/screens/ClientDashboardScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View, TouchableWithoutFeedback } from 'react-native';
+import { Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface DashboardAnalytics {
@@ -184,20 +184,48 @@ export default function ClientDashboardScreen() {
     }
   };
 
-  const StatCard = ({ title, value, icon, color }: {
+  const StatCard = ({ title, value, icon, color, onPress }: {
     title: string;
     value: string;
     icon: keyof typeof Ionicons.glyphMap;
     color?: string;
+    onPress?: () => void;
   }) => (
-    <View style={clientDashboardStyles.statCard}>
+    <TouchableOpacity 
+      style={clientDashboardStyles.statCard}
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
       <View style={clientDashboardStyles.statHeader}>
         <Ionicons name={icon} size={24} color={color || colors.primary} />
+        {onPress && (
+          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        )}
       </View>
       <Text style={clientDashboardStyles.statValue}>{value}</Text>
       <Text style={clientDashboardStyles.statTitle}>{title}</Text>
-    </View>
+    </TouchableOpacity>
   );
+
+  const handleStatCardPress = (cardType: 'venues' | 'revenue' | 'bookings' | 'requests') => {
+    switch (cardType) {
+      case 'venues':
+        router.push('/client/VenueManagementScreen');
+        break;
+      case 'revenue':
+        router.push('/client/RevenueAnalyticsScreen');
+        break;
+      case 'bookings':
+        router.push('/client/BookingHistoryScreen');
+        break;
+      case 'requests':
+        router.push('/client/BookingRequestsScreen');
+        break;
+      default:
+        break;
+    }
+  };
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
@@ -327,24 +355,28 @@ export default function ClientDashboardScreen() {
             value={analytics.todayBookings.toString()}
             icon="calendar-outline"
             color={colors.primary}
+            onPress={() => handleStatCardPress('bookings')}
           />
           <StatCard
             title="Pending Requests"
             value={analytics.pendingRequests.toString()}
             icon="mail-outline"
             color="#F59E0B"
+            onPress={() => handleStatCardPress('requests')}
           />
           <StatCard
             title="Total Revenue"
             value={`₹${analytics.totalRevenue.toLocaleString()}`}
             icon="cash-outline"
             color="#10B981"
+            onPress={() => handleStatCardPress('revenue')}
           />
           <StatCard
             title="Active Venues"
             value={analytics.activeVenues.toString()}
             icon="location-outline"
             color="#8B5CF6"
+            onPress={() => handleStatCardPress('venues')}
           />
         </View>
 

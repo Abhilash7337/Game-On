@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 // Helper to use typography consistently
 const { fontSize, fontWeight } = typography;
@@ -7,7 +7,7 @@ const { fontSize, fontWeight } = typography;
 export const venueManagementStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.backgroundSecondary,
   },
 
   centerContainer: {
@@ -22,6 +22,44 @@ export const venueManagementStyles = StyleSheet.create({
     fontSize: fontSize.base,
     color: colors.textSecondary,
     fontWeight: fontWeight.normal,
+  },
+
+  // Content
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+
+  // Quick Actions
+  quickActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+
+  addVenueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+
+  addVenueButtonText: {
+    color: colors.textInverse,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+  },
+
+  refreshButton: {
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.background,
+    ...shadows.sm,
   },
 
   // Header
@@ -75,27 +113,51 @@ export const venueManagementStyles = StyleSheet.create({
 
   // List
   listContainer: {
-    padding: spacing.lg,
+    paddingVertical: spacing.lg,
     paddingBottom: spacing.xl * 2,
   },
 
   // Venue Card
   venueCard: {
     backgroundColor: colors.background,
-    borderRadius: 12,
+    borderRadius: borderRadius.xl,
     marginBottom: spacing.lg,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.gray100,
+  },
+
+  venueImageContainer: {
+    position: 'relative',
   },
 
   venueImage: {
     width: '100%',
     height: 180,
     backgroundColor: colors.gray200,
+  },
+
+  placeholderImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: colors.gray200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  statusBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+
+  statusText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
   },
 
   venueInfo: {
@@ -157,6 +219,27 @@ export const venueManagementStyles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
+  // Amenities
+  amenitiesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+
+  amenityChip: {
+    backgroundColor: colors.primary + '15',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+
+  amenityText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+    color: colors.primary,
+  },
+
   // Action Buttons
   actionButtons: {
     flexDirection: 'row',
@@ -170,7 +253,7 @@ export const venueManagementStyles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     gap: 6,
   },
 
@@ -196,6 +279,138 @@ export const venueManagementStyles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
     color: '#EF4444',
+  },
+
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+  },
+
+  modalCancelText: {
+    fontSize: fontSize.base,
+    color: colors.textSecondary,
+    fontWeight: fontWeight.medium,
+  },
+
+  modalTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+  },
+
+  modalSaveText: {
+    fontSize: fontSize.base,
+    color: colors.primary,
+    fontWeight: fontWeight.semibold,
+  },
+
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+
+  // Form Styles
+  formGroup: {
+    marginBottom: spacing.lg,
+  },
+
+  label: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+
+  textInput: {
+    borderWidth: 1,
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    fontSize: fontSize.base,
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
+  },
+
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+
+  // Images
+  imagesContainer: {
+    paddingVertical: spacing.sm,
+  },
+
+  imageWrapper: {
+    position: 'relative',
+    marginRight: spacing.md,
+  },
+
+  editImage: {
+    width: 100,
+    height: 80,
+    borderRadius: borderRadius.md,
+  },
+
+  removeImageButton: {
+    position: 'absolute',
+    top: -spacing.xs,
+    right: -spacing.xs,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+  },
+
+  addImageButton: {
+    width: 100,
+    height: 80,
+    borderRadius: borderRadius.md,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: colors.gray300,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Amenities Grid
+  amenitiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+
+  amenityOption: {
+    borderWidth: 1,
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+
+  amenityOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+
+  amenityOptionText: {
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+    fontWeight: fontWeight.medium,
+  },
+
+  amenityOptionTextSelected: {
+    color: colors.textInverse,
   },
 
   // Empty State
@@ -229,7 +444,7 @@ export const venueManagementStyles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
   },
 
   emptyButtonText: {

@@ -13,10 +13,28 @@ export const appHeaderStyles = StyleSheet.create({
   
   headerContent: {
     width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   
   titleSection: {
-    width: '100%',
+    flex: 1,
+    marginHorizontal: spacing.sm,
+  },
+  
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   
   headerTitle: {

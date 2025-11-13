@@ -144,13 +144,13 @@ class AnalyticsServiceClass {
 
       const venueIds = venues.map(v => v.id);
 
-      // Sum total_amount from all confirmed bookings
+      // Sum total_amount from all confirmed bookings (regardless of payment status)
+      // This matches the logic used in RevenueAnalyticsScreen
       const { data, error } = await supabase
         .from('bookings')
         .select('total_amount')
         .in('venue_id', venueIds)
-        .eq('status', 'confirmed')
-        .eq('payment_status', 'paid');
+        .eq('status', 'confirmed');
 
       if (error) {
         console.error('❌ [ANALYTICS] Error fetching revenue:', error);
