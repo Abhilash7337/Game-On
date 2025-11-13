@@ -1,5 +1,5 @@
 // SocialScreen specific styles
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export const socialStyles = StyleSheet.create({
@@ -393,6 +393,11 @@ export const socialStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  actionSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
   modalContent: {
     width: '90%',
     maxHeight: '80%',
@@ -471,6 +476,70 @@ export const socialStyles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     padding: spacing.xl,
+  },
+
+  // Action Sheet Styles
+  actionSheetContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+    minHeight: 180,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 16,
+      },
+    }),
+  },
+  actionSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray100,
+  },
+  actionSheetTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  actionSheetBody: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  actionSheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderRadius: 16,
+    marginBottom: spacing.xs,
+    backgroundColor: 'transparent',
+    minHeight: 56,
+  },
+  actionSheetItemText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textPrimary,
+    marginLeft: spacing.lg,
+    flex: 1,
+  },
+  dangerAction: {
+    backgroundColor: 'transparent',
   },
 });
 

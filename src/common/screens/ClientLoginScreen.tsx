@@ -1,13 +1,13 @@
 import { ClientAuthService } from '@/src/client/services/clientAuth';
 import { Button } from '@/src/common/components/Button';
+import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { Input } from '@/src/common/components/Input';
 import { LoadingOverlay } from '@/src/common/components/LoadingState';
-import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { clientLoginScreenStyles } from '@/styles/screens/ClientLoginScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,7 +20,7 @@ export default function ClientLoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isPlayerMode, setIsPlayerMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Business, 1 = Player
+  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Business (default), 1 = Player
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -32,14 +32,14 @@ export default function ClientLoginScreen() {
   });
 
   useEffect(() => {
-    // Set toggle initial position based on isPlayerMode
-    toggleAnim.setValue(isPlayerMode ? 1 : 0);
+    // Set toggle position: 1 for Business (this screen), 0 for Player
+    toggleAnim.setValue(1); // Always start at Business position on ClientLoginScreen
   }, []);
 
   // Toggle thumb position interpolation
   const toggleThumbTranslate = toggleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 20], // Move 20 pixels to the right when active
+    outputRange: [0, 20], // 0 = Player (left), 1 = Business (right)
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -151,8 +151,10 @@ export default function ClientLoginScreen() {
     const newPlayerMode = !isPlayerMode;
     
     // Animate toggle switch
+    // 0 = Player (left), 1 = Business (right)
+    // Since we're on Business screen, we want to go to Player (0)
     Animated.timing(toggleAnim, {
-      toValue: newPlayerMode ? 1 : 0,
+      toValue: newPlayerMode ? 0 : 1, // If switching to player mode, go to position 0
       duration: 200,
       useNativeDriver: true,
     }).start();
@@ -232,14 +234,14 @@ export default function ClientLoginScreen() {
                 <View style={styles.playerToggleContainer}>
                   <Text style={[
                     styles.toggleLabel,
-                    !isPlayerMode && styles.toggleLabelActive
+                    isPlayerMode && styles.toggleLabelActive
                   ]}>
-                    Business
+                    Player
                   </Text>
                   <TouchableOpacity 
                     style={[
                       styles.toggleSwitch,
-                      isPlayerMode && styles.toggleSwitchActive
+                      !isPlayerMode && styles.toggleSwitchActive
                     ]}
                     onPress={handlePlayerToggle}
                     activeOpacity={0.8}
@@ -253,9 +255,9 @@ export default function ClientLoginScreen() {
                   </TouchableOpacity>
                   <Text style={[
                     styles.toggleLabel,
-                    isPlayerMode && styles.toggleLabelActive
+                    !isPlayerMode && styles.toggleLabelActive
                   ]}>
-                    Player
+                    Business
                   </Text>
                 </View>
               </View>

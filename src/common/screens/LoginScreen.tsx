@@ -1,17 +1,17 @@
 import { Button } from '@/src/common/components/Button';
+import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { Input } from '@/src/common/components/Input';
 import { LoadingOverlay } from '@/src/common/components/LoadingState';
-import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { useLoadingStates } from '@/src/common/hooks/useAsyncOperation';
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { GoogleAuthService } from '@/src/common/services/googleAuth';
 import { UserAuthService } from '@/src/user/services/userAuth';
-import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
-import { colors } from '@/styles/theme';
 import { loginScreenStyles } from '@/styles/screens/LoginScreen';
+import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState, useEffect, useRef } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -35,7 +35,7 @@ export default function LoginScreen() {
   const slideAnim = useRef(new Animated.Value(0)).current; // Start at 0, no slide-in
   const scaleAnim = useRef(new Animated.Value(1)).current; // Start at 1, no scale-in
   const logoRotateAnim = useRef(new Animated.Value(0)).current;
-  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Player, 1 = Business
+  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Player (default), 1 = Business
 
   useEffect(() => {
     // Set initial values without animation
@@ -43,8 +43,8 @@ export default function LoginScreen() {
     slideAnim.setValue(0);
     scaleAnim.setValue(1);
     
-    // Set toggle initial position based on isBusinessMode
-    toggleAnim.setValue(isBusinessMode ? 1 : 0);
+    // Set toggle position: 0 for Player (this screen), 1 for Business
+    toggleAnim.setValue(0); // Always start at Player position on LoginScreen
     
     // Only keep subtle logo rotation
     Animated.loop(
@@ -64,7 +64,7 @@ export default function LoginScreen() {
   // Toggle thumb position interpolation
   const toggleThumbTranslate = toggleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 20], // Move 20 pixels to the right when active
+    outputRange: [0, 20], // Move 20 pixels to the right when Business is selected
   });
 
   const handleInputChange = (field: string, value: string) => {

@@ -69,6 +69,11 @@ export default function SocialScreen() {
     const [showGlobalSports, setShowGlobalSports] = useState(false);
     const [navigating, setNavigating] = useState(false);
     
+    // Game chat action sheet states
+    const [showGameChatActions, setShowGameChatActions] = useState(false);
+    const [selectedGameChat, setSelectedGameChat] = useState<GameChat | null>(null);
+    const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
+    
     // Friend search states
     const [showAddFriendModal, setShowAddFriendModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -754,6 +759,94 @@ export default function SocialScreen() {
         }
     }, [router, userCity, navigating]);
 
+    // Game Chat Action Functions
+    const handleGameChatLongPress = useCallback((chat: GameChat) => {
+        setSelectedGameChat(chat);
+        setShowGameChatActions(true);
+    }, []);
+
+    const handleDeleteGameChat = useCallback(async () => {
+        if (!selectedGameChat) return;
+        
+        Alert.alert(
+            'Delete Chat',
+            `Are you sure you want to delete the chat for ${selectedGameChat.venue} - ${selectedGameChat.court}? This action cannot be undone.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setShowGameChatActions(false);
+                            
+                            // Delete from conversation_participants to leave the chat
+                            const { data: userData } = await supabase.auth.getUser();
+                            if (userData?.user?.id) {
+                                const { error } = await supabase
+                                    .from('conversation_participants')
+                                    .delete()
+                                    .eq('conversation_id', selectedGameChat.conversationId)
+                                    .eq('user_id', userData.user.id);
+                                    
+                                if (error) {
+                                    console.error('❌ Error leaving chat:', error);
+                                    Alert.alert('Error', 'Failed to delete chat');
+                                    return;
+                                }
+                                
+                                // Remove from local state immediately
+                                setGameChats(prev => prev.filter(chat => chat.id !== selectedGameChat.id));
+                                
+                                // Clear muted state if it was muted
+                                setMutedChats(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(selectedGameChat.id);
+                                    return next;
+                                });
+                                
+                                Alert.alert('Success', 'Chat deleted successfully');
+                            }
+                        } catch (error) {
+                            console.error('❌ Error deleting chat:', error);
+                            Alert.alert('Error', 'Failed to delete chat');
+                        } finally {
+                            setSelectedGameChat(null);
+                        }
+                    }
+                }
+            ]
+        );
+    }, [selectedGameChat]);
+
+    const handleMuteGameChat = useCallback(async () => {
+        if (!selectedGameChat) return;
+        
+        try {
+            const isMuted = mutedChats.has(selectedGameChat.id);
+            
+            if (isMuted) {
+                // Unmute
+                setMutedChats(prev => {
+                    const next = new Set(prev);
+                    next.delete(selectedGameChat.id);
+                    return next;
+                });
+                Alert.alert('Success', 'Chat unmuted');
+            } else {
+                // Mute
+                setMutedChats(prev => new Set(prev).add(selectedGameChat.id));
+                Alert.alert('Success', 'Chat muted');
+            }
+            
+            setShowGameChatActions(false);
+            setSelectedGameChat(null);
+        } catch (error) {
+            console.error('❌ Error muting/unmuting chat:', error);
+            Alert.alert('Error', 'Failed to update chat settings');
+        }
+    }, [selectedGameChat, mutedChats]);
+
     const handleGameChatPress = useCallback((chat: GameChat) => {
         // Prevent multiple rapid clicks
         if (navigating) return;
@@ -996,30 +1089,50 @@ export default function SocialScreen() {
         </TouchableOpacity>
     );
 
-    const GameChatCard = ({ chat }: { chat: GameChat }) => (
-        <TouchableOpacity 
-            style={socialStyles.gameChatCard}
-            onPress={() => handleGameChatPress(chat)}
-        >
-            <View style={socialStyles.gameChatInfo}>
-                <View style={socialStyles.gameChatHeader}>
-                    <Text style={socialStyles.gameChatVenue}>{chat.venue} - {chat.court}</Text>
-                    {chat.isHost && (
-                        <View style={socialStyles.hostBadge}>
-                            <Text style={socialStyles.hostBadgeText}>Host</Text>
+    const GameChatCard = ({ chat }: { chat: GameChat }) => {
+        const isMuted = mutedChats.has(chat.id);
+        
+        return (
+            <TouchableOpacity 
+                style={[
+                    socialStyles.gameChatCard,
+                    isMuted && { opacity: 0.6 }
+                ]}
+                onPress={() => handleGameChatPress(chat)}
+                onLongPress={() => handleGameChatLongPress(chat)}
+                delayLongPress={500}
+                activeOpacity={0.7}
+            >
+                <View style={socialStyles.gameChatInfo}>
+                    <View style={socialStyles.gameChatHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            <Text style={socialStyles.gameChatVenue}>{chat.venue} - {chat.court}</Text>
+                            {isMuted && (
+                                <Ionicons 
+                                    name="volume-mute" 
+                                    size={16} 
+                                    color={colors.textSecondary} 
+                                    style={{ marginLeft: 8 }}
+                                />
+                            )}
                         </View>
-                    )}
+                        {chat.isHost && (
+                            <View style={socialStyles.hostBadge}>
+                                <Text style={socialStyles.hostBadgeText}>Host</Text>
+                            </View>
+                        )}
+                    </View>
+                    <Text style={socialStyles.gameChatTime}>
+                        {chat.date} • {chat.time} • {chat.duration}
+                    </Text>
+                    <Text style={socialStyles.gameChatParticipants}>
+                        {chat.participants} participants
+                    </Text>
                 </View>
-                <Text style={socialStyles.gameChatTime}>
-                    {chat.date} • {chat.time} • {chat.duration}
-                </Text>
-                <Text style={socialStyles.gameChatParticipants}>
-                    {chat.participants} participants
-                </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
-    );
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+        );
+    };
 
     if (loading) {
         return (
@@ -1281,6 +1394,74 @@ export default function SocialScreen() {
                         </ScrollView>
                     </View>
                 </View>
+            </Modal>
+
+            {/* Game Chat Action Sheet Modal */}
+            <Modal
+                visible={showGameChatActions}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowGameChatActions(false)}
+            >
+                <TouchableOpacity 
+                    style={socialStyles.actionSheetOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowGameChatActions(false)}
+                >
+                    <TouchableOpacity 
+                        style={socialStyles.actionSheetContainer}
+                        activeOpacity={1}
+                        onPress={() => {}} // Prevent closing when tapping inside the action sheet
+                    >
+                        {/* Bottom sheet indicator */}
+                        <View style={{ alignItems: 'center', paddingTop: 12 }}>
+                            <View style={{ 
+                                width: 40, 
+                                height: 4, 
+                                backgroundColor: colors.gray300, 
+                                borderRadius: 2 
+                            }} />
+                        </View>
+                        
+                        <View style={socialStyles.actionSheetHeader}>
+                            <Text style={socialStyles.actionSheetTitle} numberOfLines={1}>
+                                {selectedGameChat ? `${selectedGameChat.venue} - ${selectedGameChat.court}` : 'Game Chat'}
+                            </Text>
+                            <TouchableOpacity 
+                                style={socialStyles.closeButton}
+                                onPress={() => setShowGameChatActions(false)}
+                            >
+                                <Ionicons name="close" size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={socialStyles.actionSheetBody}>
+                            <TouchableOpacity 
+                                style={socialStyles.actionSheetItem}
+                                onPress={handleMuteGameChat}
+                            >
+                                <Ionicons 
+                                    name={selectedGameChat && mutedChats.has(selectedGameChat.id) ? "volume-high" : "volume-mute"} 
+                                    size={24} 
+                                    color={colors.textSecondary} 
+                                />
+                                <Text style={socialStyles.actionSheetItemText}>
+                                    {selectedGameChat && mutedChats.has(selectedGameChat.id) ? 'Unmute Chat' : 'Mute Chat'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[socialStyles.actionSheetItem, socialStyles.dangerAction]}
+                                onPress={handleDeleteGameChat}
+                            >
+                                <Ionicons name="trash" size={24} color={colors.error} />
+                                <Text style={[socialStyles.actionSheetItemText, { color: colors.error }]}>
+                                    Delete Chat
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
         </View>
     );
