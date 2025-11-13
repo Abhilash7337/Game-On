@@ -35,7 +35,7 @@ export default function LoginScreen() {
   const slideAnim = useRef(new Animated.Value(0)).current; // Start at 0, no slide-in
   const scaleAnim = useRef(new Animated.Value(1)).current; // Start at 1, no scale-in
   const logoRotateAnim = useRef(new Animated.Value(0)).current;
-  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Player, 1 = Business
+  const toggleAnim = useRef(new Animated.Value(0)).current; // 0 = Player (default), 1 = Business
 
   useEffect(() => {
     // Set initial values without animation
@@ -43,8 +43,8 @@ export default function LoginScreen() {
     slideAnim.setValue(0);
     scaleAnim.setValue(1);
     
-    // Set toggle initial position based on isBusinessMode
-    toggleAnim.setValue(isBusinessMode ? 1 : 0);
+    // Set toggle position: 0 for Player (this screen), 1 for Business
+    toggleAnim.setValue(0); // Always start at Player position on LoginScreen
     
     // Only keep subtle logo rotation
     Animated.loop(
@@ -64,7 +64,7 @@ export default function LoginScreen() {
   // Toggle thumb position interpolation
   const toggleThumbTranslate = toggleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 20], // Move 20 pixels to the right when active
+    outputRange: [0, 20], // Move 20 pixels to the right when Business is selected
   });
 
   const handleInputChange = (field: string, value: string) => {
