@@ -2,6 +2,7 @@
 import AppHeader from '@/src/common/components/AppHeader';
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
+import { GameChatroomCleanupService } from '@/src/common/services/gameChatroomCleanup';
 import {
     homeStyles,
     homeTextStyles
@@ -21,6 +22,9 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadUserData();
+    
+    // ✅ OPTIMIZATION: Cleanup expired chatrooms on app startup (silent, non-blocking)
+    GameChatroomCleanupService.autoCleanup(true).catch(() => {});
     
     // ✅ OPTIMIZATION: Prefetch immediately if no cache exists!
     const cache = dataPrefetchService.getCache();

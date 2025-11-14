@@ -270,6 +270,11 @@ export default function VenueManagementScreen() {
                 throw error;
               }
               
+              // Clear cache to ensure deleted venue doesn't appear
+              const { dataPrefetchService } = await import('@/src/common/services/dataPrefetch');
+              dataPrefetchService.clearCache();
+              console.log('🗑️ [VENUE DELETE] Cache cleared after deletion');
+              
               // Remove from local state
               setVenues(prev => prev.filter(v => v.id !== venue.id));
               

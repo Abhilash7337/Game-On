@@ -2,6 +2,7 @@ import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { LoadingState } from '@/src/common/components/LoadingState';
 import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
+import { LocationCacheService } from '@/src/common/services/locationCache';
 import { courtsStyles } from '@/styles/screens/CourtsScreen';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -167,8 +168,9 @@ export default function CourtsScreen() {
 			console.log('📡 [COURTS] Cache miss/stale, loading fresh data...');
 			setDataSource('loading');
 			
-			// Get location permission and data BEFORE loading venues
-			const coords = await getUserLocation();
+			// ✅ OPTIMIZED: Use cached location (instant!)
+			const coords = await LocationCacheService.getLocationFast();
+			setUserLocation(coords);
 			
 			// Now load venues with the location we just got
 			await loadVenues(false, coords);

@@ -48,10 +48,11 @@ export class VenueStorageService {
   // Get all venues
   static async getAllVenues(): Promise<Venue[]> {
     try {
-      // Try to fetch from Supabase first
+      // Try to fetch from Supabase first - only get active venues
       const { data, error } = await supabase
         .from('venues')
         .select('*')
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) {

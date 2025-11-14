@@ -50,6 +50,6 @@ export default function Index() {
   } else if (authState === 'user') {
     return <Redirect href="/(tabs)" />;
   } else {
-    return <Redirect href="/login" />;
+    return <Redirect href="/auth-selection" />;
   }
 }

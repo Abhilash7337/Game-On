@@ -296,7 +296,8 @@ export default function FriendChatScreen() {
     <KeyboardAvoidingView 
       style={friendChatStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}
+      enabled={Platform.OS === 'ios'}
     >
       <StatusBar style="light" />
       
@@ -394,11 +395,14 @@ export default function FriendChatScreen() {
       <View style={[
         friendChatStyles.inputContainer,
         {
-          paddingTop: isKeyboardVisible ? 10 : 16,
-          paddingBottom: isKeyboardVisible ? 
-            (Platform.OS === 'ios' ? 5 : 8) : 
-            Math.max(insets.bottom, 12)
-        }
+          borderBottomWidth: 1,
+          borderBottomColor: '#FFFFFF',
+          marginBottom: isKeyboardVisible ? (Platform.OS === 'android' ? keyboardHeight + 16 : 0) : 5,
+        },
+        Platform.OS === 'android' && { 
+          paddingBottom: isKeyboardVisible ? 24 : 16,
+        },
+        Platform.OS === 'ios' && { paddingBottom: insets.bottom || 12 }
       ]}>
         <View style={friendChatStyles.inputWrapper}>
           <TextInput

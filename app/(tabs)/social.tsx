@@ -2,6 +2,7 @@ import { ConversationService } from '@/src/common/services/conversationService';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { FriendService } from '@/src/common/services/friendService';
 import { SportGroupService } from '@/src/common/services/sportGroupService';
+import { GameChatroomCleanupService } from '@/src/common/services/gameChatroomCleanup'; // ✅ NEW: Auto-cleanup expired chatrooms
 import { supabase } from '@/src/common/services/supabase';
 import { socialStyles } from '@/styles/screens/SocialScreen';
 import { colors } from '@/styles/theme';
@@ -85,6 +86,10 @@ export default function SocialScreen() {
     // Load game chatrooms from ConversationService (Supabase)
     const loadGameChatrooms = async () => {
         try {
+            // ✅ NEW: Cleanup expired chatrooms before loading
+            console.log('🧹 [SOCIAL] Running cleanup before loading chatrooms...');
+            await GameChatroomCleanupService.autoCleanup(true); // Silent cleanup
+            
             const { data: userData, error: userError } = await supabase.auth.getUser();
             if (userError) {
                 console.log('⚠️ Auth error loading chatrooms:', userError.message);
@@ -124,7 +129,7 @@ export default function SocialScreen() {
             }));
 
             setGameChats(gameChatsData);
-            console.log('💬 Loaded', gameChatsData.length, 'game chatrooms');
+            console.log('💬 Loaded', gameChatsData.length, 'game chatrooms (after cleanup)');
         } catch (error) {
             console.error('❌ Error loading game chatrooms:', error);
             setGameChats([]);

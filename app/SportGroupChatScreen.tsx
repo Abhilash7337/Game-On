@@ -10,6 +10,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Text,
@@ -69,6 +70,33 @@ export default function SportGroupChatScreen() {
       }
     };
     getCurrentUser();
+  }, []);
+
+  // Keyboard tracking for Android
+  useEffect(() => {
+    const keyboardShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => {
+        setKeyboardHeight(event.endCoordinates.height);
+        setIsKeyboardVisible(true);
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, Platform.OS === 'ios' ? 50 : 200);
+      }
+    );
+
+    const keyboardHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setIsKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardShowListener.remove();
+      keyboardHideListener.remove();
+    };
   }, []);
 
   // Load messages
@@ -250,7 +278,8 @@ export default function SportGroupChatScreen() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}
+      enabled={Platform.OS === 'ios'}
     >
       <StatusBar style="light" />
       
@@ -304,7 +333,15 @@ export default function SportGroupChatScreen() {
       {/* Input */}
       <View style={[
         styles.inputContainer,
-        { paddingBottom: Math.max(insets.bottom, 10) }
+        {
+          borderBottomWidth: 1,
+          borderBottomColor: '#FFFFFF',
+          marginBottom: isKeyboardVisible ? (Platform.OS === 'android' ? keyboardHeight + 16 : 0) : 5,
+        },
+        Platform.OS === 'android' && { 
+          paddingBottom: isKeyboardVisible ? 24 : 16,
+        },
+        Platform.OS === 'ios' && { paddingBottom: insets.bottom || 12 }
       ]}>
         <View style={styles.inputWrapper}>
           <TextInput

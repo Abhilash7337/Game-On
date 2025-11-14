@@ -79,17 +79,28 @@ export default function GameChatScreen() {
     };
   }, []);
 
-  // Enhanced keyboard handling for Android stability
+  // Keyboard tracking with detailed logging for Android debugging
   useEffect(() => {
+    console.log('🎹 [KEYBOARD] Setting up keyboard listeners...');
+    console.log('🎹 [KEYBOARD] Platform:', Platform.OS);
+    console.log('🎹 [KEYBOARD] Insets:', JSON.stringify(insets));
+    
     const keyboardShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (event) => {
         const keyboardH = event.endCoordinates.height;
+        console.log('⬆️ [KEYBOARD SHOW]');
+        console.log('   Height:', keyboardH);
+        console.log('   Screen Y:', event.endCoordinates.screenY);
+        console.log('   Duration:', event.duration);
+        console.log('   Easing:', event.easing);
+        
         setKeyboardHeight(keyboardH);
         setIsKeyboardVisible(true);
         
         // Scroll to bottom when keyboard shows
         setTimeout(() => {
+          console.log('📜 [KEYBOARD] Scrolling to bottom...');
           flatListRef.current?.scrollToEnd({ animated: true });
         }, Platform.OS === 'ios' ? 50 : 200);
       }
@@ -97,17 +108,21 @@ export default function GameChatScreen() {
 
     const keyboardHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
+      (event) => {
+        console.log('⬇️ [KEYBOARD HIDE]');
+        console.log('   Duration:', event?.duration);
+        
         setKeyboardHeight(0);
         setIsKeyboardVisible(false);
       }
     );
 
     return () => {
+      console.log('🎹 [KEYBOARD] Removing keyboard listeners...');
       keyboardShowListener.remove();
       keyboardHideListener.remove();
     };
-  }, []);
+  }, [insets]);
 
   const loadUserAndMessages = async () => {
     try {
@@ -191,7 +206,12 @@ export default function GameChatScreen() {
   };
 
   const sendMessage = useCallback(async () => {
-    if (!message.trim() || sending) return;
+    if (!message.trim() || sending) {
+      console.log('⚠️ [SEND] Message send blocked:', { hasMessage: !!message.trim(), sending });
+      return;
+    }
+
+    console.log('📤 [SEND] Sending message...', message.substring(0, 50));
 
     // Quick button animation
     Animated.timing(sendButtonScale, {
@@ -213,13 +233,14 @@ export default function GameChatScreen() {
     try {
       setSending(true);
       await messageService.sendMessage(conversationId, currentUserId, messageText);
+      console.log('✅ [SEND] Message sent successfully');
       
       // Message will appear via subscription
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ [SEND] Error sending message:', error);
       Alert.alert('Error', 'Failed to send message');
       // Restore message text on error
       setMessage(messageText);
@@ -349,11 +370,27 @@ export default function GameChatScreen() {
     );
   };
 
+  // Log component render state
+  console.log('🔄 [RENDER] GameChatScreen');
+  console.log('   Keyboard visible:', isKeyboardVisible);
+  console.log('   Keyboard height:', keyboardHeight);
+  console.log('   Messages count:', messages.length);
+  console.log('   Loading:', loading);
+
   return (
     <KeyboardAvoidingView 
       style={gameChatStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}
+      enabled={Platform.OS === 'ios'}
+      onLayout={(event) => {
+        console.log('📐 [LAYOUT] KeyboardAvoidingView:', {
+          x: event.nativeEvent.layout.x,
+          y: event.nativeEvent.layout.y,
+          width: event.nativeEvent.layout.width,
+          height: event.nativeEvent.layout.height
+        });
+      }}
     >
       <StatusBar style="light" />
       
@@ -424,7 +461,7 @@ export default function GameChatScreen() {
             contentContainerStyle={[
               gameChatStyles.messagesContent,
               { 
-                paddingBottom: isKeyboardVisible ? 10 : 20,
+                paddingBottom: 20,
                 flexGrow: 1
               }
             ]}
@@ -434,15 +471,29 @@ export default function GameChatScreen() {
           />
 
           {/* Input */}
-          <View style={[
-            gameChatStyles.inputContainer, 
-            { 
-              paddingTop: isKeyboardVisible ? 10 : 16,
-              paddingBottom: isKeyboardVisible ? 
-                (Platform.OS === 'ios' ? 5 : 8) : 
-                Math.max(insets.bottom, 12)
-            }
-          ]}>
+          <View 
+            style={[
+              gameChatStyles.inputContainer,
+              {
+                borderBottomWidth: 1,
+                borderBottomColor: '#FFFFFF',
+                marginBottom: isKeyboardVisible ? (Platform.OS === 'android' ? keyboardHeight + 16 : 0) : 5,
+              },
+              Platform.OS === 'android' && { 
+                paddingBottom: isKeyboardVisible ? 7 : 16,
+              },
+              Platform.OS === 'ios' && { paddingBottom: insets.bottom || 12 }
+            ]}
+            onLayout={(event) => {
+              console.log('📐 [LAYOUT] Input Container:', {
+                x: event.nativeEvent.layout.x,
+                y: event.nativeEvent.layout.y,
+                width: event.nativeEvent.layout.width,
+                height: event.nativeEvent.layout.height,
+                marginBottom: Platform.OS === 'android' && isKeyboardVisible ? keyboardHeight : 0
+              });
+            }}
+          >
             <View style={gameChatStyles.inputWrapper}>
               <TextInput
                 style={gameChatStyles.textInput}
@@ -454,16 +505,23 @@ export default function GameChatScreen() {
                 maxLength={300}
                 editable={!sending}
                 onFocus={() => {
+                  console.log('⌨️ [INPUT] TextInput focused');
+                  console.log('   Current keyboard state:', isKeyboardVisible);
                   // Scroll to bottom when input is focused
                   setTimeout(() => {
+                    console.log('📜 [INPUT] Scrolling to bottom after focus...');
                     flatListRef.current?.scrollToEnd({ animated: true });
                   }, Platform.OS === 'ios' ? 300 : 100);
+                }}
+                onBlur={() => {
+                  console.log('⌨️ [INPUT] TextInput blurred');
                 }}
                 blurOnSubmit={false}
                 enablesReturnKeyAutomatically={true}
                 returnKeyType="send"
                 onSubmitEditing={() => {
                   if (message.trim()) {
+                    console.log('📤 [INPUT] Submit editing - sending message');
                     sendMessage();
                   }
                 }}
