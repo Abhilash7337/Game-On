@@ -1,3 +1,9 @@
+/**
+ * @deprecated This screen is deprecated and kept for reference only.
+ * All routes now use AuthSelectionScreen as the universal authentication entry point.
+ * Routes updated: /login, /client-login, /role-selection, /auth-selection
+ */
+
 import { Button } from '@/src/common/components/Button';
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { Input } from '@/src/common/components/Input';

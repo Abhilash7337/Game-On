@@ -4,9 +4,10 @@ import { borderRadius, colors, spacing, typography } from '../theme';
 const { height: screenHeight } = Dimensions.get('window');
 
 const dynamicHeights = {
-  collapsed: screenHeight * 0.42,
-  expanded: screenHeight * 0.7,
-  keyboard: screenHeight * 0.84,
+  collapsed: screenHeight * 0.25,
+  expanded: screenHeight * 0.55,
+  keyboardPhone: screenHeight * 0.84,
+  keyboardEmail: screenHeight * 0.92,
 };
 
 const baseStyles = StyleSheet.create({
@@ -132,12 +133,17 @@ const baseStyles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.gray300,
   },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+  },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
   },
   backButtonText: {
     fontSize: typography.fontSize.sm,
@@ -150,6 +156,13 @@ const baseStyles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     gap: spacing.sm,
+  },
+  methodSeparator: {
+    height: 1,
+    backgroundColor: colors.gray200,
+    marginHorizontal: spacing.xxl,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   methodButton: {
     width: 72,
@@ -188,19 +201,19 @@ const baseStyles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   formContent: {
-    paddingBottom: spacing.md,
     gap: spacing.md,
+    flexGrow: 0,
   },
   authModeToggle: {
     flexDirection: 'row',
     backgroundColor: colors.gray100,
-    borderRadius: borderRadius.xl,
-    padding: 4,
+    borderRadius: borderRadius.lg,
+    padding: 3,
   },
   authModeButton: {
-    flex: 1,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
   },
   authModeButtonActive: {
@@ -218,7 +231,7 @@ const baseStyles = StyleSheet.create({
     }),
   },
   authModeText: {
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.xs,
     color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
@@ -246,6 +259,24 @@ const baseStyles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
   },
+  forgotPasswordButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    paddingVertical: spacing.xs,
+  },
+  forgotPasswordText: {
+    color: colors.primary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+  },
+  phoneFormContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  phoneButtonSpacer: {
+    height: spacing.xxl * 2,
+  },
   centeredContent: {
     alignItems: 'center',
     gap: spacing.md,
@@ -255,6 +286,12 @@ const baseStyles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: typography.fontSize.sm,
     marginTop: spacing.xl,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: colors.gray200,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.sm,
   },
 });
 

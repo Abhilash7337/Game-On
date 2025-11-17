@@ -1,2 +1,2 @@
-// Import the login screen
-export { default } from '@/src/common/screens/LoginScreen';
+// Import the new universal auth selection screen
+export { default } from '@/src/common/screens/AuthSelectionScreen';

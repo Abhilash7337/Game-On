@@ -9,7 +9,7 @@ import { PhoneAuthService } from '@/src/common/services/phoneAuth';
 import { ClientAuthService } from '@/src/client/services/clientAuth';
 import { UserAuthService } from '@/src/user/services/userAuth';
 import { authSelectionStyles as styles } from '@/styles/screens/AuthSelectionScreen';
-import { colors } from '@/styles/theme';
+import { colors, spacing } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
@@ -94,7 +94,14 @@ export default function AuthSelectionScreen() {
   }, [logoRotateAnim]);
 
   useEffect(() => {
-    const target = selectedMethod ? (isKeyboardVisible ? 2 : 1) : 0;
+    // Only expand when keyboard is visible AND a method is selected
+    // 0 = collapsed (no method selected)
+    // 1 = expanded (method selected, no keyboard)
+    // 2 = keyboard expanded (method selected + keyboard visible)
+    let target = 0;
+    if (selectedMethod) {
+      target = isKeyboardVisible ? 2 : 1;
+    }
     Animated.spring(cardAnimation, {
       toValue: target,
       useNativeDriver: false,
@@ -128,7 +135,11 @@ export default function AuthSelectionScreen() {
 
   const cardHeight = cardAnimation.interpolate({
     inputRange: [0, 1, 2],
-    outputRange: [styles.dynamicHeights.collapsed, styles.dynamicHeights.expanded, styles.dynamicHeights.keyboard],
+    outputRange: [
+      styles.dynamicHeights.collapsed,
+      styles.dynamicHeights.expanded,
+      selectedMethod === 'email' ? styles.dynamicHeights.keyboardEmail : styles.dynamicHeights.keyboardPhone,
+    ],
   });
 
   const availableMethods = useMemo<
@@ -413,27 +424,8 @@ export default function AuthSelectionScreen() {
 
   const renderPhoneForm = () => (
     <>
-      {renderModeToggle()}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {phoneStep === 'profile'
-            ? 'Complete your profile'
-            : authMode === 'signup'
-            ? 'Phone signup'
-            : 'Phone sign in'}
-        </Text>
-        <Text style={styles.sectionSubtitle}>
-          {phoneStep === 'profile'
-            ? 'Tell us your name to finish setting up your account'
-            : authMode === 'signup'
-            ? "We'll text you a verification code to create your account"
-            : "Enter your registered phone number and we'll send you a code"}
-        </Text>
-      </View>
-
       {phoneStep === 'input' && (
-        <>
+        <View style={styles.phoneFormContainer}>
           <Input
             label="Phone Number"
             placeholder="+1 (555) 123-4567"
@@ -442,18 +434,20 @@ export default function AuthSelectionScreen() {
             value={phoneForm.phoneNumber}
             onChangeText={value => setPhoneForm(prev => ({ ...prev, phoneNumber: value }))}
           />
+          <View style={styles.phoneButtonSpacer} />
           <Button
             title={isLoading(authMode === 'signup' ? 'phone-send-signup' : 'phone-send') ? 'Sending...' : 'Send Code'}
             fullWidth
             variant="primary"
             onPress={handleSendPhoneCode}
-            style={styles.formButton}
           />
-        </>
+        </View>
       )}
 
       {phoneStep === 'otp' && (
         <>
+                {phoneStep === 'otp' && (
+        <View style={styles.phoneFormContainer}>
           <Input
             label="Verification Code"
             placeholder="123456"
@@ -463,21 +457,23 @@ export default function AuthSelectionScreen() {
             value={phoneForm.otp}
             onChangeText={value => setPhoneForm(prev => ({ ...prev, otp: value.replace(/\D/g, '') }))}
           />
+          <View style={styles.phoneButtonSpacer} />
           <Button
             title={isLoading(authMode === 'signup' ? 'phone-verify-signup' : 'phone-verify') ? 'Verifying...' : 'Verify Code'}
             fullWidth
             variant="primary"
             onPress={handleVerifyPhoneCode}
-            style={styles.formButton}
           />
-          <TouchableOpacity onPress={handleSendPhoneCode}>
-            <Text style={styles.supportLink}>Didn’t receive the code? Tap to resend</Text>
+          <TouchableOpacity onPress={handleSendPhoneCode} style={{ marginTop: spacing.md }}>
+            <Text style={styles.supportLink}>Didn't receive the code? Tap to resend</Text>
           </TouchableOpacity>
+        </View>
+      )}
         </>
       )}
 
       {phoneStep === 'profile' && (
-        <>
+        <View style={styles.phoneFormContainer}>
           <Input
             label="Full Name"
             placeholder="Enter your full name"
@@ -485,22 +481,20 @@ export default function AuthSelectionScreen() {
             value={phoneForm.fullName}
             onChangeText={value => setPhoneForm(prev => ({ ...prev, fullName: value }))}
           />
+          <View style={styles.phoneButtonSpacer} />
           <Button
             title={isLoading('phone-complete') ? 'Creating Account...' : 'Complete Signup'}
             fullWidth
             variant="primary"
             onPress={handleCompletePhoneSignup}
-            style={styles.formButton}
           />
-        </>
+        </View>
       )}
     </>
   );
 
   const renderPlayerEmailForm = () => (
     <>
-      {renderModeToggle()}
-
       {authMode === 'signup' && (
         <Input
           label="Full Name"
@@ -521,14 +515,24 @@ export default function AuthSelectionScreen() {
         onChangeText={value => setPlayerEmailForm(prev => ({ ...prev, email: value }))}
       />
 
-      <Input
-        label="Password"
-        placeholder="Enter your password"
-        leftIcon="lock-closed-outline"
-        secureTextEntry
-        value={playerEmailForm.password}
-        onChangeText={value => setPlayerEmailForm(prev => ({ ...prev, password: value }))}
-      />
+      <View>
+        <Input
+          label="Password"
+          placeholder="Enter your password"
+          leftIcon="lock-closed-outline"
+          secureTextEntry
+          value={playerEmailForm.password}
+          onChangeText={value => setPlayerEmailForm(prev => ({ ...prev, password: value }))}
+        />
+        {authMode === 'signin' && (
+          <TouchableOpacity 
+            style={styles.forgotPasswordButton}
+            onPress={() => Alert.alert('Forgot Password', 'Password reset will be available soon inside this selector.')}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {authMode === 'signup' && (
         <Input
@@ -539,12 +543,6 @@ export default function AuthSelectionScreen() {
           value={playerEmailForm.confirmPassword}
           onChangeText={value => setPlayerEmailForm(prev => ({ ...prev, confirmPassword: value }))}
         />
-      )}
-
-      {authMode === 'signin' && (
-        <TouchableOpacity onPress={() => Alert.alert('Forgot Password', 'Password reset will be available soon inside this selector.')}>
-          <Text style={styles.supportLink}>Forgot Password?</Text>
-        </TouchableOpacity>
       )}
 
       <Button
@@ -565,8 +563,6 @@ export default function AuthSelectionScreen() {
 
   const renderBusinessEmailForm = () => (
     <>
-      {renderModeToggle()}
-
       <Input
         label="Business Email"
         placeholder="Enter your business email"
@@ -726,13 +722,16 @@ export default function AuthSelectionScreen() {
             <Animated.View style={[styles.cardContainer, { height: cardHeight }]}>
               <View style={styles.cardHandleWrapper}>
                 <View style={styles.cardHandle} />
-        </View>
+              </View>
 
               {selectedMethod && (
-                <TouchableOpacity style={styles.backButton} onPress={() => setSelectedMethod(isBusinessMode ? 'email' : null)}>
-                  <Ionicons name="arrow-back" size={18} color={colors.textPrimary} />
-                  <Text style={styles.backButtonText}>Back</Text>
-                </TouchableOpacity>
+                <View style={styles.cardTopRow}>
+                  <TouchableOpacity style={styles.backButton} onPress={() => setSelectedMethod(isBusinessMode ? 'email' : null)}>
+                    <Ionicons name="arrow-back" size={18} color={colors.textPrimary} />
+                    <Text style={styles.backButtonText}>Back</Text>
+                  </TouchableOpacity>
+                  {renderModeToggle()}
+                </View>
               )}
 
               <View style={styles.methodRow}>
@@ -754,6 +753,8 @@ export default function AuthSelectionScreen() {
                   );
                 })}
               </View>
+
+              {selectedMethod && <View style={styles.methodSeparator} />}
 
               <KeyboardAvoidingView
                 style={styles.formArea}

@@ -1,3 +1,9 @@
+/**
+ * @deprecated This screen is deprecated and kept for reference only.
+ * All routes now use AuthSelectionScreen as the universal authentication entry point.
+ * Routes updated: /login, /client-login, /role-selection, /auth-selection
+ */
+
 import AppHeader from '@/src/common/components/AppHeader';
 import { colors, spacing } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';

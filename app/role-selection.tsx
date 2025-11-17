@@ -1,2 +1,2 @@
-// Import the role selection screen
-export { default } from '@/src/common/screens/RoleSelectionScreen';
+// Import the new universal auth selection screen
+export { default } from '@/src/common/screens/AuthSelectionScreen';
