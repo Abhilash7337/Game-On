@@ -50,6 +50,7 @@ export default function Index() {
   } else if (authState === 'user') {
     return <Redirect href="/(tabs)" />;
   } else {
+    // Changed: Direct redirect to email login page instead of auth-selection
     return <Redirect href="/login" />;
   }
 }

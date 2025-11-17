@@ -1046,7 +1046,7 @@ class BookingStorageService {
           *,
           venues!inner(name, address),
           courts!inner(name, type),
-          users!bookings_user_id_fkey(id, full_name, avatar, email)
+          users!bookings_user_id_fkey(id, full_name, avatar, email, rating)
         `)
         .eq('id', bookingId)
         .single();
@@ -1104,7 +1104,8 @@ class BookingStorageService {
           id: booking.users?.id,
           name: booking.users?.full_name,
           avatar: booking.users?.avatar,
-          email: booking.users?.email
+          email: booking.users?.email,
+          rating: booking.users?.rating
         },
         participants: participants?.map(p => ({
           id: p.users?.id,

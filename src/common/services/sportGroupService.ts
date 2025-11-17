@@ -163,6 +163,47 @@ class SportGroupServiceClass {
   }
 
   /**
+   * Batch check memberships for multiple conversations
+   * ✅ OPTIMIZED: Single database query instead of N queries
+   * 
+   * @param userId - User ID to check memberships for
+   * @param conversationIds - Array of conversation IDs to check
+   * @returns Set of conversation IDs that the user is a member of
+   */
+  async batchCheckMemberships(
+    userId: string, 
+    conversationIds: string[]
+  ): Promise<Set<string>> {
+    try {
+      if (!userId || conversationIds.length === 0) {
+        return new Set();
+      }
+
+      console.log(`🔍 [SPORT_GROUP] Batch checking ${conversationIds.length} memberships for user ${userId}`);
+
+      const { data, error } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .in('conversation_id', conversationIds);
+
+      if (error) {
+        console.error('❌ [SPORT_GROUP] Batch membership check error:', error);
+        throw error;
+      }
+
+      const membershipSet = new Set(data?.map(m => m.conversation_id) || []);
+      console.log(`✅ [SPORT_GROUP] User is member of ${membershipSet.size}/${conversationIds.length} groups`);
+
+      return membershipSet;
+    } catch (error) {
+      console.error('❌ [SPORT_GROUP] Batch membership check failed:', error);
+      return new Set();
+    }
+  }
+
+  /**
    * Get user's joined sport groups
    */
   async getUserSportGroups(userId: string): Promise<SportGroup[]> {

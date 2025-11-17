@@ -9,7 +9,7 @@ import { VenueStorageService } from './venueStorage';
 import { FriendService } from './friendService';
 import { SportGroupService } from './sportGroupService';
 import { ConversationService } from './conversationService'; // ✅ NEW: Supabase-based conversations
-import * as Location from 'expo-location';
+import { LocationCacheService } from './locationCache'; // ✅ NEW: Fast cached location
 import { supabase } from './supabase';
 
 interface PrefetchedData {
@@ -80,7 +80,7 @@ class DataPrefetchService {
       ] = await Promise.allSettled([
         // Courts screen data
         VenueStorageService.getAllVenues(),
-        this._getLocation(),
+        LocationCacheService.getLocationFast(), // ✅ OPTIMIZED: Use cached location (instant!)
         
         // Social screen data
         FriendService.getFriends(),
@@ -93,44 +93,38 @@ class DataPrefetchService {
       const globalGroups = globalGroupsResult.status === 'fulfilled' ? globalGroupsResult.value : [];
       const cityGroups = cityGroupsResult.status === 'fulfilled' ? cityGroupsResult.value : [];
 
-      // ✅ OPTIMIZATION: Check membership for ALL groups in bulk (single parallel operation)
+      // ✅ OPTIMIZED: Batch membership check - single database query instead of N queries!
       let globalWithMembership = globalGroups;
       let cityWithMembership = cityGroups;
 
       if (userId && (globalGroups.length > 0 || cityGroups.length > 0)) {
-        console.log('🔍 [PREFETCH] Checking membership for all sport groups...');
+        console.log(`🔍 [PREFETCH] Batch checking membership for ${globalGroups.length + cityGroups.length} sport groups...`);
         const membershipStartTime = Date.now();
 
-        const [globalMembershipResults, cityMembershipResults] = await Promise.all([
-          // Check all global groups in parallel
-          Promise.all(
-            globalGroups.map(async (group) => {
-              const isMember = await SportGroupService.isGroupMember(userId, group.conversationId);
-              return {
-                ...group,
-                name: group.displayName,
-                isMember
-              };
-            })
-          ),
-          // Check all city groups in parallel
-          Promise.all(
-            cityGroups.map(async (group) => {
-              const isMember = await SportGroupService.isGroupMember(userId, group.conversationId);
-              return {
-                ...group,
-                name: group.displayName,
-                isMember
-              };
-            })
-          )
-        ]);
+        // Collect all conversation IDs
+        const allConversationIds = [
+          ...globalGroups.map(g => g.conversationId),
+          ...cityGroups.map(g => g.conversationId)
+        ];
 
-        globalWithMembership = globalMembershipResults;
-        cityWithMembership = cityMembershipResults;
+        // Single query to check ALL memberships at once! 🚀
+        const membershipSet = await SportGroupService.batchCheckMemberships(userId, allConversationIds);
+
+        // Add membership flags in memory (no database calls!)
+        globalWithMembership = globalGroups.map(group => ({
+          ...group,
+          name: group.displayName,
+          isMember: membershipSet.has(group.conversationId)
+        }));
+
+        cityWithMembership = cityGroups.map(group => ({
+          ...group,
+          name: group.displayName,
+          isMember: membershipSet.has(group.conversationId)
+        }));
 
         const membershipDuration = Date.now() - membershipStartTime;
-        console.log(`✅ [PREFETCH] Membership check completed in ${membershipDuration}ms`);
+        console.log(`✅ [PREFETCH] Batch membership check completed in ${membershipDuration}ms (${membershipSet.size} memberships found)`);
       }
 
       // Extract successful results (failures don't break the cache)
@@ -163,37 +157,6 @@ class DataPrefetchService {
       console.error('❌ [PREFETCH] Error:', error);
       // Don't throw - screens should still work without cache
       // They'll just fall back to loading fresh data
-    }
-  }
-
-  /**
-   * Get user location with permission request
-   */
-  private async _getLocation(): Promise<{ latitude: number; longitude: number } | null> {
-    try {
-      console.log('📍 [PREFETCH] Requesting location permission...');
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status !== 'granted') {
-        console.log('❌ [PREFETCH] Location permission denied');
-        return null;
-      }
-
-      console.log('📍 [PREFETCH] Getting current position...');
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude
-      };
-
-      console.log('✅ [PREFETCH] Location obtained:', coords);
-      return coords;
-    } catch (error) {
-      console.error('❌ [PREFETCH] Location error:', error);
-      return null;
     }
   }
 
@@ -280,7 +243,7 @@ class DataPrefetchService {
 
     console.log('🔄 [PREFETCH] Refreshing location...');
     try {
-      this.cache.userLocation = await this._getLocation();
+      this.cache.userLocation = await LocationCacheService.getLocationFast();
       this.cache.fetchedAt = new Date();
       console.log('✅ [PREFETCH] Location refreshed');
     } catch (error) {

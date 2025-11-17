@@ -43,6 +43,8 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : MyTheme}>
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
+          {/* DISABLED: Auth selection screen - users now go directly to login page */}
+          {/* <Stack.Screen name="auth-selection" options={{ headerShown: false }} /> */}
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="client-login" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

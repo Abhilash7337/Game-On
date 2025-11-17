@@ -92,8 +92,8 @@ export default function RatePlayersScreen() {
 
       // Build participants list
       const participantsList: Participant[] = conversationParticipants
-        ?.filter(p => p.user_id !== user?.id) // Exclude current user
-        .map(p => ({
+        ?.filter((p: any) => p.user_id !== user?.id) // Exclude current user
+        .map((p: any) => ({
           id: p.users.id,
           name: p.users.full_name,
           avatar: p.users.avatar,

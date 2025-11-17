@@ -71,6 +71,7 @@ export default function ProfileScreen() {
 	const [user, setUser] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 	const [userBookings, setUserBookings] = useState<Booking[]>([]);
+	const [userRating, setUserRating] = useState<number | null>(null);
 
 	useEffect(() => {
 		const loadUserData = async () => {
@@ -85,6 +86,18 @@ export default function ProfileScreen() {
 						phone: currentUser.profile.phone || 'No phone number',
 						profileImageUrl: '',
 					});
+					
+					// Fetch user rating from database
+					const { supabase } = await import('@/src/common/services/supabase');
+					const { data: userData } = await supabase
+						.from('users')
+						.select('rating')
+						.eq('id', currentUser.id)
+						.single();
+					
+					if (userData) {
+						setUserRating(userData.rating);
+					}
 				} else {
 					// Fallback to demo user if no session
 					setUser(demoUser);
@@ -165,10 +178,21 @@ export default function ProfileScreen() {
 								<Ionicons name="person" size={40} color="#047857" />
 							</View>
 						)}
-						<View style={profileStyles.userDetails}>
-							<Text style={profileStyles.userName}>{user.firstName} {user.lastName}</Text>
-							<Text style={profileStyles.userPhone}>{user.phone}</Text>
+					<View style={profileStyles.userDetails}>
+						<Text style={profileStyles.userName}>{user.firstName} {user.lastName}</Text>
+						<Text style={profileStyles.userPhone}>{user.phone}</Text>
+						<View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+							<Ionicons name="star" size={16} color="#FFB800" />
+							<Text style={{ 
+								marginLeft: 4, 
+								fontSize: responsiveFontSize(14), 
+								color: '#6B7280',
+								fontWeight: '500'
+							}}>
+								{userRating ? userRating.toFixed(1) : 'Not rated yet'}
+							</Text>
 						</View>
+					</View>
 						<TouchableOpacity 
 							style={profileStyles.editButton}
 							onPress={() => router.push('/EditProfileScreen')}
