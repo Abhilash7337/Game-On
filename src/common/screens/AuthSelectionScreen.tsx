@@ -1,3 +1,15 @@
+/**
+ * DISABLED: Auth Selection Screen
+ * 
+ * This screen is no longer used in the application.
+ * Users are now directed directly to the email login page (/login).
+ * 
+ * This component is kept for reference but is not accessible from anywhere in the app.
+ * The route has been commented out in app/_layout.tsx and the export is disabled in app/auth-selection.tsx
+ */
+
+// DISABLED - Component kept for reference only
+/*
 import { authSelectionStyles } from '@/styles/screens/AuthSelectionScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -201,3 +213,4 @@ export default function AuthSelectionScreen() {
     </View>
   );
 }
+*/
