@@ -1,40 +1,31 @@
-import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 import { borderRadius, colors, spacing, typography } from '../theme';
 
-const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get('window');
 
-export const authSelectionStyles = StyleSheet.create({
-  container: {
+const dynamicHeights = {
+  collapsed: screenHeight * 0.42,
+  expanded: screenHeight * 0.7,
+  keyboard: screenHeight * 0.84,
+};
+
+const baseStyles = StyleSheet.create({
+  root: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.primary,
+  },
+  gradient: {
+    flex: 1,
   },
   safeArea: {
     flex: 1,
-    position: 'relative',
   },
-  // Header Section (extends to top including status bar)
   header: {
-    backgroundColor: colors.primaryLight,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  headerContentWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   logoSection: {
     flexDirection: 'row',
@@ -42,54 +33,49 @@ export const authSelectionStyles = StyleSheet.create({
     gap: spacing.sm,
   },
   logo: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary + '15',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   appName: {
-    fontSize: typography.fontSize.lg,
+    fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: '#fff',
     letterSpacing: -0.3,
   },
-  toggleContainer: {
+  toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   toggleLabel: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255,255,255,0.5)',
   },
   toggleLabelActive: {
-    color: 'rgba(255, 255, 255, 1)',
-    fontWeight: typography.fontWeight.bold,
+    color: '#fff',
   },
   toggleSwitch: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    padding: 2,
-    justifyContent: 'center',
-  },
-  toggleSwitchActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 48,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    padding: 3,
   },
   toggleThumb: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.25,
         shadowRadius: 2,
       },
       android: {
@@ -97,103 +83,179 @@ export const authSelectionStyles = StyleSheet.create({
       },
     }),
   },
-  // Content Section
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+  hero: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
   },
   welcomeText: {
     fontSize: typography.fontSize.xxxl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    letterSpacing: -0.5,
+    color: '#fff',
+    marginBottom: spacing.xs,
   },
   subtitleText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    color: 'rgba(255,255,255,0.85)',
   },
-  // Card Overlay (positioned at bottom, fixed)
   cardContainer: {
     position: 'absolute',
-    bottom: -screenHeight * 0.15, // Start 15% below screen for cut-off effect
-    left: 0,
-    right: 0,
-    height: screenHeight * 0.35, // Total card height
-    zIndex: 10,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.xxl * 1.5,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    left: spacing.sm,
+    right: spacing.sm,
+    bottom: -spacing.md,
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: '#fff',
+    paddingBottom: spacing.xl,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 30,
       },
       android: {
-        elevation: 12,
+        elevation: 14,
       },
     }),
   },
+  cardHandleWrapper: {
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
   cardHandle: {
-    width: 40,
+    width: 44,
     height: 4,
-    backgroundColor: colors.gray300,
     borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: spacing.xl,
+    backgroundColor: colors.gray300,
   },
-  // Auth Methods Horizontal Row
-  authGrid: {
+  backButton: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
     alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.lg,
-    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  authButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
+  backButtonText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: borderRadius.xl,
+  methodRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+  },
+  methodButton: {
+    width: 72,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.gray200,
+    backgroundColor: '#fff',
+  },
+  methodButtonActive: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(15, 157, 88, 0.08)',
+  },
+  methodIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginBottom: spacing.xs * 0.5,
+  },
+  methodLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  methodLabelActive: {
+    color: colors.textPrimary,
+  },
+  formArea: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  formContent: {
+    paddingBottom: spacing.md,
+    gap: spacing.md,
+  },
+  authModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.gray100,
+    borderRadius: borderRadius.xl,
+    padding: 4,
+  },
+  authModeButton: {
+    flex: 1,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  authModeButtonActive: {
+    backgroundColor: '#fff',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 4,
+        elevation: 3,
       },
     }),
   },
-  authLabel: {
+  authModeText: {
     fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
+  },
+  authModeTextActive: {
     color: colors.textPrimary,
   },
-  // Extension to ensure card goes beyond screen
-  cardExtension: {
-    height: screenHeight * 0.3, // Extra height to ensure overflow
+  section: {
+    gap: spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  sectionSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  formButton: {
+    marginTop: spacing.sm,
+  },
+  supportLink: {
+    textAlign: 'center',
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+  },
+  centeredContent: {
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  placeholderText: {
+    textAlign: 'center',
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    marginTop: spacing.xl,
   },
 });
+
+export const authSelectionStyles = { ...baseStyles, dynamicHeights };
