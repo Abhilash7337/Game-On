@@ -6,20 +6,24 @@ const { height: screenHeight } = Dimensions.get('window');
 const dynamicHeights = {
   collapsed: screenHeight * 0.25,
   expanded: screenHeight * 0.55,
-  keyboardPhone: screenHeight * 0.84,
-  keyboardEmail: screenHeight * 0.92,
+  keyboardPhone: screenHeight * 0.71,
+  keyboardEmail: screenHeight * 0.84,
 };
 
 const baseStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: '#F8FAFC', // White/light background
   },
   gradient: {
     flex: 1,
+    backgroundColor: '#F8FAFC', // Remove gradient, use white background
   },
   safeArea: {
     flex: 1,
+  },
+  headerBackground: {
+    backgroundColor: '#10B981', // Green background extends to top
   },
   header: {
     flexDirection: 'row',
@@ -27,6 +31,7 @@ const baseStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    backgroundColor: 'transparent', // Transparent, background comes from headerBackground
   },
   logoSection: {
     flexDirection: 'row',
@@ -86,23 +91,24 @@ const baseStyles = StyleSheet.create({
   },
   hero: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.md,
     paddingBottom: spacing.lg,
+    backgroundColor: '#F8FAFC', // Match root background
   },
   welcomeText: {
     fontSize: typography.fontSize.xxxl,
     fontWeight: typography.fontWeight.bold,
-    color: '#fff',
+    color: colors.textPrimary, // Dark text on white background
     marginBottom: spacing.xs,
   },
   subtitleText: {
     fontSize: typography.fontSize.base,
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSecondary, // Gray text on white background
   },
   cardContainer: {
     position: 'absolute',
-    left: spacing.sm,
-    right: spacing.sm,
+    left: 0,
+    right: 0,
     bottom: -spacing.md,
     borderTopLeftRadius: borderRadius.xxl,
     borderTopRightRadius: borderRadius.xxl,
@@ -152,10 +158,9 @@ const baseStyles = StyleSheet.create({
   methodRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    justifyContent: 'space-evenly',
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
-    gap: spacing.sm,
   },
   methodSeparator: {
     height: 1,
@@ -167,26 +172,22 @@ const baseStyles = StyleSheet.create({
   methodButton: {
     width: 72,
     alignItems: 'center',
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.gray200,
     backgroundColor: '#fff',
+    gap: spacing.xs,
   },
   methodButtonActive: {
     borderColor: colors.primary,
+    borderWidth: 2,
     backgroundColor: 'rgba(15, 157, 88, 0.08)',
   },
   methodIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.gray200,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
-    marginBottom: spacing.xs * 0.5,
   },
   methodLabel: {
     fontSize: typography.fontSize.xs,
@@ -275,7 +276,7 @@ const baseStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   phoneButtonSpacer: {
-    height: spacing.xxl * 2,
+    height: spacing.md,
   },
   centeredContent: {
     alignItems: 'center',

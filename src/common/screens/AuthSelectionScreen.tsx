@@ -1,3 +1,4 @@
+import { ClientAuthService } from '@/src/client/services/clientAuth';
 import { Button } from '@/src/common/components/Button';
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
 import { Input } from '@/src/common/components/Input';
@@ -6,24 +7,22 @@ import { useLoadingStates } from '@/src/common/hooks/useAsyncOperation';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { GoogleAuthService } from '@/src/common/services/googleAuth';
 import { PhoneAuthService } from '@/src/common/services/phoneAuth';
-import { ClientAuthService } from '@/src/client/services/clientAuth';
 import { UserAuthService } from '@/src/user/services/userAuth';
 import { authSelectionStyles as styles } from '@/styles/screens/AuthSelectionScreen';
 import { colors, spacing } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -112,7 +111,8 @@ export default function AuthSelectionScreen() {
 
   useEffect(() => {
     if (isBusinessMode) {
-      setSelectedMethod('email');
+      // Don't auto-select, let user choose when to expand
+      setSelectedMethod(null);
     } else {
       setSelectedMethod(null);
       setBusinessEmailForm({
@@ -664,7 +664,7 @@ export default function AuthSelectionScreen() {
 
   const renderSelectedForm = () => {
     if (!selectedMethod) {
-      return <Text style={styles.placeholderText}>Select a method above to continue</Text>;
+      return null;
     }
 
     if (selectedMethod === 'phone') {
@@ -689,8 +689,8 @@ export default function AuthSelectionScreen() {
       <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
         <LoadingOverlay visible={isAnyLoading()} message="Please wait..." />
-        <LinearGradient colors={['#0F9D58', '#0B8146']} style={styles.gradient}>
-          <SafeAreaView style={styles.safeArea}>
+        <View style={styles.headerBackground}>
+          <SafeAreaView edges={['top']}>
             <View style={styles.header}>
               <View style={styles.logoSection}>
                 <Animated.View style={[styles.logo, { transform: [{ rotate: logoRotate }] }]}>
@@ -713,6 +713,8 @@ export default function AuthSelectionScreen() {
                 <Text style={[styles.toggleLabel, isBusinessMode && styles.toggleLabelActive]}>Business</Text>
               </View>
             </View>
+          </SafeAreaView>
+        </View>
 
             <View style={styles.hero}>
               <Text style={styles.welcomeText}>Welcome!</Text>
@@ -726,7 +728,7 @@ export default function AuthSelectionScreen() {
 
               {selectedMethod && (
                 <View style={styles.cardTopRow}>
-                  <TouchableOpacity style={styles.backButton} onPress={() => setSelectedMethod(isBusinessMode ? 'email' : null)}>
+                  <TouchableOpacity style={styles.backButton} onPress={() => setSelectedMethod(null)}>
                     <Ionicons name="arrow-back" size={18} color={colors.textPrimary} />
                     <Text style={styles.backButtonText}>Back</Text>
                   </TouchableOpacity>
@@ -736,8 +738,7 @@ export default function AuthSelectionScreen() {
 
               <View style={styles.methodRow}>
                 {availableMethods.map(method => {
-                  const isSelected =
-                    selectedMethod === method.id || (!selectedMethod && method.id === 'email' && isBusinessMode);
+                  const isSelected = selectedMethod === method.id;
                   return (
                     <TouchableOpacity
                       key={method.id}
@@ -745,8 +746,8 @@ export default function AuthSelectionScreen() {
                       onPress={() => handleMethodSelect(method.id)}
                       activeOpacity={0.85}
                     >
-                      <View style={[styles.methodIcon, isSelected && { borderColor: method.color }]}>
-                        <Ionicons name={method.icon} size={24} color={method.color} />
+                      <View style={styles.methodIcon}>
+                        <Ionicons name={method.icon} size={28} color={isSelected ? method.color : colors.textSecondary} />
                       </View>
                       <Text style={[styles.methodLabel, isSelected && styles.methodLabelActive]}>{method.label}</Text>
                     </TouchableOpacity>
@@ -770,9 +771,7 @@ export default function AuthSelectionScreen() {
                 </ScrollView>
               </KeyboardAvoidingView>
             </Animated.View>
-      </SafeAreaView>
-        </LinearGradient>
-    </View>
+      </View>
     </ErrorBoundary>
   );
 }
