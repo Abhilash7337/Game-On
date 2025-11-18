@@ -33,7 +33,7 @@ BEGIN
             b.booking_date,
             b.start_time,
             (b.end_time - b.start_time),
-            v.sports[1], -- Get first sport from venue
+            c.type, -- Get sport type from court instead
             b.user_id,
             -- ✅ Calculate exact booking end timestamp
             (b.booking_date + b.start_time + (b.end_time - b.start_time))

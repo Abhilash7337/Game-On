@@ -399,26 +399,17 @@ export default function ClientDashboardScreen() {
                 </View>
               </TouchableOpacity>
               
-              <View style={clientDashboardStyles.buttonWithBadge}>
-                <TouchableOpacity
-                  style={clientDashboardStyles.modernActionButtonOutline}
-                  onPress={() => router.push('/client/BookingRequestsScreen' as any)}
-                >
-                  <View style={clientDashboardStyles.modernButtonContent}>
-                    <View style={clientDashboardStyles.modernButtonIconOutline}>
-                      <Ionicons name="mail-outline" size={24} color={colors.primary} />
-                    </View>
-                    <Text style={clientDashboardStyles.modernButtonTextOutline}>Requests</Text>
+              <TouchableOpacity
+                style={clientDashboardStyles.modernActionButtonOutline}
+                onPress={() => router.push('/client/AddLocalBookingScreen' as any)}
+              >
+                <View style={clientDashboardStyles.modernButtonContent}>
+                  <View style={clientDashboardStyles.modernButtonIconOutline}>
+                    <Ionicons name="calendar-outline" size={24} color={colors.primary} />
                   </View>
-                </TouchableOpacity>
-                {analytics.pendingRequests > 0 && (
-                  <View style={clientDashboardStyles.badge}>
-                    <Text style={clientDashboardStyles.badgeText}>
-                      {analytics.pendingRequests}
-                    </Text>
-                  </View>
-                )}
-              </View>
+                  <Text style={clientDashboardStyles.modernButtonTextOutline}>Add Booking</Text>
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
