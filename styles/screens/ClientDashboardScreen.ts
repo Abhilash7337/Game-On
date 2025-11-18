@@ -39,16 +39,17 @@ export const clientDashboardStyles = StyleSheet.create({
     zIndex: 10,
   },
   headerActions: {
-    position: 'absolute',
-    right: spacing.lg,
-    top: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    zIndex: 10,
+    gap: spacing.md,
   },
   headerIconButton: {
-    padding: spacing.xs,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   modalOverlay: {
     flex: 1,
