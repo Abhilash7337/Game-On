@@ -356,13 +356,13 @@ export default function JoinGameScreen() {
               </View>
               <View style={joinGameStyles.hostInfo}>
                 <Text style={joinGameStyles.hostName}>{bookingDetails.host.name}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                   <View style={joinGameStyles.hostBadge}>
                     <Ionicons name="star" size={12} color={colors.primary} />
                     <Text style={joinGameStyles.hostBadgeText}>Host</Text>
                   </View>
                   {bookingDetails.host.rating && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
                       <Ionicons name="star" size={14} color="#FFB800" />
                       <Text style={{ marginLeft: 4, fontSize: 14, color: colors.textSecondary, fontWeight: '500' }}>
                         {bookingDetails.host.rating.toFixed(1)}
