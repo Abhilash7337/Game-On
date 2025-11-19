@@ -7,7 +7,7 @@ export { buttonStyles, cardStyles, headerStyles, layoutStyles, textStyles };
 
 // Home-specific styles
     import { StyleSheet } from 'react-native';
-    import { borderRadius, colors, shadows, spacing, typography } from '../theme';
+  import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 
 export const homeStyles = StyleSheet.create({
   // Container styles
@@ -291,6 +291,149 @@ export const homeStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // Bookings Section
+  bookingsSection: {
+    marginTop: spacing.xxl,
+    flex: 1,
+  },
+
+  bookingsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+
+  bookingsLoadingContainer: {
+    padding: spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  noBookingsContainer: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xxl,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    ...shadows.md,
+  },
+
+  noBookingsIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+
+  noBookingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.lg,
+    ...shadows.sm,
+  },
+
+  bookingsListContainer: {
+    paddingRight: spacing.xl,
+    paddingBottom: 0,
+  },
+
+  // Booking Card
+  bookingCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    marginRight: spacing.md,
+    width: 320,
+    minHeight: 160,
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    ...shadows.lg,
+  },
+
+  bookingCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+
+  bookingDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+  },
+
+  bookingTypeBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+  },
+
+  bookingInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray200,
+    gap: spacing.sm,
+  },
+
+  bookingInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  bookingInfoDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: colors.gray200,
+  },
+
+  bookingCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray200,
+  },
+
+  bookingStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+
+  bookingStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
 });
 
 export const homeTextStyles = StyleSheet.create({
@@ -468,5 +611,69 @@ export const homeTextStyles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
     color: colors.primary,
+  },
+
+  // Bookings Section Text
+  viewAllText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
+  },
+
+  loadingText: {
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+
+  noBookingsTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+
+  noBookingsSubtitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  noBookingsButtonText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textInverse,
+  },
+
+  // Booking Card Text
+  bookingDateText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: '#10B981',
+  },
+
+  bookingTypeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+
+  bookingVenueName: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+
+  bookingInfoText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textSecondary,
+  },
+
+  bookingStatusText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: '#10B981',
   },
 });

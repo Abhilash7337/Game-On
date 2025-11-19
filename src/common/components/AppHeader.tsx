@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface AppHeaderProps {
   title: string;
   subtitle?: string;
+  locationText?: string;
   backgroundColor?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
@@ -17,6 +18,7 @@ interface AppHeaderProps {
 export default function AppHeader({ 
   title, 
   subtitle, 
+  locationText,
   backgroundColor,
   showBackButton = false,
   onBackPress,
@@ -46,6 +48,9 @@ export default function AppHeader({
           <Text style={appHeaderStyles.headerTitle}>{title}</Text>
           {subtitle && (
             <Text style={appHeaderStyles.headerSubtitle}>{subtitle}</Text>
+          )}
+          {locationText && (
+            <Text style={appHeaderStyles.headerLocation}>{locationText}</Text>
           )}
         </View>
         {children && <View style={appHeaderStyles.rightSection}>{children}</View>}
