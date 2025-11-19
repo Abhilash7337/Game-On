@@ -1,5 +1,5 @@
-import { profileStyles } from '@/styles/screens/ProfileScreen';
 import { UserAuthService } from '@/src/user/services/userAuth';
+import { profileStyles } from '@/styles/screens/ProfileScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -206,7 +206,7 @@ export default function ProfileScreen() {
 				<View style={profileStyles.menuSection}>
 					<TouchableOpacity 
 						style={profileStyles.menuItem}
-						onPress={() => Alert.alert('Coming Soon', 'My Bookings feature will be available soon!')}
+						onPress={() => router.push('/MyBookingsScreen')}
 					>
 						<View style={profileStyles.menuItemLeft}>
 							<Ionicons name="calendar-outline" size={24} color="#047857" />

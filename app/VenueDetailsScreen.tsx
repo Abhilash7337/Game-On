@@ -2,7 +2,7 @@ import {
   venueDetailsStyles
 } from '@/styles/screens/VenueDetailsScreen';
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 // 1. Import StatusBar and useSafeAreaInsets
@@ -379,30 +379,34 @@ export default function VenueDetailsScreen() {
           console.log(`  ✅ Rejected/Cancelled → AVAILABLE (green)`);
         }
         
-        // Check if this is the start of a multi-hour booking
-        const bookingTimeParts = booking.time.split(' ');
-        const bookingHourStr = bookingTimeParts[0].split(':')[0];
-        const bookingPeriod = bookingTimeParts[1];
-        let bookingStartHour = parseInt(bookingHourStr);
-        
-        if (bookingPeriod === 'PM' && bookingStartHour !== 12) {
-          bookingStartHour += 12;
-        } else if (bookingPeriod === 'AM' && bookingStartHour === 12) {
-          bookingStartHour = 0;
-        }
-        
-        if (hour === bookingStartHour) {
-          // This is the start of the booking
-          duration = parseInt(booking.duration.split(' ')[0]);
-          if (duration > 1) {
-            const endHour = hour + duration;
-            const endPeriod = endHour < 12 ? 'AM' : 'PM';
-            const endDisplayHour = endHour > 12 ? endHour - 12 : endHour === 0 ? 12 : endHour;
-            endTime = `${endDisplayHour}:00 ${endPeriod}`;
+        // Only handle multi-hour bookings for CONFIRMED/PENDING statuses
+        // Rejected/Cancelled bookings should show each hour as available individually
+        if (bookingStatus === 'confirmed' || bookingStatus === 'pending') {
+          // Check if this is the start of a multi-hour booking
+          const bookingTimeParts = booking.time.split(' ');
+          const bookingHourStr = bookingTimeParts[0].split(':')[0];
+          const bookingPeriod = bookingTimeParts[1];
+          let bookingStartHour = parseInt(bookingHourStr);
+          
+          if (bookingPeriod === 'PM' && bookingStartHour !== 12) {
+            bookingStartHour += 12;
+          } else if (bookingPeriod === 'AM' && bookingStartHour === 12) {
+            bookingStartHour = 0;
           }
-        } else {
-          // This is a continuation slot, skip it
-          continue;
+          
+          if (hour === bookingStartHour) {
+            // This is the start of the booking
+            duration = parseInt(booking.duration.split(' ')[0]);
+            if (duration > 1) {
+              const endHour = hour + duration;
+              const endPeriod = endHour < 12 ? 'AM' : 'PM';
+              const endDisplayHour = endHour > 12 ? endHour - 12 : endHour === 0 ? 12 : endHour;
+              endTime = `${endDisplayHour}:00 ${endPeriod}`;
+            }
+          } else {
+            // This is a continuation slot, skip it
+            continue;
+          }
         }
       }
       

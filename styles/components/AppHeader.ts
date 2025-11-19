@@ -49,4 +49,12 @@ export const appHeaderStyles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.normal,
   },
+
+  headerLocation: {
+    color: colors.textInverse,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.normal,
+    opacity: 0.7,
+    marginTop: spacing.xs,
+  },
 });
