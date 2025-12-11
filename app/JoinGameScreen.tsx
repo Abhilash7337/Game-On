@@ -18,6 +18,11 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// Import services at top level to prevent rebundling
+import { supabase } from '@/src/common/services/supabase';
+import { BookingStorageService } from '@/src/common/services/bookingStorage';
+import { JoinRequestService } from '@/src/common/services/joinRequestService';
+import { ChatService } from '@/src/common/services/chatService';
 
 export default function JoinGameScreen() {
   const router = useRouter();
@@ -27,10 +32,12 @@ export default function JoinGameScreen() {
   const bookingId = params.bookingId as string;
 
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
+  const [sending, setSending] = useState(false);
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isAlreadyJoined, setIsAlreadyJoined] = useState(false);
+  const [joinRequestStatus, setJoinRequestStatus] = useState<any>(null);
+  const [openingChat, setOpeningChat] = useState(false);
 
   useEffect(() => {
     loadBookingDetails();
@@ -39,7 +46,6 @@ export default function JoinGameScreen() {
 
   const getCurrentUser = async () => {
     try {
-      const { supabase } = await import('@/src/common/services/supabase');
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
@@ -52,18 +58,20 @@ export default function JoinGameScreen() {
   const loadBookingDetails = async () => {
     try {
       setLoading(true);
-      const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
       const details = await BookingStorageService.getBookingWithParticipants(bookingId);
 
       if (details) {
         setBookingDetails(details);
 
         // Check if current user is already a participant
-        const { supabase } = await import('@/src/common/services/supabase');
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const isJoined = details.participants.some((p: any) => p.id === user.id) || details.host.id === user.id;
           setIsAlreadyJoined(isJoined);
+
+          // Check join request status
+          const requestStatus = await JoinRequestService.getMyRequestStatus(bookingId);
+          setJoinRequestStatus(requestStatus);
         }
       } else {
         Alert.alert('Error', 'Booking not found');
@@ -78,11 +86,11 @@ export default function JoinGameScreen() {
     }
   };
 
-  const handleJoinGame = async () => {
+  const handleSendJoinRequest = async () => {
     if (!currentUserId) {
       Alert.alert(
         'Authentication Required',
-        'Please sign in to join a game.',
+        'Please sign in to send a join request.',
         [
           {
             text: 'Sign In',
@@ -99,6 +107,16 @@ export default function JoinGameScreen() {
       return;
     }
 
+    if (joinRequestStatus?.status === 'pending') {
+      Alert.alert('Request Pending', 'Your join request is awaiting approval from the host.');
+      return;
+    }
+
+    if (joinRequestStatus?.status === 'rejected') {
+      Alert.alert('Request Rejected', 'Your previous request was declined by the host.');
+      return;
+    }
+
     // Check if booking is still available
     if (bookingDetails.spotsNeeded <= 0) {
       Alert.alert('Game Full', 'This game is now full. Please try another game.');
@@ -106,61 +124,66 @@ export default function JoinGameScreen() {
       return;
     }
 
-    Alert.alert(
-      'Join Game',
-      `Join this ${bookingDetails.skillLevel || ''} game at ${bookingDetails.venueName}?\n\nYour share: ₹${Math.round(bookingDetails.totalAmount / (bookingDetails.currentPlayers + bookingDetails.spotsNeeded))}`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Join',
-          onPress: async () => {
-            try {
-              setJoining(true);
-              const { BookingStorageService } = await import('@/src/common/services/bookingStorage');
-              
-              console.log('🎮 [JOIN GAME] Attempting to join booking:', bookingId);
-              console.log('📊 [JOIN GAME] Current state:', {
-                currentPlayers: bookingDetails.currentPlayers,
-                spotsNeeded: bookingDetails.spotsNeeded,
-                totalPlayers: bookingDetails.currentPlayers + bookingDetails.spotsNeeded
-              });
-              
-              const success = await BookingStorageService.joinOpenGame(bookingId, currentUserId);
+    try {
+      setSending(true);
+      
+      console.log('📤 [JOIN REQUEST] Sending join request for booking:', bookingId);
+      
+      const result = await JoinRequestService.sendJoinRequest(bookingId, bookingDetails.host.id);
 
-              if (success) {
-                console.log('✅ [JOIN GAME] Successfully joined!');
-                
-                // Reload booking details to get updated counts
-                await loadBookingDetails();
-                
-                Alert.alert(
-                  'Joined Successfully!',
-                  'You have joined this game. See you on the court!',
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => router.push('/(tabs)')
-                    }
-                  ]
-                );
-              } else {
-                console.error('❌ [JOIN GAME] Failed to join');
-                Alert.alert('Error', 'Failed to join game. The game might be full or no longer available.');
-                await loadBookingDetails(); // Refresh data
-              }
-            } catch (error) {
-              console.error('❌ [JOIN GAME] Error joining game:', error);
-              Alert.alert('Error', 'Failed to join game. Please try again.');
-            } finally {
-              setJoining(false);
-            }
+      if (result.success) {
+        console.log('✅ [JOIN REQUEST] Request sent successfully');
+        await loadBookingDetails(); // Refresh to update status
+        Alert.alert(
+          'Request Sent!',
+          'Your join request has been sent to the host. You can message them to discuss details.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        console.error('❌ [JOIN REQUEST] Failed:', result.error);
+        Alert.alert('Error', result.error || 'Failed to send join request');
+      }
+    } catch (error) {
+      console.error('❌ [JOIN REQUEST] Error:', error);
+      Alert.alert('Error', 'Failed to send join request. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleChatWithHost = async () => {
+    if (openingChat) return; // Prevent double-click
+    
+    if (!currentUserId) {
+      Alert.alert('Authentication Required', 'Please sign in to chat.');
+      return;
+    }
+
+    setOpeningChat(true);
+    try {
+      
+      // Get or create conversation with host
+      const conversationResult = await ChatService.getOrCreateDirectConversation(bookingDetails.host.id);
+      
+      if (conversationResult.success && conversationResult.conversation) {
+        // Navigate to chat screen
+        router.push({
+          pathname: '/FriendChatScreen',
+          params: {
+            friendId: bookingDetails.host.id,
+            friendName: bookingDetails.host.name,
+            friendAvatar: bookingDetails.host.avatar || '',
           }
-        }
-      ]
-    );
+        });
+      } else {
+        Alert.alert('Error', 'Failed to open chat');
+        setOpeningChat(false);
+      }
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      Alert.alert('Error', 'Failed to open chat');
+      setOpeningChat(false);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -283,7 +306,11 @@ export default function JoinGameScreen() {
           </View>
         </View>
 
-        <ScrollView style={layoutStyles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={{ flex: 1 }} 
+          contentContainerStyle={{ padding: 20, paddingBottom: 200 }}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Spots Available Indicator */}
           {spotsAvailable && (
             <View style={joinGameStyles.spotsIndicator}>
@@ -361,16 +388,29 @@ export default function JoinGameScreen() {
                     <Ionicons name="star" size={12} color={colors.primary} />
                     <Text style={joinGameStyles.hostBadgeText}>Host</Text>
                   </View>
-                  {bookingDetails.host.rating && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
-                      <Ionicons name="star" size={14} color="#FFB800" />
+                  {(bookingDetails.host.rating != null && typeof bookingDetails.host.rating === 'number' && bookingDetails.host.rating > 0) ? (
+                    <>
+                      <Ionicons name="star" size={14} color="#FFB800" style={{ marginLeft: 8 }} />
                       <Text style={{ marginLeft: 4, fontSize: 14, color: colors.textSecondary, fontWeight: '500' }}>
                         {bookingDetails.host.rating.toFixed(1)}
                       </Text>
-                    </View>
-                  )}
+                    </>
+                  ) : null}
                 </View>
               </View>
+              {/* Chat Icon */}
+              <TouchableOpacity 
+                style={[joinGameStyles.chatIconButton, openingChat && { opacity: 0.5 }]}
+                onPress={handleChatWithHost}
+                disabled={openingChat}
+                activeOpacity={0.7}
+              >
+                {openingChat ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="chatbubble" size={24} color={colors.primary} />
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -427,23 +467,34 @@ export default function JoinGameScreen() {
           </View>
         </ScrollView>
 
-        {/* Join Button */}
+        {/* Send Join Request Button */}
         <View style={[layoutStyles.footer, { backgroundColor: colors.background, paddingBottom: insets.bottom || 20 }]}>
           <TouchableOpacity
             style={[
               buttonStyles.primary,
               {
-                backgroundColor: (spotsAvailable && !isAlreadyJoined && !joining) ? colors.primary : colors.gray300
+                backgroundColor: (spotsAvailable && !isAlreadyJoined && !joinRequestStatus && !sending) 
+                  ? colors.primary 
+                  : colors.gray300
               }
             ]}
-            onPress={handleJoinGame}
-            disabled={!spotsAvailable || isAlreadyJoined || joining}
+            onPress={handleSendJoinRequest}
+            disabled={!spotsAvailable || isAlreadyJoined || sending || !!joinRequestStatus}
           >
-            {joining ? (
+            {sending ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={[buttonStyles.primaryText, { color: colors.background }]}>
-                {isAlreadyJoined ? 'Already Joined' : !spotsAvailable ? 'Game Full' : `Join Game - ₹${Math.round(bookingDetails.totalAmount / (bookingDetails.currentPlayers + bookingDetails.spotsNeeded))}`}
+                {isAlreadyJoined 
+                  ? 'Already Joined' 
+                  : !spotsAvailable 
+                  ? 'Game Full' 
+                  : joinRequestStatus?.status === 'pending'
+                  ? 'Request Pending'
+                  : joinRequestStatus?.status === 'rejected'
+                  ? 'Request Declined'
+                  : 'Send Join Request'
+                }
               </Text>
             )}
           </TouchableOpacity>

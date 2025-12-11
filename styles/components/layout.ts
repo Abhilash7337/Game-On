@@ -9,7 +9,7 @@ export const layoutStyles = StyleSheet.create({
   
   scrollContent: {
     padding: spacing.xl,
-    paddingBottom: 120,
+    paddingBottom: 180,
   },
   
   timeRow: {

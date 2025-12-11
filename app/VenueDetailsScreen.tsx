@@ -11,6 +11,10 @@ import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCa
 import * as Location from 'expo-location';
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+// Import services at top level to prevent rebundling
+import { VenueStorageService } from '@/src/common/services/venueStorage';
+import { supabase } from '@/src/common/services/supabase';
+import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 
 const { width } = Dimensions.get("window");
 
@@ -36,8 +40,6 @@ export default function VenueDetailsScreen() {
 
   const loadVenueDetails = useCallback(async () => {
     try {
-      const { VenueStorageService } = await import('@/src/common/services/venueStorage');
-      const { supabase } = await import('@/src/common/services/supabase');
       const venues = await VenueStorageService.getAllVenues();
       const venueId = params.venueId as string;
       
@@ -110,7 +112,6 @@ export default function VenueDetailsScreen() {
   const getUserLocation = async () => {
     try {
       // ✅ OPTIMIZATION: Try cache first for instant location!
-      const { dataPrefetchService } = await import('@/src/common/services/dataPrefetch');
       const cache = dataPrefetchService.getCache();
       
       if (cache?.userLocation && dataPrefetchService.isCacheFresh()) {
@@ -502,7 +503,6 @@ export default function VenueDetailsScreen() {
         const startTime = Date.now();
         
         // ✅ Get current user ID first
-        const { supabase } = await import('@/src/common/services/supabase');
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setCurrentUserId(user.id);
@@ -578,7 +578,6 @@ export default function VenueDetailsScreen() {
     try {
       console.log('📅 [VENUE DETAILS] Preloading bookings for this venue...');
       const startTime = Date.now();
-      const { supabase } = await import('@/src/common/services/supabase');
       
       // Need venue ID to filter bookings
       const venueId = params.venueId as string;
@@ -764,7 +763,6 @@ export default function VenueDetailsScreen() {
         bookingSubscriptionRef.current.unsubscribe();
       }
 
-      const { supabase } = await import('@/src/common/services/supabase');
       const venueId = params.venueId as string;
 
       console.log('📡 [VENUE DETAILS] Setting up real-time subscription for venue:', venueId);

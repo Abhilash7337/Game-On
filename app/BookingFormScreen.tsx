@@ -18,6 +18,10 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// Import services at top level to prevent rebundling
+import { VenueStorageService } from '@/src/common/services/venueStorage';
+import { supabase } from '@/src/common/services/supabase';
+import { BookingStorageService } from '@/src/common/services/bookingStorage';
 
 export default function BookingFormScreen() {
     const router = useRouter();
@@ -72,7 +76,6 @@ export default function BookingFormScreen() {
 
     const loadVenueOperatingHours = async () => {
         try {
-            const { VenueStorageService } = await import('@/src/common/services/venueStorage');
             const venues = await VenueStorageService.getAllVenues();
             const venue = venues.find(v => v.id === venueId);
             
@@ -101,7 +104,7 @@ export default function BookingFormScreen() {
     const loadTimeSlotStatuses = async () => {
         try {
             // Fetch real bookings from Supabase for this venue and date
-            const { supabase } = await import('@/src/common/services/supabase');
+            
             const dateStr = date.toISOString().split('T')[0];
             
             const { data: bookings, error } = await supabase
@@ -207,8 +210,8 @@ export default function BookingFormScreen() {
 
     const loadVenueCourts = async () => {
         try {
-            const { VenueStorageService } = await import('@/src/common/services/venueStorage');
-            const { supabase } = await import('@/src/common/services/supabase');
+            
+            
             
             // Fetch courts with UUIDs from database
             const { data: courtsData, error } = await supabase
@@ -251,7 +254,7 @@ export default function BookingFormScreen() {
         
         // Fetch the court UUID for this court name
         try {
-            const { supabase } = await import('@/src/common/services/supabase');
+            
             const { data: courtData } = await supabase
                 .from('courts')
                 .select('id')
@@ -392,7 +395,7 @@ export default function BookingFormScreen() {
             console.log('🎯 [BOOKING] Starting booking process...');
             
             // Get the actual authenticated user ID
-            const { supabase } = await import('@/src/common/services/supabase');
+            
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             
             if (authError) {
@@ -436,7 +439,7 @@ export default function BookingFormScreen() {
             }
 
             // Check for booking conflicts BEFORE creating booking
-            const { BookingStorageService } = await import('../src/common/services/bookingStorage');
+            
             const durationHours = parseInt(duration.split(' ')[0]) || 1;
             
             // Use the actual court UUID if available, otherwise it will be looked up
@@ -560,7 +563,11 @@ export default function BookingFormScreen() {
                     </View>
                 </View>
 
-                <ScrollView style={layoutStyles.scrollContent} showsVerticalScrollIndicator={false}>
+                <ScrollView 
+                    style={{ flex: 1 }} 
+                    contentContainerStyle={{ padding: 20, paddingBottom: 200 }}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Court Selection */}
                     <Text style={textStyles.label}>Court *</Text>
                     <TouchableOpacity 

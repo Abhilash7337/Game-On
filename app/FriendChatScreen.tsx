@@ -14,13 +14,15 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { friendChatStyles } from '../styles/screens/FriendChatScreen';
 
 interface Friend {
@@ -50,6 +52,12 @@ export default function FriendChatScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [screenHeight, setScreenHeight] = useState(Dimensions.get('window').height);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // New state for dropdown menu and join requests
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showJoinRequests, setShowJoinRequests] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<any[]>([]);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Mock friend data - in real app, fetch based on params.friendId
   const friend: Friend = {
@@ -103,7 +111,72 @@ export default function FriendChatScreen() {
     };
 
     initializeChat();
+    loadJoinRequests(); // Load join requests on mount
   }, [friend.id]);
+
+  // Load join requests function
+  const loadJoinRequests = async () => {
+    try {
+      const { JoinRequestService } = await import('@/src/common/services/joinRequestService');
+      // Get requests where I am the host (received requests)
+      console.log('🔍 [FRIEND CHAT] Loading join requests...');
+      const requests = await JoinRequestService.getMyReceivedRequests();
+      console.log('📋 [FRIEND CHAT] Loaded join requests:', requests.length, requests);
+      setJoinRequests(requests);
+      setPendingRequestsCount(requests.length);
+    } catch (error) {
+      console.error('Error loading join requests:', error);
+    }
+  };
+
+  // Handle accept request
+  const handleAcceptRequest = async (requestId: string) => {
+    try {
+      const { JoinRequestService } = await import('@/src/common/services/joinRequestService');
+      const result = await JoinRequestService.acceptJoinRequest(requestId);
+      
+      if (result.success) {
+        Alert.alert('Success', 'Join request accepted!');
+        await loadJoinRequests(); // Refresh list
+      } else {
+        Alert.alert('Error', result.error || 'Failed to accept request');
+      }
+    } catch (error) {
+      console.error('Error accepting request:', error);
+      Alert.alert('Error', 'Failed to accept request');
+    }
+  };
+
+  // Handle reject request
+  const handleRejectRequest = async (requestId: string) => {
+    Alert.alert(
+      'Reject Request',
+      'Are you sure you want to reject this join request?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { JoinRequestService } = await import('@/src/common/services/joinRequestService');
+              const result = await JoinRequestService.rejectJoinRequest(requestId);
+              
+              if (result.success) {
+                Alert.alert('Rejected', 'Join request rejected');
+                await loadJoinRequests(); // Refresh list
+              } else {
+                Alert.alert('Error', result.error || 'Failed to reject request');
+              }
+            } catch (error) {
+              console.error('Error rejecting request:', error);
+              Alert.alert('Error', 'Failed to reject request');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   // Optimized real-time subscription
   useEffect(() => {
@@ -236,8 +309,8 @@ export default function FriendChatScreen() {
 
 
   const viewFriendProfile = useCallback(() => {
-    Alert.alert('Profile', `View ${friend.name}'s profile (Feature coming soon)`);
-  }, [friend.name]);
+    router.push(`/UserProfileScreen?userId=${friend.id}`);
+  }, [friend.id, router]);
 
   const loadMoreMessages = useCallback(async () => {
     if (!conversationId || !hasMoreMessages) return;
@@ -286,6 +359,27 @@ export default function FriendChatScreen() {
     <MessageItem item={item} />
   ), []);
 
+  // Format date for join requests
+  const formatRequestDate = (date: string) => {
+    const d = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (d.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (d.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  };
+
+  const formatRequestTime = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
   // Calculate dynamic heights
   const availableHeight = screenHeight - keyboardHeight - insets.top - insets.bottom;
   const headerHeight = insets.top + 70; // Approximate header height
@@ -300,6 +394,123 @@ export default function FriendChatScreen() {
       enabled={Platform.OS === 'ios'}
     >
       <StatusBar style="light" />
+      
+      {/* Options Menu Modal */}
+      <Modal
+        visible={showOptionsMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOptionsMenu(false)}
+      >
+        <TouchableOpacity 
+          style={friendChatStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowOptionsMenu(false)}
+        >
+          <View style={[friendChatStyles.dropdownMenu, { top: insets.top + 70, right: 16 }]}>
+            <TouchableOpacity 
+              style={friendChatStyles.menuItem}
+              onPress={() => {
+                setShowOptionsMenu(false);
+                viewFriendProfile();
+              }}
+            >
+              <Ionicons name="person-outline" size={20} color="#1F2937" />
+              <Text style={friendChatStyles.menuItemText}>Profile</Text>
+            </TouchableOpacity>
+            
+            <View style={friendChatStyles.menuDivider} />
+            
+            <TouchableOpacity 
+              style={friendChatStyles.menuItem}
+              onPress={() => {
+                setShowOptionsMenu(false);
+                setShowJoinRequests(true);
+              }}
+            >
+              <Ionicons name="people-outline" size={20} color="#1F2937" />
+              <Text style={friendChatStyles.menuItemText}>Join Requests</Text>
+              {pendingRequestsCount > 0 && (
+                <View style={friendChatStyles.menuBadge}>
+                  <Text style={friendChatStyles.menuBadgeText}>{pendingRequestsCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Join Requests Modal */}
+      <Modal
+        visible={showJoinRequests}
+        animationType="slide"
+        onRequestClose={() => setShowJoinRequests(false)}
+      >
+        <SafeAreaView style={friendChatStyles.modalContainer}>
+          <View style={[friendChatStyles.modalHeader, { paddingTop: insets.top + 10 }]}>
+            <TouchableOpacity 
+              style={friendChatStyles.modalBackButton}
+              onPress={() => setShowJoinRequests(false)}
+            >
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={friendChatStyles.modalTitle}>Join Requests</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {joinRequests.length === 0 ? (
+            <View style={friendChatStyles.emptyState}>
+              <Ionicons name="people-outline" size={64} color="#9CA3AF" />
+              <Text style={friendChatStyles.emptyStateText}>No pending requests</Text>
+              <Text style={friendChatStyles.emptyStateSubtext}>
+                Join requests will appear here
+              </Text>
+            </View>
+          ) : (
+            <ScrollView style={friendChatStyles.requestsList}>
+              {joinRequests.map((request) => (
+                <View key={request.id} style={friendChatStyles.requestCard}>
+                  <View style={friendChatStyles.requestHeader}>
+                    <View style={friendChatStyles.requestInfo}>
+                      <Text style={friendChatStyles.requestDate}>
+                        {formatRequestDate(request.booking.booking_date)} at {formatRequestTime(request.booking.start_time)}
+                      </Text>
+                      <Text style={friendChatStyles.requestVenue}>
+                        {request.booking.venue?.name || 'Venue'} - {request.booking.court?.name || 'Court'}
+                      </Text>
+                      <Text style={friendChatStyles.requestDetails}>
+                        Skill Level: {request.booking.skill_level || 'Any'}
+                      </Text>
+                      <Text style={friendChatStyles.requestDetails}>
+                        Players: {request.booking.player_count || 0} spots needed
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={friendChatStyles.requestActions}>
+                    <TouchableOpacity 
+                      style={[friendChatStyles.actionButton, friendChatStyles.rejectButton]}
+                      onPress={() => handleRejectRequest(request.id)}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#FFFFFF" />
+                      <Text style={friendChatStyles.actionButtonText}>Reject</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[friendChatStyles.actionButton, friendChatStyles.acceptButton]}
+                      onPress={() => handleAcceptRequest(request.id)}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                      <Text style={friendChatStyles.actionButtonText}>Accept</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
+      
       
       {/* Header */}
       <View style={[friendChatStyles.header, { paddingTop: insets.top + 10 }]}>
@@ -337,7 +548,18 @@ export default function FriendChatScreen() {
           </View>
         </TouchableOpacity>
 
-
+        <TouchableOpacity 
+          style={friendChatStyles.optionsButton}
+          onPress={() => setShowOptionsMenu(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+          {pendingRequestsCount > 0 && (
+            <View style={friendChatStyles.badge}>
+              <Text style={friendChatStyles.badgeText}>{pendingRequestsCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Messages */}

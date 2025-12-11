@@ -143,6 +143,15 @@ export const joinGameStyles = StyleSheet.create({
     color: colors.primary,
     marginLeft: 4,
   },
+  chatIconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   
   // Participants Section
   participantsCard: {
