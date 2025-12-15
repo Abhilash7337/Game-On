@@ -1,22 +1,68 @@
+import { ActiveFilterChips } from '@/src/common/components/ActiveFilterChips';
+import { AdvancedFilterModal } from '@/src/common/components/AdvancedFilterModal';
+import { DynamicHeroImage } from '@/src/common/components/DynamicHeroImage';
+import { EmptyState, EmptyStateVariant } from '@/src/common/components/EmptyState';
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
-import { LoadingState } from '@/src/common/components/LoadingState';
-import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
+import { ErrorState } from '@/src/common/components/ErrorState';
+import { SearchBar } from '@/src/common/components/SearchBar';
+import { SkeletonCard } from '@/src/common/components/SkeletonCard';
+import { SortDropdown } from '@/src/common/components/SortDropdown';
+import { SportFilterPills } from '@/src/common/components/SportFilterPills';
+import { VenueFilterProvider, useVenueFilter } from '@/src/common/contexts/VenueFilterContext';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { LocationCacheService } from '@/src/common/services/locationCache';
+import { calculateDistance, formatDistance } from '@/src/common/utils/distanceCalculator';
 import { courtsStyles } from '@/styles/screens/CourtsScreen';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Animated, Dimensions, FlatList, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Animated, Dimensions, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
+// ============================================
+// MAIN COMPONENT (Wrapped with Filter Provider)
+// ============================================
+
 export default function CourtsScreen() {
+	return (
+		<VenueFilterProvider>
+			<CourtsScreenContent />
+		</VenueFilterProvider>
+	);
+}
+
+// ============================================
+// CONTENT COMPONENT (Uses Filter Context)
+// ============================================
+
+function CourtsScreenContent() {
 	const router = useRouter();
-	const [venues, setVenues] = useState<{
+	
+	// ✅ NEW: Use filter context for centralized state management
+	const { 
+		setVenues: setFilterVenues, 
+		filteredVenues,
+		filters,
+		toggleSportFilter,
+		clearAllFilters,
+		updateFilter,
+		setSortBy,
+		setMinRating,
+		updateDistanceRange,
+		updatePriceRange,
+		setSearchQuery,
+	} = useVenueFilter();
+	
+	// Modal state
+	const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+	
+	// Local state for UI and data management
+	const [rawVenues, setRawVenues] = useState<{
 		id: string;
 		name: string;
 		rating: number;
@@ -26,9 +72,11 @@ export default function CourtsScreen() {
 		image: string | any;
 		images?: string[];
 		distance?: string;
+		distanceKm?: number;
 		coordinates?: {latitude: number; longitude: number};
 	}[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 	const [refreshing, setRefreshing] = useState(false);
 	const [expandedVenue, setExpandedVenue] = useState<string | null>(null);
 	const [animationValues] = useState<{[key: string]: Animated.Value}>({});
@@ -36,6 +84,68 @@ export default function CourtsScreen() {
 	const [dataSource, setDataSource] = useState<'cache' | 'fresh' | 'loading'>('loading');
 	const insets = useSafeAreaInsets();
 	const { width } = Dimensions.get('window');
+
+	// ✅ UPDATE: Sync rawVenues with filter context
+	useEffect(() => {
+		if (rawVenues.length > 0) {
+			console.log('📊 [COURTS] Syncing venues with filter context:', rawVenues.length);
+			setFilterVenues(rawVenues);
+		}
+	}, [rawVenues, setFilterVenues]);
+
+	// ✅ USE: filteredVenues from context (with memoized filtering/sorting)
+	const displayVenues = useMemo(() => {
+		console.log(`📋 [COURTS] Displaying ${filteredVenues.length} filtered venues`);
+		return filteredVenues;
+	}, [filteredVenues]);
+
+	// Calculate advanced filter count (non-default filters)
+	const advancedFilterCount = useMemo(() => {
+		let count = 0;
+		if (filters.distanceRange.max < 50) count++;
+		if (filters.priceRange.max < 100000) count++;
+		if (filters.minRating > 0) count++;
+		return count;
+	}, [filters.distanceRange, filters.priceRange, filters.minRating]);
+
+	// Handle individual filter removal
+	const handleRemoveFilter = (filterType: string, value?: any) => {
+		switch (filterType) {
+			case 'sport':
+				if (value) toggleSportFilter(value);
+				break;
+			case 'distance':
+				updateDistanceRange(0, 50);
+				break;
+			case 'price':
+				updatePriceRange(0, 100000);
+				break;
+			case 'rating':
+				setMinRating(0);
+				break;
+			case 'search':
+				setSearchQuery('');
+				break;
+		}
+	};
+
+	// ✅ Retry handler for error state
+	const handleRetry = useCallback(async () => {
+		setLoading(true);
+		setError(null);
+		
+		try {
+			const coords = await LocationCacheService.getLocationFast();
+			setUserLocation(coords);
+			await loadVenues(false, coords);
+			setDataSource('fresh');
+		} catch (err) {
+			console.error('❌ [COURTS] Retry failed:', err);
+			setError(err instanceof Error ? err.message : 'Failed to load venues');
+		} finally {
+			setLoading(false);
+		}
+	}, []);
 
 	// ✅ Background refresh on tab focus
 	useFocusEffect(
@@ -87,16 +197,43 @@ export default function CourtsScreen() {
 								}
 							}
 							
+							// ✅ ENHANCED: Calculate numeric distance for filtering
+							const distanceKm = freshCache.userLocation && v.location ? (() => {
+								try {
+									let venueCoords = typeof v.location === 'string' ? JSON.parse(v.location) : v.location;
+									let venueLat, venueLng;
+									
+									if (venueCoords.coordinates) {
+										venueLat = venueCoords.coordinates[1];
+										venueLng = venueCoords.coordinates[0];
+									} else if (venueCoords.latitude && venueCoords.longitude) {
+										venueLat = venueCoords.latitude;
+										venueLng = venueCoords.longitude;
+									}
+									
+									if (venueLat && venueLng) {
+										return calculateDistance(
+											freshCache.userLocation.latitude,
+											freshCache.userLocation.longitude,
+											venueLat,
+											venueLng
+										);
+									}
+								} catch {}
+								return undefined;
+							})() : undefined;
+							
 							return {
 								...v,
 								distance: distanceText,
+								distanceKm,
 								coordinates: v.location && v.location.coordinates ? {
 									latitude: v.location.coordinates[1],
 									longitude: v.location.coordinates[0]
 								} : undefined
 							};
 						});
-						setVenues(venuesWithDistance);
+						setRawVenues(venuesWithDistance);
 						console.log('✅ [COURTS] Background refresh completed');
 					}
 				}).catch(err => {
@@ -109,74 +246,88 @@ export default function CourtsScreen() {
 	useEffect(() => {
 		const initializeScreen = async () => {
 			setLoading(true);
+			setError(null); // Clear any previous errors
 			
-			// ✅ OPTIMIZATION: Try cache first for instant load!
-			const cache = dataPrefetchService.getCache();
-			if (cache && dataPrefetchService.isCacheFresh()) {
-				console.log('⚡ [COURTS] Using cached data - INSTANT LOAD!');
+			try {
+				// ✅ FORCE FRESH DATA: Clear cache to ensure we get latest sport types
+				console.log('🗑️ [COURTS] Clearing cache to force fresh data...');
+				dataPrefetchService.clearCache();
 				
-				// Set venues and location from cache immediately
-				const venuesWithDistance = cache.venues.map(v => {
-					let distanceText = 'N/A';
+				// ✅ OPTIMIZATION: Try cache first for instant load!
+				const cache = dataPrefetchService.getCache();
+				if (cache && dataPrefetchService.isCacheFresh()) {
+					console.log('⚡ [COURTS] Using cached data - INSTANT LOAD!');
 					
-					if (cache.userLocation && v.location) {
-						try {
-							// Parse location if it's a string
-							let venueCoords = v.location;
-							if (typeof v.location === 'string') {
-								venueCoords = JSON.parse(v.location);
+					// Set venues and location from cache immediately
+					const venuesWithDistance = cache.venues.map(v => {
+						let distanceText = 'N/A';
+						let distanceKm: number | undefined = undefined;
+						
+						if (cache.userLocation && v.location) {
+							try {
+								// Parse location if it's a string
+								let venueCoords = v.location;
+								if (typeof v.location === 'string') {
+									venueCoords = JSON.parse(v.location);
+								}
+								
+								const distance = calculateDistance(
+									cache.userLocation.latitude,
+									cache.userLocation.longitude,
+									venueCoords.latitude,
+									venueCoords.longitude
+								);
+								distanceText = formatDistance(distance);
+								distanceKm = distance; // Store numeric value
+							} catch (error) {
+								console.log('Distance calculation error for venue:', v.name);
 							}
-							
-							const distance = calculateDistance(
-								cache.userLocation.latitude,
-								cache.userLocation.longitude,
-								venueCoords.latitude,
-								venueCoords.longitude
-							);
-							distanceText = formatDistance(distance);
-						} catch (error) {
-							console.log('Distance calculation error for venue:', v.name);
 						}
-					}
+						
+						return {
+							id: v.id,
+							name: v.name,
+							rating: v.rating || 0,
+							reviews: 0,
+							location: v.address || '',
+							price: v.pricing?.basePrice || 0,
+							image: v.images && v.images.length > 0 
+								? `${v.images[0]}?w=300&h=150&q=80`
+								: require('@/assets/images/partial-react-logo.png'),
+							images: v.images || [],
+							coordinates: v.location,
+							distance: distanceText,
+							distanceKm, // ✅ NEW: Numeric distance for filtering
+						};
+					});
 					
-					return {
-						id: v.id,
-						name: v.name,
-						rating: v.rating || 0,
-						reviews: 0,
-						location: v.address || '',
-						price: v.pricing?.basePrice || 0,
-						image: v.images && v.images.length > 0 
-							? `${v.images[0]}?w=300&h=150&q=80`
-							: require('@/assets/images/partial-react-logo.png'),
-						images: v.images || [],
-						coordinates: v.location,
-						distance: distanceText,
-					};
-				});
+					setRawVenues(venuesWithDistance);
+					setUserLocation(cache.userLocation);
+					setDataSource('cache');
+					setLoading(false);
+					
+					console.log(`✅ [COURTS] Loaded ${venuesWithDistance.length} venues from cache in <100ms`);
+					return; // Done! Screen shows instantly ⚡
+				}
 				
-				setVenues(venuesWithDistance);
-				setUserLocation(cache.userLocation);
-				setDataSource('cache');
+				// ❌ Cache miss or stale - load fresh data
+				console.log('📡 [COURTS] Cache miss/stale, loading fresh data...');
+				setDataSource('loading');
+				
+				// ✅ OPTIMIZED: Use cached location (instant!)
+				const coords = await LocationCacheService.getLocationFast();
+				setUserLocation(coords);
+				
+				// Now load venues with the location we just got
+				await loadVenues(false, coords);
+				
+				setDataSource('fresh');
 				setLoading(false);
-				
-				console.log(`✅ [COURTS] Loaded ${venuesWithDistance.length} venues from cache in <100ms`);
-				return; // Done! Screen shows instantly ⚡
+			} catch (err) {
+				console.error('❌ [COURTS] Initialization error:', err);
+				setError(err instanceof Error ? err.message : 'Failed to initialize');
+				setLoading(false);
 			}
-			
-			// ❌ Cache miss or stale - load fresh data
-			console.log('📡 [COURTS] Cache miss/stale, loading fresh data...');
-			setDataSource('loading');
-			
-			// ✅ OPTIMIZED: Use cached location (instant!)
-			const coords = await LocationCacheService.getLocationFast();
-			setUserLocation(coords);
-			
-			// Now load venues with the location we just got
-			await loadVenues(false, coords);
-			
-			setDataSource('fresh');
-			setLoading(false);
 		};
 		
 		initializeScreen();
@@ -251,6 +402,7 @@ export default function CourtsScreen() {
 			// Transform the data to match the expected format and calculate distances
 			const transformedVenues = venuesData.map(venue => {
 				let distanceText = 'N/A';
+				let distanceKm: number | undefined = undefined;
 				
 				// Calculate distance if user location is available and venue has coordinates
 				if (currentLocation && venue.coordinates) {
@@ -266,13 +418,14 @@ export default function CourtsScreen() {
 						    !isNaN(venueCoords.longitude) &&
 						    venueCoords.latitude !== 0 && 
 						    venueCoords.longitude !== 0) {
-							const distanceKm = calculateDistance(
+							const distKm = calculateDistance(
 								currentLocation.latitude,
 								currentLocation.longitude,
 								venueCoords.latitude,
 								venueCoords.longitude
 							);
-							distanceText = formatDistance(distanceKm);
+							distanceText = formatDistance(distKm);
+							distanceKm = distKm; // ✅ Store numeric value
 							console.log(`📍 Distance calculated for ${venue.name}: ${distanceText}`);
 						} else {
 							console.log('❌ Invalid coordinates for venue:', venue.name, venueCoords);
@@ -300,34 +453,42 @@ export default function CourtsScreen() {
 						'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=150&fit=crop&q=80',
 					],
 					distance: distanceText,
+					distanceKm, // ✅ NEW: Numeric distance
 					coordinates: venue.coordinates,
 				};
 			});
 			
-			setVenues(transformedVenues);
+			setRawVenues(transformedVenues);
 			console.log('📍 [COURTS] Transformed venues with distances:', transformedVenues.map(v => ({
 				name: v.name,
 				distance: v.distance,
+				distanceKm: v.distanceKm,
 				hasCoordinates: !!v.coordinates
 			})));
-		} catch {
+		} catch (err) {
+			// Set error state
+			console.error('❌ [COURTS] Error loading venues:', err);
+			setError(err instanceof Error ? err.message : 'Failed to load venues');
+			
 			// Error loading venues - fallback to default venue
 			let distanceText = '2.5 km';
+			let distanceKm: number | undefined = 2.5;
 			
 			// If we have user location, try to calculate distance to default venue
 			if (userLocation) {
 				// Mahindra University coordinates (example)
 				const defaultVenueCoords = { latitude: 17.5985, longitude: 78.1239 };
-				const distanceKm = calculateDistance(
+				const distKm = calculateDistance(
 					userLocation.latitude,
 					userLocation.longitude,
 					defaultVenueCoords.latitude,
 					defaultVenueCoords.longitude
 				);
-				distanceText = formatDistance(distanceKm);
+				distanceText = formatDistance(distKm);
+				distanceKm = distKm;
 			}
 			
-			setVenues([
+			setRawVenues([
 				{
 					id: '1',
 					name: 'Mahindra Court',
@@ -343,6 +504,7 @@ export default function CourtsScreen() {
 						'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=150&fit=crop&q=80',
 					],
 					distance: distanceText,
+					distanceKm, // ✅ NEW: Numeric distance
 				},
 			]);
 		} finally {
@@ -395,13 +557,58 @@ export default function CourtsScreen() {
 		}
 	}, [expandedVenue, getAnimationValue]);
 
-	const filteredVenues = venues; // No filtering needed since search is removed
+	// ✅ REMOVED: Old filtering logic (now handled by context)
+	// const filteredVenues = venues;
 
+	// ✅ NEW: Determine empty state variant
+	const getEmptyStateVariant = (): EmptyStateVariant | null => {
+		if (rawVenues.length === 0) {
+			return 'no-venues';
+		}
+		if (filters.searchQuery && filters.searchQuery.trim() !== '') {
+			return 'no-search-results';
+		}
+		return 'no-results';
+	};
+
+	// ✅ Show skeleton loading state
 	if (loading) {
 		return (
 			<ErrorBoundary>
 				<View style={courtsStyles.container}>
-					<LoadingState message="Loading venues..." />
+					<StatusBar style="dark" />
+					
+					{/* Simple White Header */}
+					<View style={[courtsStyles.header, { paddingTop: insets.top + 20 }]}>
+						<Text style={courtsStyles.headerTitle}>Venues</Text>
+					</View>
+					
+					{/* Body with Skeleton Cards */}
+					<View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+						<SkeletonCard count={4} />
+					</View>
+				</View>
+			</ErrorBoundary>
+		);
+	}
+
+	// ✅ Show error state
+	if (error) {
+		return (
+			<ErrorBoundary>
+				<View style={courtsStyles.container}>
+					<StatusBar style="dark" />
+					
+					{/* Simple White Header */}
+					<View style={[courtsStyles.header, { paddingTop: insets.top + 20 }]}>
+						<Text style={courtsStyles.headerTitle}>Venues</Text>
+					</View>
+					
+					{/* Error State */}
+					<ErrorState
+						message={error}
+						onRetry={handleRetry}
+					/>
 				</View>
 			</ErrorBoundary>
 		);
@@ -410,41 +617,82 @@ export default function CourtsScreen() {
 	return (
 		<ErrorBoundary>
 			<View style={courtsStyles.container}>
-			{/* Make status bar icons dark for white background */}
-			<StatusBar style="dark" />
+			{/* Status bar with light icons for hero image */}
+			<StatusBar style="light" />
 
-			{/* Simple White Header */}
-			<View style={[courtsStyles.header, { paddingTop: insets.top + 20 }]}>
-				<Text style={courtsStyles.headerTitle}>Venues</Text>
-			</View>
-
-			{/* Body Content */}
-			<View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-				<FlatList
-					data={filteredVenues}
-					keyExtractor={item => item.id}
-					contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+			{/* Scrollable Content - Start from absolute top */}
+			<ScrollView
+				style={{ flex: 1, marginTop: 0 }}
+				contentContainerStyle={{ flexGrow: 1, paddingTop: 0 }}
+				showsVerticalScrollIndicator={false}
 				refreshControl={
 					<RefreshControl
 						refreshing={refreshing}
 						onRefresh={onRefresh}
-						colors={['#047857']}
-						tintColor="#047857"
+						colors={['#FF6B35']}
+						tintColor="#FF6B35"
 					/>
 				}
-				ListEmptyComponent={
-					<View style={{ alignItems: 'center', marginTop: 32 }}>
-						<Ionicons name="location-outline" size={48} color="#9CA3AF" style={{ marginBottom: 16 }} />
-						<Text style={{ color: '#6B7280', fontSize: 16, textAlign: 'center' }}>
-							No venues found.
-						</Text>
-						<Text style={{ color: '#9CA3AF', fontSize: 14, textAlign: 'center', marginTop: 8 }}>
-							Pull down to refresh to load venues.
-						</Text>
+			>
+				{/* Dynamic Hero Image - Full bleed from top */}
+				<DynamicHeroImage 
+					sportFilters={filters.sportTypes}
+					height={280}
+				/>
+
+				{/* Content Section */}
+				<View style={{ flex: 1, backgroundColor: '#F9FAFB', marginTop: -20 }}>
+					{/* Search Bar */}
+					<View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
+						<SearchBar
+							value={filters.searchQuery}
+							onChangeText={setSearchQuery}
+							placeholder="Search venues, locations, or sports..."
+						/>
 					</View>
-				}
-				renderItem={({ item }) => (
-					<View>
+
+					{/* Sport Filter Pills */}
+					<SportFilterPills
+						activeSports={filters.sportTypes}
+						onToggleSport={toggleSportFilter}
+						onClearFilters={clearAllFilters}
+						showFilterCount={true}
+						onOpenAdvancedFilters={() => setShowAdvancedFilters(true)}
+						advancedFilterCount={advancedFilterCount}
+					/>
+
+					{/* Active Filter Chips */}
+					<ActiveFilterChips
+						filters={filters}
+						totalVenues={rawVenues.length}
+						filteredVenues={displayVenues.length}
+						onRemoveFilter={handleRemoveFilter}
+					/>
+
+					{/* Sort Dropdown */}
+					<View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+						<View style={{ alignSelf: 'flex-end' }}>
+							<SortDropdown
+								currentSort={filters.sortBy}
+								onSortChange={setSortBy}
+							/>
+						</View>
+					</View>
+
+					{/* Venue List */}
+					{displayVenues.length === 0 ? (
+						<EmptyState
+							variant={getEmptyStateVariant() || 'no-results'}
+							searchQuery={filters.searchQuery}
+							hiddenVenuesCount={rawVenues.length - displayVenues.length}
+							totalVenues={rawVenues.length}
+							onClearFilters={clearAllFilters}
+							onClearSearch={() => setSearchQuery('')}
+						/>
+					) : (
+						<View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+							{displayVenues.map((item) => (
+								<View key={item.id}>
 						{/* Main Venue Card - Make entire card clickable */}
 						<TouchableOpacity 
 							style={courtsStyles.venueCard}
@@ -463,9 +711,20 @@ export default function CourtsScreen() {
 								<Image 
 									source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
 									style={courtsStyles.venueImage}
-									resizeMode="cover"
-									defaultSource={require('../../assets/images/partial-react-logo.png')}
+									contentFit="cover"
+									transition={200}
+									cachePolicy="memory-disk"
+									placeholder={require('../../assets/images/partial-react-logo.png')}
+									priority="high"
 								/>
+								
+								{/* Sport Badge Overlay */}
+								<View style={courtsStyles.sportBadge}>
+									<Text style={courtsStyles.sportBadgeText}>
+										{item.sportType || 'Multi-Sport'}
+									</Text>
+								</View>
+								
 								{/* Preview Button Overlay at Bottom of Image */}
 								<View style={courtsStyles.imagePreviewButton}>
 									<Text style={courtsStyles.imagePreviewText}>Preview</Text>
@@ -478,25 +737,43 @@ export default function CourtsScreen() {
 							</TouchableOpacity>
 							
 							<View style={courtsStyles.venueInfo}>
-								<View style={courtsStyles.venueHeader}>
-									<Text style={courtsStyles.venueName}>{item.name}</Text>
-									<View style={courtsStyles.venueRatingRow}>
-										<Ionicons name="star" size={12} color="#EA580C" />
-										<Text style={courtsStyles.venueRating}>{item.rating.toFixed(1)} ({item.reviews})</Text>
-									</View>
-								</View>
+								{/* Venue Name */}
+								<Text style={courtsStyles.venueName} numberOfLines={1} ellipsizeMode="tail">
+									{item.name}
+								</Text>
 								
+								{/* Distance Row */}
 								<View style={courtsStyles.venueLocationRow}>
-									<Ionicons name="location-outline" size={12} color="#6B7280" />
+									<Ionicons name="location" size={16} color="#6B7280" />
 									<Text style={courtsStyles.venueDistance}>{item.distance}</Text>
 								</View>
 								
-								<View style={courtsStyles.venueBottomRow}>
-									<Text style={courtsStyles.venuePrice}>₹{item.price}/hr</Text>
-									<View style={courtsStyles.bookBtn}>
-										<Text style={courtsStyles.bookBtnText}>Book Now</Text>
+								{/* Rating and Price Row */}
+								<View style={courtsStyles.venueMetaRow}>
+									<View style={courtsStyles.venueRatingRow}>
+										<Ionicons name="star" size={14} color="#FBBF24" />
+										<Text style={courtsStyles.venueRating}>
+											{item.rating.toFixed(1)} ({item.reviews})
+										</Text>
+									</View>
+									
+									<View style={courtsStyles.venuePriceContainer}>
+										<Text style={courtsStyles.venuePrice}>₹{item.price}</Text>
+										<Text style={courtsStyles.venuePriceUnit}>/hr</Text>
 									</View>
 								</View>
+								
+								{/* Book Now Button */}
+								<TouchableOpacity 
+									style={courtsStyles.bookBtn}
+									activeOpacity={0.8}
+									onPress={(e) => {
+										e.stopPropagation();
+										router.push({ pathname: '/BookingFormScreen', params: { venueId: item.id } });
+									}}
+								>
+									<Text style={courtsStyles.bookBtnText}>Book Now</Text>
+								</TouchableOpacity>
 							</View>
 						</TouchableOpacity>
 						
@@ -523,17 +800,45 @@ export default function CourtsScreen() {
 											key={index}
 											source={{ uri: imageUrl }}
 											style={[courtsStyles.previewImage, { width: width * 0.7 }]}
-											resizeMode="cover"
+											contentFit="cover"
+											transition={200}
+											cachePolicy="memory-disk"
+											priority="normal"
 										/>
 									))}
 								</ScrollView>
 							</Animated.View>
 						)}
+									</View>
+								))}
+							</View>
+						)}
 					</View>
-				)}
+				</ScrollView>
+				
+				{/* Advanced Filter Modal */}
+				<AdvancedFilterModal
+					visible={showAdvancedFilters}
+					onClose={() => setShowAdvancedFilters(false)}
+					filters={filters}
+					onApplyFilters={(newFilters) => {
+						if (newFilters.distanceRange) {
+							updateDistanceRange(newFilters.distanceRange.min, newFilters.distanceRange.max);
+						}
+						if (newFilters.priceRange) {
+							updatePriceRange(newFilters.priceRange.min, newFilters.priceRange.max);
+						}
+						if (newFilters.minRating !== undefined) {
+							setMinRating(newFilters.minRating);
+						}
+					}}
+					onClearAdvancedFilters={() => {
+						updateDistanceRange(0, 50);
+						updatePriceRange(0, 100000);
+						setMinRating(0);
+					}}
 				/>
 			</View>
-		</View>
 		</ErrorBoundary>
 	);
 }
