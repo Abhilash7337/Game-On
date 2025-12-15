@@ -3,12 +3,13 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { MyTheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { ErrorBoundary } from '@/src/common/components/ErrorBoundary';
+import { imagePreloader } from '@/src/common/utils/imagePreloader';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -18,10 +19,36 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const [imagesLoaded, setImagesLoaded] = useState(false);
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      // Preload critical images in background
+      const preloadImages = async () => {
+        try {
+          console.log('🚀 [APP] Starting image preload...');
+          
+          // Preload critical static assets first (fast)
+          await imagePreloader.preloadCriticalAssets();
+          
+          // Preload venue images in background (slower, don't block app)
+          imagePreloader.preloadVenueImages().then(() => {
+            console.log('✅ [APP] All venue images preloaded');
+          }).catch(err => {
+            console.warn('⚠️ [APP] Venue image preload failed:', err);
+          });
+          
+          setImagesLoaded(true);
+          SplashScreen.hideAsync();
+        } catch (error) {
+          console.error('❌ [APP] Image preload error:', error);
+          // Don't block app launch on image preload failure
+          setImagesLoaded(true);
+          SplashScreen.hideAsync();
+        }
+      };
+
+      preloadImages();
     }
   }, [loaded]);
 

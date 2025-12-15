@@ -560,6 +560,8 @@ export class VenueStorageService {
     images?: string[];
     distance?: string;
     coordinates?: { latitude: number; longitude: number };
+    sportType?: string;
+    sportTypes?: string[];
   }[]> {
     try {
       // Fetch all venues from Supabase
@@ -569,17 +571,70 @@ export class VenueStorageService {
       const activeVenues = allVenues.filter(venue => venue.isActive);
       console.log('✅ Active venues:', activeVenues.length);
       
-      return activeVenues.map(venue => ({
-        id: venue.id,
-        name: venue.name,
-        rating: venue.rating,
-        reviews: Math.floor(Math.random() * 20) + 5, // Random reviews count
-        location: venue.address,
-        price: venue.pricing.basePrice,
-        image: venue.images[0] || 'https://via.placeholder.com/300x200/047857/ffffff?text=Venue+Image',
-        images: venue.images,
-        coordinates: venue.location,
-      }));
+      // Fetch courts for all venues to determine sport types
+      const venueIds = activeVenues.map(v => v.id);
+      
+      console.log('🔍 Fetching courts for venues:', venueIds);
+      
+      const { data: courtsData, error: courtsError } = await supabase
+        .from('courts')
+        .select('*')
+        .in('venue_id', venueIds)
+        .eq('is_active', true);
+      
+      if (courtsError) {
+        console.error('❌ Error fetching courts for sport types:', courtsError);
+      }
+      
+      console.log('🎾 Courts data fetched (FULL):', JSON.stringify(courtsData, null, 2));
+      console.log('📊 Total courts found:', courtsData?.length || 0);
+      
+      // Log each court individually to see the actual data
+      (courtsData || []).forEach(court => {
+        console.log(`  🏟️  Court: ${court.name} | Type: "${court.type}" | Venue: ${court.venue_id}`);
+      });
+      
+      // Create a map of venue_id to sport types
+      const venueSportsMap = new Map<string, string[]>();
+      (courtsData || []).forEach(court => {
+        console.log(`  🔄 Processing court: "${court.name}" | Type raw: "${court.type}" | Type typeof: ${typeof court.type}`);
+        
+        if (!venueSportsMap.has(court.venue_id)) {
+          venueSportsMap.set(court.venue_id, []);
+        }
+        const sportTypes = venueSportsMap.get(court.venue_id)!;
+        
+        // Normalize sport type to lowercase
+        const normalizedType = court.type?.toLowerCase();
+        console.log(`    → Normalized: "${normalizedType}" | Already in array: ${sportTypes.includes(normalizedType || '')}`);
+        
+        if (normalizedType && !sportTypes.includes(normalizedType)) {
+          sportTypes.push(normalizedType);
+          console.log(`    ✅ Added "${normalizedType}" to venue ${court.venue_id}`);
+        }
+      });
+      
+      console.log('🏀 Venue Sports Map (FINAL):', Object.fromEntries(venueSportsMap));
+      
+      return activeVenues.map(venue => {
+        const sportTypes = venueSportsMap.get(venue.id) || [];
+        
+        console.log(`📍 Venue "${venue.name}" sports:`, sportTypes);
+        
+        return {
+          id: venue.id,
+          name: venue.name,
+          rating: venue.rating,
+          reviews: Math.floor(Math.random() * 20) + 5, // Random reviews count
+          location: venue.address,
+          price: venue.pricing.basePrice,
+          image: venue.images[0] || 'https://via.placeholder.com/300x200/047857/ffffff?text=Venue+Image',
+          images: venue.images,
+          coordinates: venue.location,
+          sportType: sportTypes[0] || undefined, // Primary sport type (undefined if no courts)
+          sportTypes: sportTypes.length > 0 ? sportTypes : undefined, // All available sports (undefined if no courts)
+        };
+      });
     } catch (error) {
       console.error('Error fetching public venues:', error);
       throw new Error('Failed to fetch venues. Please try again.');

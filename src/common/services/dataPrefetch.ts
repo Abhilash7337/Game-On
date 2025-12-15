@@ -5,12 +5,12 @@
  * Implements cache-first strategy with automatic refresh.
  */
 
-import { VenueStorageService } from './venueStorage';
-import { FriendService } from './friendService';
-import { SportGroupService } from './sportGroupService';
 import { ConversationService } from './conversationService'; // ✅ NEW: Supabase-based conversations
+import { FriendService } from './friendService';
 import { LocationCacheService } from './locationCache'; // ✅ NEW: Fast cached location
+import { SportGroupService } from './sportGroupService';
 import { supabase } from './supabase';
+import { VenueStorageService } from './venueStorage';
 
 interface PrefetchedData {
   // Courts screen data
@@ -78,8 +78,8 @@ class DataPrefetchService {
         cityGroupsResult,
         chatroomsResult
       ] = await Promise.allSettled([
-        // Courts screen data
-        VenueStorageService.getAllVenues(),
+        // Courts screen data - USE getPublicVenues() to include sport types from courts!
+        VenueStorageService.getPublicVenues(),
         LocationCacheService.getLocationFast(), // ✅ OPTIMIZED: Use cached location (instant!)
         
         // Social screen data
@@ -208,7 +208,7 @@ class DataPrefetchService {
 
     console.log('🔄 [PREFETCH] Refreshing venues...');
     try {
-      this.cache.venues = await VenueStorageService.getAllVenues();
+      this.cache.venues = await VenueStorageService.getPublicVenues();
       this.cache.fetchedAt = new Date();
       console.log(`✅ [PREFETCH] Venues refreshed (${this.cache.venues.length} items)`);
     } catch (error) {
@@ -273,6 +273,14 @@ class DataPrefetchService {
       userId: this.cache.userId,
       userCity: this.cache.userCity
     });
+  }
+
+  /**
+   * Clear all cached data (force fresh fetch on next access)
+   */
+  clearCache(): void {
+    console.log('🗑️ [PREFETCH] Clearing cache...');
+    this.cache = null;
   }
 }
 
