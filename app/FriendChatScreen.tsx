@@ -523,12 +523,12 @@ export default function FriendChatScreen() {
                     </View>
                     <View style={friendChatStyles.requesterInfo}>
                       <Text style={friendChatStyles.requesterName}>{requesterName}</Text>
-                      {requesterRating && (
+                      {requesterRating ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                           <Ionicons name="star" size={14} color="#F59E0B" />
                           <Text style={{ fontSize: 12, color: '#6B7280' }}>{requesterRating.toFixed(1)}</Text>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                   </View>
 

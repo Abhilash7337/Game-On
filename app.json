@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Game-On",
+    "name": "GameON",
     "slug": "sports-venue-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -53,10 +53,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "775fccc7-4d2e-423c-b0db-8d5101f234fd"
-      }
+      "router": {}
     }
   }
 }

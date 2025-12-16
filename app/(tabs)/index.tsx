@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
@@ -25,18 +25,34 @@ interface BookingDisplay {
   status: string;
 }
 
+interface JoinRequestDisplay {
+  id: string;
+  bookingId: string;
+  requesterId: string;
+  requesterName: string;
+  requesterRating?: number;
+  bookingDate: string;
+  bookingTime: string;
+  venueName: string;
+  courtName: string;
+  createdAt: string;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; location: string } | null>(null);
   const [notifications, setNotifications] = useState<number>(0);
   const [userBookings, setUserBookings] = useState<BookingDisplay[]>([]);
+  const [joinRequests, setJoinRequests] = useState<JoinRequestDisplay[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [loadingJoinRequests, setLoadingJoinRequests] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const bookingSubscriptionRef = useRef<any>(null);
 
   useEffect(() => {
     loadUserData();
     loadUserBookings();
+    loadJoinRequests();
     
     // ✅ OPTIMIZATION: Cleanup expired chatrooms on app startup (silent, non-blocking)
     GameChatroomCleanupService.autoCleanup(true).catch(() => {});
@@ -82,6 +98,7 @@ export default function HomeScreen() {
     useCallback(() => {
       console.log('👁️ [HOME] Screen focused - reloading bookings');
       loadUserBookings();
+      loadJoinRequests();
     }, [])
   );
 
@@ -297,6 +314,177 @@ export default function HomeScreen() {
     }
   };
 
+  // Load join requests for the current user's bookings
+  const loadJoinRequests = async () => {
+    try {
+      setLoadingJoinRequests(true);
+      
+      const { supabase } = await import('@/src/common/services/supabase');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.log('📋 [HOME] No authenticated user, skipping join requests load');
+        setJoinRequests([]);
+        setLoadingJoinRequests(false);
+        return;
+      }
+      
+      console.log('📋 [HOME] Loading join requests for host:', user.id);
+      
+      // Fetch pending join requests for the user's bookings
+      const { data: requests, error } = await supabase
+        .from('join_requests')
+        .select(`
+          id,
+          booking_id,
+          requester_id,
+          created_at,
+          requester:users!join_requests_requester_id_fkey!inner(
+            id,
+            full_name,
+            rating
+          ),
+          booking:bookings!join_requests_booking_id_fkey!inner(
+            booking_date,
+            start_time,
+            venue_id,
+            court_id
+          )
+        `)
+        .eq('host_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('❌ [HOME] Error loading join requests:', error);
+        setJoinRequests([]);
+        setLoadingJoinRequests(false);
+        return;
+      }
+
+      if (!requests || requests.length === 0) {
+        console.log('✅ [HOME] No pending join requests found');
+        setJoinRequests([]);
+        setLoadingJoinRequests(false);
+        return;
+      }
+
+      // Get venue and court names
+      const venueIds = [...new Set(requests.map(r => {
+        const booking = Array.isArray(r.booking) ? r.booking[0] : r.booking;
+        return booking?.venue_id;
+      }).filter(Boolean))];
+      
+      const courtIds = [...new Set(requests.map(r => {
+        const booking = Array.isArray(r.booking) ? r.booking[0] : r.booking;
+        return booking?.court_id;
+      }).filter(Boolean))];
+
+      const { data: venuesData } = await supabase
+        .from('venues')
+        .select('id, name')
+        .in('id', venueIds as string[]);
+
+      const { data: courtsData } = await supabase
+        .from('courts')
+        .select('id, name')
+        .in('id', courtIds as string[]);
+
+      const venueMap = new Map(venuesData?.map(v => [v.id, v.name]) || []);
+      const courtMap = new Map(courtsData?.map(c => [c.id, c.name]) || []);
+
+      // Transform to display format
+      const transformedRequests: JoinRequestDisplay[] = requests.map(req => {
+        const requester = Array.isArray(req.requester) ? req.requester[0] : req.requester;
+        const booking = Array.isArray(req.booking) ? req.booking[0] : req.booking;
+        
+        return {
+          id: req.id,
+          bookingId: req.booking_id,
+          requesterId: requester?.id || req.requester_id || '',
+          requesterName: requester?.full_name || 'Unknown Player',
+          requesterRating: requester?.rating,
+          bookingDate: new Date(booking?.booking_date || '').toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          }),
+          bookingTime: formatTimeFromDB(booking?.start_time || ''),
+          venueName: venueMap.get(booking?.venue_id || '') || 'Unknown Venue',
+          courtName: courtMap.get(booking?.court_id || '') || 'Unknown Court',
+          createdAt: req.created_at,
+        };
+      });
+
+      console.log(`✅ [HOME] Loaded ${transformedRequests.length} pending join requests`);
+      setJoinRequests(transformedRequests);
+      
+    } catch (error) {
+      console.error('❌ [HOME] Error in loadJoinRequests:', error);
+      setJoinRequests([]);
+    } finally {
+      setLoadingJoinRequests(false);
+    }
+  };
+
+  // Handle accept join request
+  const handleAcceptJoinRequest = async (requestId: string, requesterName: string) => {
+    try {
+      const { JoinRequestService } = await import('@/src/common/services/joinRequestService');
+      
+      const result = await JoinRequestService.acceptJoinRequest(requestId);
+      
+      if (result.success) {
+        Alert.alert(
+          'Request Accepted',
+          `${requesterName} has been added to your game!`,
+          [{ text: 'OK' }]
+        );
+        // Reload join requests
+        loadJoinRequests();
+        // Also reload bookings to reflect participant count changes
+        loadUserBookings();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to accept request');
+      }
+    } catch (error) {
+      console.error('❌ [HOME] Error accepting join request:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    }
+  };
+
+  // Handle reject join request
+  const handleRejectJoinRequest = async (requestId: string, requesterName: string) => {
+    Alert.alert(
+      'Reject Request',
+      `Are you sure you want to reject ${requesterName}'s request?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { JoinRequestService } = await import('@/src/common/services/joinRequestService');
+              
+              const result = await JoinRequestService.rejectJoinRequest(requestId);
+              
+              if (result.success) {
+                Alert.alert('Request Rejected', 'The join request has been rejected.');
+                loadJoinRequests();
+              } else {
+                Alert.alert('Error', result.error || 'Failed to reject request');
+              }
+            } catch (error) {
+              console.error('❌ [HOME] Error rejecting join request:', error);
+              Alert.alert('Error', 'An unexpected error occurred');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const formatBookingDate = (date: Date): string => {
     const today = new Date();
     const tomorrow = new Date(today);
@@ -410,7 +598,7 @@ export default function HomeScreen() {
       </AppHeader>
 
       {/* Body Content */}
-      <View style={homeStyles.body}>
+      <ScrollView style={homeStyles.body} showsVerticalScrollIndicator={false}>
         <Text style={homeTextStyles.sectionTitle}>Quick Actions</Text>
         <View style={homeStyles.quickActionsRow}>
           <TouchableOpacity 
@@ -470,7 +658,113 @@ export default function HomeScreen() {
             />
           )}
         </View>
-      </View>
+
+        {/* Join Requests Section */}
+        <View style={homeStyles.bookingsSection}>
+          <View style={homeStyles.bookingsSectionHeader}>
+            <Text style={homeTextStyles.sectionTitle}>Join Requests</Text>
+          </View>
+
+          {loadingJoinRequests ? (
+            <View style={homeStyles.bookingsLoadingContainer}>
+              <ActivityIndicator size="large" color="#10B981" />
+              <Text style={homeTextStyles.loadingText}>Loading join requests...</Text>
+            </View>
+          ) : joinRequests.length === 0 ? (
+            <View style={homeStyles.noBookingsContainer}>
+              <View style={homeStyles.noBookingsIconContainer}>
+                <Ionicons name="people-outline" size={48} color="#D1D5DB" />
+              </View>
+              <Text style={homeTextStyles.noBookingsTitle}>No Pending Requests</Text>
+              <Text style={homeTextStyles.noBookingsSubtitle}>
+                Join requests will appear here when players want to join your games
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+                data={joinRequests}
+                nestedScrollEnabled
+                renderItem={({ item }) => {
+                  return (
+                    <View style={homeStyles.joinRequestCard}>
+                      <View style={homeStyles.joinRequestHeader}>
+                        <View style={homeStyles.joinRequestPlayerInfo}>
+                          <View style={homeStyles.joinRequestPlayerIcon}>
+                            <Ionicons name="person" size={24} color="#10B981" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={homeTextStyles.joinRequestPlayerName}>
+                              {item.requesterName}
+                            </Text>
+                            {item.requesterRating ? (
+                              <View style={homeStyles.joinRequestRatingBadge}>
+                                <Ionicons name="star" size={12} color="#FBBF24" />
+                                <Text style={homeTextStyles.joinRequestRating}>
+                                  {item.requesterRating.toFixed(1)}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+                      </View>
+
+                      <View style={homeStyles.joinRequestDetails}>
+                        <View style={homeStyles.joinRequestDetailRow}>
+                          <Ionicons name="location" size={16} color="#6B7280" />
+                          <Text style={homeTextStyles.joinRequestDetailText}>
+                            {item.venueName} - {item.courtName}
+                          </Text>
+                        </View>
+                        <View style={homeStyles.joinRequestDetailRow}>
+                          <Ionicons name="calendar" size={16} color="#6B7280" />
+                          <Text style={homeTextStyles.joinRequestDetailText}>
+                            {item.bookingDate} at {item.bookingTime}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={homeStyles.joinRequestActions}>
+                        <TouchableOpacity
+                          style={homeStyles.joinRequestMessageButton}
+                          onPress={() => {
+                            router.push({
+                              pathname: '/FriendChatScreen',
+                              params: { 
+                                friendId: item.requesterId,
+                                friendName: item.requesterName 
+                              }
+                            });
+                          }}
+                        >
+                          <Ionicons name="chatbubble-outline" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[homeStyles.joinRequestButton, homeStyles.joinRequestRejectButton]}
+                          onPress={() => handleRejectJoinRequest(item.id, item.requesterName)}
+                        >
+                          <Ionicons name="close" size={20} color="#EF4444" />
+                          <Text style={homeTextStyles.joinRequestRejectText}>Reject</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[homeStyles.joinRequestButton, homeStyles.joinRequestAcceptButton]}
+                          onPress={() => handleAcceptJoinRequest(item.id, item.requesterName)}
+                        >
+                          <Ionicons name="checkmark" size={20} color="#fff" />
+                          <Text style={homeTextStyles.joinRequestAcceptText}>Accept</Text>
+                        </TouchableOpacity>
+                      </View>
+                  </View>
+                  );
+                }}
+                keyExtractor={(item) => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={homeStyles.bookingsListContainer}
+              />
+            )
+          }
+        </View>
+      </ScrollView>
     </SafeAreaView>
     </ErrorBoundary>
   );

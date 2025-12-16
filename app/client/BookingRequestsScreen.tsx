@@ -6,7 +6,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const styles = bookingRequestsStyles;
 
@@ -207,21 +207,20 @@ export default function ClientBookingRequestsScreen() {
     );
 
     return (
-        <View style={styles.container}>
-            <StatusBar style="dark" />
+        <SafeAreaView style={styles.container}>
+            <StatusBar style="light" />
             <Stack.Screen options={{ headerShown: false }} />
             
-            {/* White Elevated Header */}
-            <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
+            <View style={styles.header}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 }}>
                     <TouchableOpacity 
                         onPress={() => router.back()}
                         style={{ marginRight: 16 }}
                     >
-                        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Booking Requests</Text>
+                        <Text style={styles.headerTitle}>Join Requests</Text>
                         <Text style={styles.headerSubtitle}>{pendingBookings.length} pending requests</Text>
                     </View>
                 </View>
@@ -250,6 +249,6 @@ export default function ClientBookingRequestsScreen() {
                     </View>
                 }
             />
-        </View>
+        </SafeAreaView>
     );
 }

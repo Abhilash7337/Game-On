@@ -17,9 +17,9 @@ export const homeStyles = StyleSheet.create({
   },
   
   body: {
-    flex: 1,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   
   // Quick actions
@@ -350,7 +350,7 @@ export const homeStyles = StyleSheet.create({
 
   bookingsListContainer: {
     paddingRight: spacing.xl,
-    paddingBottom: 0,
+    paddingBottom: spacing.lg,
   },
 
   // Booking Card
@@ -433,6 +433,92 @@ export const homeStyles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#10B981',
+  },
+
+  // Join Request Card Styles
+  joinRequestCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginRight: spacing.md,
+    width: 320,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+
+  joinRequestHeader: {
+    marginBottom: spacing.md,
+  },
+
+  joinRequestPlayerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+
+  joinRequestPlayerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  joinRequestRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    marginTop: 4,
+  },
+
+  joinRequestDetails: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+  },
+
+  joinRequestDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+
+  joinRequestActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+
+  joinRequestMessageButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.md,
+    backgroundColor: '#10B981',
+  },
+
+  joinRequestButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+
+  joinRequestAcceptButton: {
+    backgroundColor: '#10B981',
+  },
+
+  joinRequestRejectButton: {
+    backgroundColor: '#FEE2E2',
   },
 });
 
@@ -675,5 +761,39 @@ export const homeTextStyles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
     color: '#10B981',
+  },
+
+  // Join Request Text Styles
+  joinRequestPlayerName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+
+  joinRequestRating: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: '#FBBF24',
+    marginLeft: 2,
+  },
+
+  joinRequestDetailText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
+  },
+
+  joinRequestAcceptText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: '#fff',
+    marginLeft: spacing.xs,
+  },
+
+  joinRequestRejectText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: '#EF4444',
+    marginLeft: spacing.xs,
   },
 });

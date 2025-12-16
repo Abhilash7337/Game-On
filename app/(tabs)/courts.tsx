@@ -731,12 +731,9 @@ function CourtsScreenContent() {
 									onPress={(e) => {
 										e.stopPropagation();
 										router.push({ 
-											pathname: '/BookingFormScreen', 
+											pathname: '/VenueDetailsScreen', 
 											params: { 
-												venueId: item.id,
-												venueName: item.name,
-												venuePrice: item.price?.toString() || '500',
-												ownerId: item.ownerId || ''
+												venueId: item.id
 											} 
 										});
 									}}

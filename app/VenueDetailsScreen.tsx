@@ -252,13 +252,25 @@ export default function VenueDetailsScreen() {
       }
     }
     
-    // Get bookings for this court
+    // Get bookings for this court (trim both strings to handle trailing spaces)
+    const normalizedCourtName = courtName.trim().toLowerCase();
+    
+    // 🔍 DEBUG: Log all booking court names before filtering
+    console.log(`⏰ [VENUE DETAILS] Generating slots for ${courtName}:`);
+    console.log(`  - Normalized court name: "${normalizedCourtName}"`);
+    console.log(`  - Total bookings for date: ${bookingsForDate.length}`);
+    if (bookingsForDate.length > 0) {
+      console.log(`  - All booking court names:`, bookingsForDate.map((b: any) => ({
+        court: b.court,
+        normalized: b.court?.trim().toLowerCase(),
+        matches: b.court?.trim().toLowerCase() === normalizedCourtName
+      })));
+    }
+    
     const courtBookings = bookingsForDate.filter(booking => 
-      (booking as any).court === courtName
+      (booking as any).court?.trim().toLowerCase() === normalizedCourtName
     );
     
-    console.log(`⏰ [VENUE DETAILS] Generating slots for ${courtName}:`);
-    console.log(`  - Total bookings for date: ${bookingsForDate.length}`);
     console.log(`  - Bookings for this court: ${courtBookings.length}`);
     if (courtBookings.length > 0) {
       courtBookings.forEach((b: any, idx: number) => {
@@ -608,6 +620,7 @@ export default function VenueDetailsScreen() {
       
       // ✅ OPTIMIZATION: Query ONLY this venue's bookings directly from DB (10-50x faster!)
       // ✅ ALSO count participants for accurate spot tracking
+      // ✅ FIX: Load ALL bookings for the venue (not filtered by user) so everyone can see them
       const { data: venueBookings, error } = await supabase
         .from('bookings')
         .select(`
@@ -631,6 +644,7 @@ export default function VenueDetailsScreen() {
         .eq('venue_id', venueId)
         .gte('booking_date', dateRange.start)
         .lte('booking_date', dateRange.end)
+        .in('status', ['pending', 'confirmed']) // ✅ Show pending and confirmed bookings
         .order('booking_date', { ascending: true });
       
       if (error) {
@@ -647,22 +661,43 @@ export default function VenueDetailsScreen() {
       }
       
       console.log(`📊 [VENUE DETAILS] Raw bookings from DB: ${venueBookings?.length || 0}`);
+      console.log(`🔍 [VENUE DETAILS] Query params:`, {
+        venueId,
+        dateRange,
+        statusFilter: ['pending', 'confirmed']
+      });
+      
       if (venueBookings && venueBookings.length > 0) {
+        const firstCourt = Array.isArray(venueBookings[0].courts) 
+          ? venueBookings[0].courts[0] 
+          : venueBookings[0].courts;
+          
         console.log('📋 [VENUE DETAILS] First booking sample:', {
           id: venueBookings[0].id,
           status: venueBookings[0].status,
           booking_type: venueBookings[0].booking_type,
           booking_date: venueBookings[0].booking_date,
           user_id: venueBookings[0].user_id,
-          player_count: venueBookings[0].player_count
+          player_count: venueBookings[0].player_count,
+          court: firstCourt?.name
         });
-        console.log('📋 [VENUE DETAILS] All booking dates:', venueBookings.map((b: any) => b.booking_date));
+        console.log('📋 [VENUE DETAILS] All bookings:', venueBookings.map((b: any) => ({
+          date: b.booking_date,
+          court: b.courts?.name,
+          status: b.status,
+          userId: b.user_id?.substring(0, 8)
+        })));
       } else {
         console.warn('⚠️ [VENUE DETAILS] No bookings found for venue:', venueId);
+        console.warn('⚠️ [VENUE DETAILS] Query details:', {
+          dateRange,
+          statusFilter: ['pending', 'confirmed']
+        });
         console.warn('⚠️ [VENUE DETAILS] This could be due to:');
         console.warn('  1. RLS (Row Level Security) policies blocking the query');
         console.warn('  2. No bookings exist for this venue');
         console.warn('  3. Bookings exist but outside the date range');
+        console.warn('  4. Bookings exist but with different status (rejected/cancelled)');
       }
       
       // ✅ For each open game booking, count actual participants
@@ -971,7 +1006,8 @@ export default function VenueDetailsScreen() {
             <View style={venueDetailsStyles.operatingHours}>
               <Ionicons name="time-outline" size={16} color="#6B7280" />
               <Text style={venueDetailsStyles.hoursText}>
-                {venue.operatingHours.open} - {venue.operatingHours.close} • {venue.operatingHours.days.join(', ')}
+                {venue.operatingHours.open} - {venue.operatingHours.close}
+                {venue.operatingHours.days && venue.operatingHours.days.length > 0 ? ` • ${venue.operatingHours.days.join(', ')}` : ''}
               </Text>
             </View>
           </View>
@@ -1058,6 +1094,18 @@ export default function VenueDetailsScreen() {
                               return;
                             } else if (slot.status === 'available') {
                               // Available slots - open booking form
+                              // ✅ FIX: Format date using local date components (avoids timezone conversion issues)
+                              const year = selectedDate.getFullYear();
+                              const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                              const day = String(selectedDate.getDate()).padStart(2, '0');
+                              const bookingDateString = `${year}-${month}-${day}`;
+                              
+                              console.log('🎯 [VENUE DETAILS] Navigating to booking form:', {
+                                selectedDate: selectedDate.toDateString(),
+                                bookingDateString,
+                                courtName: court.name,
+                                timeSlot: slot.time
+                              });
                               router.push({
                                 pathname: '/BookingFormScreen',
                                 params: {
@@ -1068,14 +1116,15 @@ export default function VenueDetailsScreen() {
                                   court: court.name,
                                   courtId: court.uuid || court.id,
                                   timeSlot: slot.time,
-                                  bookingDate: selectedDate.toISOString().split('T')[0] // Pass selected date as YYYY-MM-DD
+                                  bookingDate: bookingDateString // Pass selected date as YYYY-MM-DD
                                 }
                               });
                             } else if (slot.status === 'joining' || slot.status === 'last-spot') {
                               // Joining/last-spot slots - open join game screen
-                              // Need to get the booking ID for this time slot
+                              // Need to get the booking ID for this time slot (trim court names for matching)
                               const booking = bookingsForDate.find(b => 
-                                (b as any).court === court.name && (b as any).time === slot.time
+                                (b as any).court?.trim().toLowerCase() === court.name.trim().toLowerCase() && 
+                                (b as any).time === slot.time
                               );
                               
                               if (booking && (booking as any).id) {

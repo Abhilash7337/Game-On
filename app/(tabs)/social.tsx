@@ -183,40 +183,38 @@ export default function SocialScreen() {
                     console.log('⚡ [SOCIAL] Using cached data - INSTANT LOAD!');
                     
                     if (isMounted) {
-                        // Set friends immediately from cache
-                        setFriends(cache.friends);
+                        // ✅ DON'T use cached friends - always load fresh conversations
+                        // This prevents showing stale friend list
                         
                         // ✅ Set sport groups immediately from cache (already have membership info!)
                         setGlobalSports(cache.globalSportGroups);
                         setCitySports(cache.citySportGroups);
                         
                         setDataSource('cache');
-                        setLoading(false); // ✅ Show UI immediately!
                         
                         console.log(`✅ [SOCIAL] Loaded from cache:`, {
-                            friends: cache.friends.length,
                             globalGroups: cache.globalSportGroups.length,
                             cityGroups: cache.citySportGroups.length
                         });
                     }
                     
-                    // ✅ NEW: Load all direct conversations (including non-friends) in background
-                    setTimeout(async () => {
-                        if (!isMounted) return;
+                    // ✅ Load all direct conversations immediately (don't show cached friends first)
+                    try {
+                        console.log('🔄 [SOCIAL] Loading all conversations...');
+                        const { success: convSuccess, conversations } = await FriendService.getAllDirectConversations();
                         
-                        try {
-                            console.log('🔄 [SOCIAL] Loading all conversations in background...');
-                            const { success: convSuccess, conversations } = await FriendService.getAllDirectConversations();
-                            
-                            if (convSuccess && conversations && isMounted) {
-                                const validConversations = conversations.filter(conv => conv && conv.id && conv.name);
-                                setFriends(validConversations);
-                                console.log(`✅ [SOCIAL] Updated with ${validConversations.length} total conversations`);
-                            }
-                        } catch (error) {
-                            console.error('Error loading all conversations:', error);
+                        if (convSuccess && conversations && isMounted) {
+                            const validConversations = conversations.filter(conv => conv && conv.id && conv.name);
+                            setFriends(validConversations);
+                            setLoading(false); // ✅ Show UI after conversations loaded
+                            console.log(`✅ [SOCIAL] Updated with ${validConversations.length} total conversations`);
+                        } else {
+                            setLoading(false);
                         }
-                    }, 100);
+                    } catch (error) {
+                        console.error('Error loading all conversations:', error);
+                        setLoading(false);
+                    }
                     
                     // Load pending requests in background
                     setTimeout(async () => {

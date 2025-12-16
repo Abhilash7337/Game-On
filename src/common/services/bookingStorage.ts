@@ -298,14 +298,16 @@ class BookingStorageService {
 
       // ✅ IMPROVED: Only check for CONFIRMED bookings (not pending)
       // Pending bookings will be auto-rejected if conflicting
+      // ✅ FIX: Use proper PostgREST syntax for time overlap detection
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, start_time, end_time, created_at')
+        .select('id, start_time, end_time, created_at, status')
         .eq('venue_id', venueId)
         .eq('court_id', courtId)
         .eq('booking_date', dateStr)
         .eq('status', 'confirmed') // ✅ Only confirmed bookings block
-        .or(`and(start_time.lt.${dbEndTime},end_time.gt.${dbStartTime})`);
+        .lt('start_time', dbEndTime) // ✅ Booking starts before our end time
+        .gt('end_time', dbStartTime); // ✅ Booking ends after our start time
 
       if (error) {
         console.error('❌ [STORAGE] Error checking conflicts:', error);
@@ -324,7 +326,7 @@ class BookingStorageService {
         });
       }
 
-      return hasConflict;      return hasConflict;
+      return hasConflict;
     } catch (error) {
       console.error('❌ [STORAGE] Error in checkBookingConflict:', error);
       return false; // If error, allow booking

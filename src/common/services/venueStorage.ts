@@ -62,6 +62,19 @@ export class VenueStorageService {
 
       // Transform Supabase data to match Venue interface
       const venues: Venue[] = (data || []).map(v => {
+        // 🔍 DEBUG: Log availability structure from database
+        if (v.availability) {
+          console.log(`📋 [VENUE ${v.name}] DB availability:`, {
+            hasOpen: !!v.availability.open,
+            hasClose: !!v.availability.close,
+            hasDays: !!v.availability.days,
+            daysType: typeof v.availability.days,
+            daysValue: v.availability.days
+          });
+        } else {
+          console.log(`⚠️ [VENUE ${v.name}] No availability data in database`);
+        }
+        
         // Parse location safely
         let location = { latitude: 0, longitude: 0 };
         if (v.location) {
@@ -91,7 +104,11 @@ export class VenueStorageService {
           amenities: v.facilities || [],
           images: v.images || [],
           pricing: v.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
-          operatingHours: v.availability || { open: '06:00', close: '22:00', days: [] },
+          operatingHours: {
+            open: v.availability?.open || '06:00',
+            close: v.availability?.close || '22:00',
+            days: v.availability?.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+          },
           courts: v.courts || [],
           ownerId: v.client_id,
           rating: v.rating || 0,
@@ -215,7 +232,11 @@ export class VenueStorageService {
         amenities: data.facilities,
         images: data.images,
         pricing: data.pricing,
-        operatingHours: data.availability,
+        operatingHours: {
+          open: data.availability?.open || '06:00',
+          close: data.availability?.close || '22:00',
+          days: data.availability?.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        },
         courts: venue.courts.map((court: any) => ({
           ...court,
           venueId: data.id
@@ -296,7 +317,11 @@ export class VenueStorageService {
         amenities: v.facilities || [],
         images: v.images || [],
         pricing: v.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
-        operatingHours: v.availability || { open: '06:00', close: '22:00', days: [] },
+        operatingHours: {
+          open: v.availability?.open || '06:00',
+          close: v.availability?.close || '22:00',
+          days: v.availability?.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        },
         courts: v.courts || [],
         ownerId: v.client_id,
         rating: v.rating || 0,
@@ -392,7 +417,11 @@ export class VenueStorageService {
         amenities: data.facilities,
         images: data.images,
         pricing: data.pricing,
-        operatingHours: data.availability,
+        operatingHours: {
+          open: data.availability?.open || '06:00',
+          close: data.availability?.close || '22:00',
+          days: data.availability?.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        },
         courts: updates.courts || [],
         ownerId: data.client_id,
         rating: data.rating,
@@ -439,7 +468,11 @@ export class VenueStorageService {
         amenities: data.facilities || [],
         images: data.images || [],
         pricing: data.pricing || { basePrice: 0, peakHourMultiplier: 1.5, currency: 'INR' },
-        operatingHours: data.availability || { open: '06:00', close: '22:00', days: [] },
+        operatingHours: {
+          open: data.availability?.open || '06:00',
+          close: data.availability?.close || '22:00',
+          days: data.availability?.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        },
         courts: data.courts || [],
         ownerId: data.client_id,
         rating: data.rating || 0,

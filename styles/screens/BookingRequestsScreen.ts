@@ -4,28 +4,25 @@ import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 export const bookingRequestsStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#047857',
   },
   header: {
-    backgroundColor: colors.background,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
-    ...shadows.sm,
+    backgroundColor: '#047857',
   },
   headerTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
   },
   headerSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   listContainer: {
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
+    backgroundColor: colors.background,
   },
   bookingCard: {
     backgroundColor: colors.background,

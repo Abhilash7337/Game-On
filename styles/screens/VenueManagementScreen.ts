@@ -452,4 +452,23 @@ export const venueManagementStyles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.background,
   },
+
+  timePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.gray300,
+    backgroundColor: colors.background,
+    gap: spacing.sm,
+  },
+
+  timePickerText: {
+    flex: 1,
+    fontSize: fontSize.base,
+    color: colors.textPrimary,
+    fontWeight: fontWeight.medium,
+  },
 });
