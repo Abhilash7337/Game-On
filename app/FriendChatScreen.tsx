@@ -7,20 +7,20 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { friendChatStyles } from '../styles/screens/FriendChatScreen';
@@ -361,24 +361,53 @@ export default function FriendChatScreen() {
   ), []);
 
   // Format date for join requests
-  const formatRequestDate = (date: string) => {
-    const d = new Date(date);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+  const formatRequestDate = (date: string | null | undefined): string => {
+    if (!date) return 'Date not set';
+    
+    try {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return 'Invalid date';
+      
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
 
-    if (d.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (d.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      if (d.toDateString() === today.toDateString()) {
+        return 'Today';
+      } else if (d.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+      } else {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
     }
   };
 
-  const formatRequestTime = (date: string) => {
-    const d = new Date(date);
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  // Format time string (handles both "14:00:00" and full timestamp)
+  const formatRequestTime = (time: string | null | undefined): string => {
+    if (!time) return 'Time not set';
+    
+    try {
+      // Check if it's just a time string (e.g., "14:00:00")
+      if (time.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+        const [hours, minutes] = time.split(':');
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${minutes} ${ampm}`;
+      }
+      
+      // Otherwise try to parse as full date
+      const d = new Date(time);
+      if (isNaN(d.getTime())) return time; // Return original if can't parse
+      
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return time || 'Invalid time';
+    }
   };
 
   // Calculate dynamic heights
@@ -469,21 +498,53 @@ export default function FriendChatScreen() {
             </View>
           ) : (
             <ScrollView style={friendChatStyles.requestsList}>
-              {joinRequests.map((request) => (
+              {joinRequests.map((request) => {
+                // Safe access to booking data with fallbacks
+                const bookingDate = request.booking?.booking_date;
+                const startTime = request.booking?.start_time;
+                const venueName = request.booking?.venue?.name || 'Venue';
+                const courtName = request.booking?.court?.name || 'Court';
+                const skillLevel = request.booking?.skill_level || 'Any';
+                const playerCount = request.booking?.player_count ?? 0;
+                const requesterName = request.requester?.full_name || 'Unknown Player';
+                const requesterAvatar = request.requester?.avatar;
+                const requesterRating = request.requester?.rating;
+
+                return (
                 <View key={request.id} style={friendChatStyles.requestCard}>
+                  {/* Requester Info */}
+                  <View style={friendChatStyles.requesterSection}>
+                    <View style={friendChatStyles.requesterAvatar}>
+                      {requesterAvatar ? (
+                        <Image source={{ uri: requesterAvatar }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+                      ) : (
+                        <Ionicons name="person-circle" size={40} color="#9CA3AF" />
+                      )}
+                    </View>
+                    <View style={friendChatStyles.requesterInfo}>
+                      <Text style={friendChatStyles.requesterName}>{requesterName}</Text>
+                      {requesterRating && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="star" size={14} color="#F59E0B" />
+                          <Text style={{ fontSize: 12, color: '#6B7280' }}>{requesterRating.toFixed(1)}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
                   <View style={friendChatStyles.requestHeader}>
                     <View style={friendChatStyles.requestInfo}>
                       <Text style={friendChatStyles.requestDate}>
-                        {formatRequestDate(request.booking.booking_date)} at {formatRequestTime(request.booking.start_time)}
+                        {formatRequestDate(bookingDate)} at {formatRequestTime(startTime)}
                       </Text>
                       <Text style={friendChatStyles.requestVenue}>
-                        {request.booking.venue?.name || 'Venue'} - {request.booking.court?.name || 'Court'}
+                        {venueName} - {courtName}
                       </Text>
                       <Text style={friendChatStyles.requestDetails}>
-                        Skill Level: {request.booking.skill_level || 'Any'}
+                        Skill Level: {skillLevel}
                       </Text>
                       <Text style={friendChatStyles.requestDetails}>
-                        Players: {request.booking.player_count || 0} spots needed
+                        Players: {playerCount} spots needed
                       </Text>
                     </View>
                   </View>
@@ -506,7 +567,8 @@ export default function FriendChatScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              ))}
+                );
+              })}
             </ScrollView>
           )}
         </SafeAreaView>

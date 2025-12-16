@@ -21,6 +21,10 @@ class UserAuthService {
   // Sign up a new user
   static async signUp(email: string, password: string, fullName: string, phone?: string) {
     try {
+      // Use the app's custom scheme for email verification redirect
+      // This ensures the link opens in the standalone app, not Expo Go
+      const emailRedirectUrl = 'sportsvenueapp://auth/callback';
+      
       // Sign up with user metadata - the database trigger will create the profile automatically
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -30,7 +34,7 @@ class UserAuthService {
             full_name: fullName,
             phone: phone || null,
           },
-          emailRedirectTo: undefined, // Disable email confirmation redirect
+          emailRedirectTo: emailRedirectUrl,
         }
       });
 

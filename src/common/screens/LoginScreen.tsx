@@ -9,8 +9,9 @@ import { UserAuthService } from '@/src/user/services/userAuth';
 import { loginScreenStyles } from '@/styles/screens/LoginScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
+import { Image } from 'expo-image';
+import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -369,7 +370,7 @@ export default function LoginScreen() {
           style={loginScreenStyles.scrollView}
           contentContainerStyle={[
             loginScreenStyles.scrollContent,
-            { paddingTop: isSignUp ? screenHeight * 0.15 : screenHeight * 0.35 }
+            { paddingTop: isSignUp ? 0 : screenHeight * 0.02 }
           ]}
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -388,6 +389,17 @@ export default function LoginScreen() {
               }
             ]}
           >
+            {/* Logo Section - Above Form */}
+            <View style={loginScreenStyles.logoContainer}>
+              <Image 
+                source={require('@/src/assets/images/logo.jpg')}
+                style={loginScreenStyles.logoImage}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                priority="high"
+                transition={0}
+              />
+            </View>
 
             {/* Glassmorphism Form Card */}
             <Animated.View style={[loginScreenStyles.glassCard, { transform: [{ scale: scaleAnim }] }]}>
