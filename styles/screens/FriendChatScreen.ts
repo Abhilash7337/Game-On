@@ -1,4 +1,4 @@
-import { StyleSheet, Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
 export const friendChatStyles = StyleSheet.create({
@@ -374,6 +374,27 @@ export const friendChatStyles = StyleSheet.create({
         elevation: 4,
       },
     }),
+  },
+  requesterSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  requesterAvatar: {
+    width: 40,
+    height: 40,
+    marginRight: spacing.md,
+  },
+  requesterInfo: {
+    flex: 1,
+  },
+  requesterName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: '#1F2937',
   },
   requestHeader: {
     marginBottom: spacing.md,

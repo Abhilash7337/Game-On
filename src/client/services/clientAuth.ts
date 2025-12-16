@@ -30,9 +30,15 @@ class ClientAuthService {
     phone?: string
   ) {
     try {
+      // Use the app's custom scheme for email verification redirect
+      const emailRedirectUrl = 'sportsvenueapp://auth/callback';
+      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: emailRedirectUrl,
+        }
       });
 
       if (authError) throw authError;

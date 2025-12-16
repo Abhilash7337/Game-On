@@ -1,4 +1,4 @@
-import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 import { borderRadius, colors, spacing, typography } from '../theme';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -131,6 +131,16 @@ export const loginScreenStyles = StyleSheet.create({
   scrollableContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: 0, // No gap - content starts immediately
+  },
+  // Logo Container - Above Form Card
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
+  },
+  logoImage: {
+    width: 350,
+    height: 350,
   },
   heroTitle: {
     fontSize: typography.fontSize.xxl,

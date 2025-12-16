@@ -1,6 +1,7 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -16,10 +17,46 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   const [imagesLoaded, setImagesLoaded] = useState(false);
+
+  // Handle deep links for email verification and OAuth callbacks
+  useEffect(() => {
+    // Handle URL when app is opened from a link
+    const handleDeepLink = (event: { url: string }) => {
+      console.log('🔗 [DEEP LINK] Received URL:', event.url);
+      
+      // Check if it's an auth callback URL
+      if (event.url.includes('auth/callback') || event.url.includes('access_token')) {
+        // Navigate to auth callback screen which will handle the tokens
+        router.push('/auth/callback');
+      }
+    };
+
+    // Check if app was opened with a URL
+    const checkInitialURL = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        console.log('🔗 [DEEP LINK] Initial URL:', initialUrl);
+        handleDeepLink({ url: initialUrl });
+      }
+    };
+
+    // Add listener for URL events (when app is already open)
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check initial URL after app loads
+    if (loaded && imagesLoaded) {
+      checkInitialURL();
+    }
+
+    return () => {
+      subscription.remove();
+    };
+  }, [loaded, imagesLoaded, router]);
 
   useEffect(() => {
     if (loaded) {

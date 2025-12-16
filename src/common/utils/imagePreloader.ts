@@ -177,6 +177,8 @@ class ImagePreloaderService {
    */
   async preloadCriticalAssets(): Promise<PreloadResult> {
     const criticalAssets = [
+      // App logo - loaded first for login screens
+      require('@/src/assets/images/logo.jpg'),
       // Hero images for all sports
       require('@/src/assets/images/hero/global-sports-hero.jpg'),
       require('@/src/assets/images/sports/basketball.jpg'),

@@ -6,6 +6,7 @@ import { LoadingOverlay } from '@/src/common/components/LoadingState';
 import { dataPrefetchService } from '@/src/common/services/dataPrefetch';
 import { clientLoginScreenStyles } from '@/styles/screens/ClientLoginScreen';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -274,7 +275,7 @@ export default function ClientLoginScreen() {
               style={styles.scrollView}
               contentContainerStyle={[
                 styles.scrollContent,
-                { paddingTop: isSignUp ? screenHeight * 0.15 : screenHeight * 0.35 }
+                { paddingTop: isSignUp ? 0 : screenHeight * 0.02 }
               ]}
               showsVerticalScrollIndicator={false}
               bounces={false}
@@ -282,6 +283,17 @@ export default function ClientLoginScreen() {
               contentInsetAdjustmentBehavior="never"
             >
               <View style={styles.scrollableContent}>
+                {/* Logo Section - Above Form */}
+                <View style={styles.logoContainer}>
+                  <Image 
+                    source={require('@/src/assets/images/logo.jpg')}
+                    style={styles.logoImage}
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                    priority="high"
+                    transition={0}
+                  />
+                </View>
 
                 {/* Glassmorphism Form Card */}
                 <View style={styles.glassCard}>

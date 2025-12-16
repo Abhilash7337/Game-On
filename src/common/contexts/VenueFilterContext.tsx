@@ -59,6 +59,7 @@ export interface Venue {
   amenities?: string[];
   bookings?: number;
   distanceKm?: number; // Numeric distance for sorting
+  ownerId?: string; // Owner ID for booking
 }
 
 interface VenueFilterContextValue {
