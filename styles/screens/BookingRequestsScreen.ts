@@ -4,19 +4,21 @@ import { borderRadius, colors, shadows, spacing, typography } from '../theme';
 export const bookingRequestsStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#047857',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#047857',
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   listContainer: {

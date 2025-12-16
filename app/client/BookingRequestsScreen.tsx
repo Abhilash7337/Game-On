@@ -207,8 +207,8 @@ export default function ClientBookingRequestsScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar style="light" />
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <StatusBar style="dark" />
             <Stack.Screen options={{ headerShown: false }} />
             
             <View style={styles.header}>
@@ -217,7 +217,7 @@ export default function ClientBookingRequestsScreen() {
                         onPress={() => router.back()}
                         style={{ marginRight: 16 }}
                     >
-                        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                        <Ionicons name="arrow-back" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.headerTitle}>Join Requests</Text>
