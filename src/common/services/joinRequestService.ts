@@ -126,6 +126,29 @@ export class JoinRequestService {
         message: 'Someone wants to join your game!'
       });
 
+      // ✅ NEW: Auto-send message to host
+      try {
+        const { ChatService } = await import('./chatService');
+        
+        // Get or create conversation with host
+        const conversationResult = await ChatService.getOrCreateDirectConversation(hostId);
+        
+        if (conversationResult.success && conversationResult.conversation) {
+          // Send automatic message
+          await ChatService.sendMessage(
+            conversationResult.conversation.id,
+            "Hey there! I wanna join your game.",
+            'text'
+          );
+          console.log('✅ Auto-message sent to host');
+        } else {
+          console.warn('⚠️ Failed to create conversation for auto-message:', conversationResult.error);
+        }
+      } catch (messageError) {
+        // Non-critical error - join request still succeeds even if message fails
+        console.error('⚠️ Error sending auto-message:', messageError);
+      }
+
       console.log('✅ Join request sent successfully:', joinRequest.id);
       return { success: true, requestId: joinRequest.id };
     } catch (error) {

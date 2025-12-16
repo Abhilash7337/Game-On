@@ -129,6 +129,131 @@ export class FriendService {
     }
   }
 
+  // ✅ NEW: Get all direct conversations (including with non-friends like join requesters)
+  static async getAllDirectConversations() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Get all direct conversations where user is a participant
+      const { data: userConversations, error } = await supabase
+        .from('conversation_participants')
+        .select(`
+          conversation_id,
+          conversations!inner(id, type, created_at)
+        `)
+        .eq('user_id', user.id)
+        .eq('conversations.type', 'direct');
+
+      if (error) throw error;
+
+      if (!userConversations || userConversations.length === 0) {
+        return { success: true, conversations: [] };
+      }
+
+      const conversationsData = [];
+
+      for (const userConv of userConversations) {
+        // Get the other participant (not the current user)
+        const { data: otherParticipants } = await supabase
+          .from('conversation_participants')
+          .select('user_id')
+          .eq('conversation_id', userConv.conversation_id)
+          .neq('user_id', user.id);
+
+        if (!otherParticipants || otherParticipants.length === 0) continue;
+
+        const otherUserId = otherParticipants[0].user_id;
+
+        // Get other user's data
+        const { data: otherUserData } = await supabase
+          .from('users')
+          .select('id, full_name, email')
+          .eq('id', otherUserId)
+          .single();
+
+        if (!otherUserData) continue;
+
+        // Get last message
+        const { data: lastMessages } = await supabase
+          .from('messages')
+          .select('content, created_at, sender_id')
+          .eq('conversation_id', userConv.conversation_id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        let lastMessage = undefined;
+        let lastMessageTime = undefined;
+        let unreadCount = 0;
+
+        if (lastMessages && lastMessages.length > 0) {
+          const lastMsg = lastMessages[0];
+          lastMessage = lastMsg.content;
+          lastMessageTime = new Date(lastMsg.created_at);
+
+          // Calculate unread count
+          const { data: userParticipant } = await supabase
+            .from('conversation_participants')
+            .select('last_read_at')
+            .eq('conversation_id', userConv.conversation_id)
+            .eq('user_id', user.id)
+            .single();
+
+          if (userParticipant?.last_read_at) {
+            const { data: unreadMessages } = await supabase
+              .from('messages')
+              .select('id')
+              .eq('conversation_id', userConv.conversation_id)
+              .neq('sender_id', user.id)
+              .gt('created_at', userParticipant.last_read_at);
+
+            unreadCount = unreadMessages?.length || 0;
+          } else {
+            const { data: unreadMessages } = await supabase
+              .from('messages')
+              .select('id')
+              .eq('conversation_id', userConv.conversation_id)
+              .neq('sender_id', user.id);
+
+            unreadCount = unreadMessages?.length || 0;
+          }
+        }
+
+        // Check if they're friends
+        const { data: friendship } = await supabase
+          .from('friends')
+          .select('status')
+          .or(`and(user_id.eq.${user.id},friend_id.eq.${otherUserId}),and(user_id.eq.${otherUserId},friend_id.eq.${user.id})`)
+          .single();
+
+        conversationsData.push({
+          id: otherUserData.id,
+          name: otherUserData.full_name,
+          profilePhoto: `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUserData.full_name)}&background=047857&color=fff`,
+          isOnline: false,
+          status: friendship?.status || 'none' as any,
+          conversationId: userConv.conversation_id,
+          lastMessage,
+          lastMessageTime,
+          unreadCount
+        });
+      }
+
+      // Sort by last message time (most recent first)
+      conversationsData.sort((a, b) => {
+        if (!a.lastMessageTime && !b.lastMessageTime) return 0;
+        if (!a.lastMessageTime) return 1;
+        if (!b.lastMessageTime) return -1;
+        return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
+      });
+
+      return { success: true, conversations: conversationsData };
+    } catch (error) {
+      console.error('Get all conversations error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get conversations' };
+    }
+  }
+
   // Get conversation info for a specific friend (for updating unread counts)
   static async getFriendConversationInfo(friendId: string) {
     try {

@@ -142,14 +142,24 @@ export default function SocialScreen() {
             const cache = dataPrefetchService.getCache();
             const cacheAge = dataPrefetchService.getCacheAge();
             
-            // If cache older than 2 minutes, refresh in background
+            // Always refresh conversations on focus (lightweight and important to keep fresh)
+            FriendService.getAllDirectConversations().then(({ success, conversations }) => {
+                if (success && conversations) {
+                    const validConversations = conversations.filter(conv => conv && conv.id && conv.name);
+                    setFriends(validConversations);
+                    console.log(`✅ [SOCIAL] Refreshed conversations on focus: ${validConversations.length} found`);
+                }
+            }).catch(err => {
+                console.error('❌ [SOCIAL] Error refreshing conversations:', err);
+            });
+            
+            // If cache older than 2 minutes, refresh sport groups in background
             if (cacheAge > 2 * 60 * 1000) {
-                console.log('🔄 [SOCIAL] Cache stale, refreshing in background...');
+                console.log('🔄 [SOCIAL] Cache stale, refreshing sport groups in background...');
                 dataPrefetchService.prefetchAll().then(() => {
-                    // Update from fresh cache
+                    // Update sport groups from fresh cache
                     const freshCache = dataPrefetchService.getCache();
                     if (freshCache) {
-                        setFriends(freshCache.friends);
                         setGlobalSports(freshCache.globalSportGroups);
                         setCitySports(freshCache.citySportGroups);
                         console.log('✅ [SOCIAL] Background refresh completed');
@@ -190,56 +200,21 @@ export default function SocialScreen() {
                         });
                     }
                     
-                    // ✅ Load conversation metadata in background (deferred 100ms)
+                    // ✅ NEW: Load all direct conversations (including non-friends) in background
                     setTimeout(async () => {
                         if (!isMounted) return;
                         
                         try {
-                            const conversationPromises = cache.friends.map(async (friend) => {
-                                try {
-                                    const { success: convSuccess, conversationInfo } = await FriendService.getFriendConversationInfo(friend.id);
-                                    return {
-                                        friendId: friend.id,
-                                        success: convSuccess,
-                                        conversationInfo
-                                    };
-                                } catch (error) {
-                                    console.error('Error loading conversation info for friend:', friend.name, error);
-                                    return { friendId: friend.id, success: false, conversationInfo: null };
-                                }
-                            });
+                            console.log('🔄 [SOCIAL] Loading all conversations in background...');
+                            const { success: convSuccess, conversations } = await FriendService.getAllDirectConversations();
                             
-                            const conversationResults = await Promise.all(conversationPromises);
-                            
-                            if (isMounted) {
-                                setFriends(prevFriends => {
-                                    const updatedFriends = [...prevFriends];
-                                    
-                                    conversationResults.forEach(result => {
-                                        if (result.success && result.conversationInfo) {
-                                            const friendIndex = updatedFriends.findIndex(f => f && f.id === result.friendId);
-                                            if (friendIndex !== -1) {
-                                                updatedFriends[friendIndex] = {
-                                                    ...updatedFriends[friendIndex],
-                                                    conversationId: result.conversationInfo.conversationId,
-                                                    lastMessage: result.conversationInfo.lastMessage,
-                                                    lastMessageTime: result.conversationInfo.lastMessageTime,
-                                                    unreadCount: result.conversationInfo.unreadCount
-                                                };
-                                            }
-                                        }
-                                    });
-                                    
-                                    return updatedFriends.sort((a, b) => {
-                                        if (!a?.lastMessageTime && !b?.lastMessageTime) return 0;
-                                        if (!a?.lastMessageTime) return 1;
-                                        if (!b?.lastMessageTime) return -1;
-                                        return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
-                                    });
-                                });
+                            if (convSuccess && conversations && isMounted) {
+                                const validConversations = conversations.filter(conv => conv && conv.id && conv.name);
+                                setFriends(validConversations);
+                                console.log(`✅ [SOCIAL] Updated with ${validConversations.length} total conversations`);
                             }
                         } catch (error) {
-                            console.error('Error loading conversation data:', error);
+                            console.error('Error loading all conversations:', error);
                         }
                     }, 100);
                     
@@ -258,66 +233,16 @@ export default function SocialScreen() {
                 console.log('📡 [SOCIAL] Cache miss/stale, loading fresh data...');
                 setDataSource('loading');
                 
-                // Load real friends data (basic info first for fast loading)
-                const { success, friends: realFriends } = await FriendService.getFriends();
-                if (success && realFriends && isMounted) {
-                    // Filter out invalid friends immediately
-                    const validFriends = realFriends.filter(friend => friend && friend.id && friend.name);
-                    setFriends(validFriends);
+                // ✅ NEW: Load ALL conversations (friends + non-friends with active chats)
+                const { success, conversations } = await FriendService.getAllDirectConversations();
+                if (success && conversations && isMounted) {
+                    // Filter out invalid entries
+                    const validConversations = conversations.filter(conv => conv && conv.id && conv.name);
+                    setFriends(validConversations);
                     setDataSource('fresh');
-                    setLoading(false); // Show friends immediately
+                    setLoading(false);
                     
-                    // Load conversation info for all friends in parallel (deferred, in background)
-                    setTimeout(async () => {
-                        try {
-                            const conversationPromises = validFriends.map(async (friend) => {
-                                try {
-                                    const { success: convSuccess, conversationInfo } = await FriendService.getFriendConversationInfo(friend.id);
-                                    return {
-                                        friendId: friend.id,
-                                        success: convSuccess,
-                                        conversationInfo
-                                    };
-                                } catch (error) {
-                                    console.error('Error loading conversation info for friend:', friend.name, error);
-                                    return { friendId: friend.id, success: false, conversationInfo: null };
-                                }
-                            });
-                            
-                            const conversationResults = await Promise.all(conversationPromises);
-                            
-                            if (isMounted) {
-                                setFriends(prevFriends => {
-                                    const updatedFriends = [...prevFriends];
-                                    
-                                    conversationResults.forEach(result => {
-                                        if (result.success && result.conversationInfo) {
-                                            const friendIndex = updatedFriends.findIndex(f => f && f.id === result.friendId);
-                                            if (friendIndex !== -1) {
-                                                updatedFriends[friendIndex] = {
-                                                    ...updatedFriends[friendIndex],
-                                                    conversationId: result.conversationInfo.conversationId,
-                                                    lastMessage: result.conversationInfo.lastMessage,
-                                                    lastMessageTime: result.conversationInfo.lastMessageTime,
-                                                    unreadCount: result.conversationInfo.unreadCount
-                                                };
-                                            }
-                                        }
-                                    });
-                                    
-                                    // Sort by last message time (most recent first)
-                                    return updatedFriends.sort((a, b) => {
-                                        if (!a?.lastMessageTime && !b?.lastMessageTime) return 0;
-                                        if (!a?.lastMessageTime) return 1;
-                                        if (!b?.lastMessageTime) return -1;
-                                        return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
-                                    });
-                                });
-                            }
-                        } catch (error) {
-                            console.error('Error loading conversation data:', error);
-                        }
-                    }, 100); // Defer conversation loading
+                    console.log(`✅ [SOCIAL] Loaded ${validConversations.length} conversations (friends + chat participants)`);
                 } else {
                     setLoading(false);
                 }

@@ -10,6 +10,7 @@ import { loginScreenStyles } from '@/styles/screens/LoginScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -153,7 +154,12 @@ export default function LoginScreen() {
       );
       
       if (result && result.success) {
-        Alert.alert('Success', 'Account created successfully! Please check your email to verify your account.', [
+        // Check if email confirmation is needed
+        const message = result.needsEmailConfirmation
+          ? 'Account created! Please check your email to verify your account before signing in.'
+          : 'Account created successfully! You can now sign in.';
+        
+        Alert.alert('Success', message, [
           {
             text: 'Continue',
             onPress: () => {
@@ -231,6 +237,19 @@ export default function LoginScreen() {
   };
 
   const handleGoogleAuth = async () => {
+    // Check if running in Expo Go
+    // Expo Go uses 'expo.io' in the app owner, standalone builds don't
+    const isExpoGo = Constants.appOwnership === 'expo';
+    
+    if (isExpoGo) {
+      Alert.alert(
+        'Google Auth Not Available',
+        'Google authentication is not supported in Expo Go.\n\nPlease use one of these options:\n\n📧 Email & Password\n📱 Phone Number\n\nTo test Google auth, you need to build a development client or standalone app.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setLoading('google', true);
     
     try {

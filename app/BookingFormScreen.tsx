@@ -36,6 +36,7 @@ export default function BookingFormScreen() {
     const preSelectedCourt = params.court as string;
     const preSelectedCourtId = params.courtId as string; // Real court UUID from database
     const preSelectedTime = params.timeSlot as string;
+    const preSelectedDate = params.bookingDate as string; // YYYY-MM-DD format
     
     const [courts, setCourts] = useState<string[]>([]);
     const [times, setTimes] = useState<string[]>([]);
@@ -46,7 +47,7 @@ export default function BookingFormScreen() {
     
     const [court, setCourt] = useState<string>(preSelectedCourt || '');
     const [courtId, setCourtId] = useState<string>(preSelectedCourtId || ''); // Store actual court UUID
-    const [date, setDate] = useState(new Date());
+    const [date, setDate] = useState(preSelectedDate ? new Date(preSelectedDate) : new Date());
     const [showDate, setShowDate] = useState(false);
     const [time, setTime] = useState<string>(preSelectedTime || '');
     const [duration, setDuration] = useState<string>('');
@@ -65,6 +66,13 @@ export default function BookingFormScreen() {
     const [showPlayersModal, setShowPlayersModal] = useState(false);
 
     useEffect(() => {
+        // Log the selected date to verify it's correct
+        console.log('📅 [BOOKING FORM] Initialized with date:', {
+            preSelectedDate: preSelectedDate,
+            dateObject: date.toISOString().split('T')[0],
+            dateString: date.toDateString()
+        });
+
         // Load courts for this specific venue
         loadVenueCourts();
         loadVenueOperatingHours();
@@ -517,17 +525,36 @@ export default function BookingFormScreen() {
 
             Alert.alert(
                 'Booking Request Sent!',
-                `Your booking request for ${venueName} has been sent to the venue owner for approval. You'll receive a notification once it's confirmed.`,
+                `Your booking request for ${venueName} on ${date.toLocaleDateString()} has been sent to the venue owner for approval. You'll receive a notification once it's confirmed.`,
                 [
                     { 
-                        text: 'OK', 
+                        text: 'View Bookings', 
+                        onPress: () => {
+                            // Go back to venue details with the booked date
+                            router.push({
+                                pathname: '/VenueDetailsScreen',
+                                params: {
+                                    venueId: venueId,
+                                    bookedDate: date.toISOString().split('T')[0]
+                                }
+                            });
+                        }
+                    },
+                    {
+                        text: 'Go Home',
                         onPress: () => router.push('/(tabs)')
                     }
                 ]
             );
         } catch (error) {
             console.error('❌ [BOOKING] Error creating booking:', error);
-            Alert.alert('Error', 'Failed to create booking request. Please try again.');
+            
+            // Show specific error message if available
+            const errorMessage = error instanceof Error 
+                ? error.message 
+                : 'Failed to create booking request. Please try again.';
+            
+            Alert.alert('Booking Failed', errorMessage);
         } finally {
             setIsSubmitting(false);
         }

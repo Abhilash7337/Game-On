@@ -162,75 +162,40 @@ function CourtsScreenContent() {
 					if (freshCache) {
 						const venuesWithDistance = freshCache.venues.map(v => {
 							let distanceText = 'N/A';
+							let distanceKm: number | undefined = undefined;
 							
-							if (freshCache.userLocation && v.location) {
+							// v.coordinates has the lat/lng, v.location is the address string
+							if (freshCache.userLocation && v.coordinates) {
 								try {
-									// Parse location if it's a string
-									let venueCoords = v.location;
-									if (typeof v.location === 'string') {
-										venueCoords = JSON.parse(v.location);
-									}
-									
-									// Handle different coordinate formats
-									let venueLat, venueLng;
-									if (venueCoords.coordinates) {
-										// GeoJSON format: [longitude, latitude]
-										venueLat = venueCoords.coordinates[1];
-										venueLng = venueCoords.coordinates[0];
-									} else if (venueCoords.latitude && venueCoords.longitude) {
-										// Direct lat/lng object
-										venueLat = venueCoords.latitude;
-										venueLng = venueCoords.longitude;
-									}
-									
-									if (venueLat && venueLng) {
-										const distance = calculateDistance(
-											freshCache.userLocation.latitude,
-											freshCache.userLocation.longitude,
-											venueLat,
-											venueLng
-										);
-										distanceText = formatDistance(distance);
-									}
+									const distance = calculateDistance(
+										freshCache.userLocation.latitude,
+										freshCache.userLocation.longitude,
+										v.coordinates.latitude,
+										v.coordinates.longitude
+									);
+									distanceText = formatDistance(distance);
+									distanceKm = distance;
 								} catch (error) {
 									console.log('⚠️ [COURTS] Distance calculation error for venue:', v.name);
 								}
 							}
 							
-							// ✅ ENHANCED: Calculate numeric distance for filtering
-							const distanceKm = freshCache.userLocation && v.location ? (() => {
-								try {
-									let venueCoords = typeof v.location === 'string' ? JSON.parse(v.location) : v.location;
-									let venueLat, venueLng;
-									
-									if (venueCoords.coordinates) {
-										venueLat = venueCoords.coordinates[1];
-										venueLng = venueCoords.coordinates[0];
-									} else if (venueCoords.latitude && venueCoords.longitude) {
-										venueLat = venueCoords.latitude;
-										venueLng = venueCoords.longitude;
-									}
-									
-									if (venueLat && venueLng) {
-										return calculateDistance(
-											freshCache.userLocation.latitude,
-											freshCache.userLocation.longitude,
-											venueLat,
-											venueLng
-										);
-									}
-								} catch {}
-								return undefined;
-							})() : undefined;
-							
 							return {
-								...v,
+								id: v.id,
+								name: v.name,
+								rating: v.rating || 0,
+								reviews: v.reviews || 0,
+								location: v.location || '',
+								price: v.price || 0,
+								image: v.images && v.images.length > 0 
+									? `${v.images[0]}?w=300&h=150&q=80`
+									: require('@/assets/images/partial-react-logo.png'),
+								images: v.images || [],
+								coordinates: v.coordinates,
+								sportType: v.sportType,
+								sportTypes: v.sportTypes,
 								distance: distanceText,
 								distanceKm,
-								coordinates: v.location && v.location.coordinates ? {
-									latitude: v.location.coordinates[1],
-									longitude: v.location.coordinates[0]
-								} : undefined
 							};
 						});
 						setRawVenues(venuesWithDistance);
@@ -249,10 +214,6 @@ function CourtsScreenContent() {
 			setError(null); // Clear any previous errors
 			
 			try {
-				// ✅ FORCE FRESH DATA: Clear cache to ensure we get latest sport types
-				console.log('🗑️ [COURTS] Clearing cache to force fresh data...');
-				dataPrefetchService.clearCache();
-				
 				// ✅ OPTIMIZATION: Try cache first for instant load!
 				const cache = dataPrefetchService.getCache();
 				if (cache && dataPrefetchService.isCacheFresh()) {
@@ -263,19 +224,14 @@ function CourtsScreenContent() {
 						let distanceText = 'N/A';
 						let distanceKm: number | undefined = undefined;
 						
-						if (cache.userLocation && v.location) {
+						// v.coordinates has the lat/lng, v.location is the address string
+						if (cache.userLocation && v.coordinates) {
 							try {
-								// Parse location if it's a string
-								let venueCoords = v.location;
-								if (typeof v.location === 'string') {
-									venueCoords = JSON.parse(v.location);
-								}
-								
 								const distance = calculateDistance(
 									cache.userLocation.latitude,
 									cache.userLocation.longitude,
-									venueCoords.latitude,
-									venueCoords.longitude
+									v.coordinates.latitude,
+									v.coordinates.longitude
 								);
 								distanceText = formatDistance(distance);
 								distanceKm = distance; // Store numeric value
@@ -288,14 +244,16 @@ function CourtsScreenContent() {
 							id: v.id,
 							name: v.name,
 							rating: v.rating || 0,
-							reviews: 0,
-							location: v.address || '',
-							price: v.pricing?.basePrice || 0,
+							reviews: v.reviews || 0,
+							location: v.location || '',
+							price: v.price || 0,
 							image: v.images && v.images.length > 0 
 								? `${v.images[0]}?w=300&h=150&q=80`
 								: require('@/assets/images/partial-react-logo.png'),
 							images: v.images || [],
-							coordinates: v.location,
+							coordinates: v.coordinates,
+							sportType: v.sportType,
+							sportTypes: v.sportTypes,
 							distance: distanceText,
 							distanceKm, // ✅ NEW: Numeric distance for filtering
 						};

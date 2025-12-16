@@ -1,4 +1,5 @@
 import { supabase } from '@/src/common/services/supabase';
+import { messageService } from '@/src/common/services/messageService';
 import { styles } from '@/styles/screens/SportGroupChatScreen';
 import { colors } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,41 +100,25 @@ export default function SportGroupChatScreen() {
     };
   }, []);
 
-  // Load messages
+  // Load messages with caching
   const loadMessages = useCallback(async () => {
     if (!conversationId) return;
 
     try {
       console.log(`📥 Loading messages for conversation: ${conversationId} (${groupName})`);
       
-      // Load ONLY messages from THIS conversation (no mixing!)
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          id,
-          content,
-          created_at,
-          sender_id,
-          conversation_id,
-          users!messages_sender_id_fkey (
-            full_name
-          )
-        `)
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      const formattedMessages: Message[] = (data || []).map((msg: any) => ({
+      // Use messageService with caching
+      const formattedMessages = await messageService.getConversationMessages(conversationId, userId);
+      
+      setMessages(formattedMessages.map(msg => ({
         id: msg.id,
-        senderId: msg.sender_id,
-        senderName: (Array.isArray(msg.users) ? msg.users[0]?.full_name : msg.users?.full_name) || 'Unknown',
-        content: msg.content,
-        timestamp: new Date(msg.created_at),
-        isMe: msg.sender_id === userId
-      }));
-
-      setMessages(formattedMessages);
+        senderId: msg.userId,
+        senderName: msg.username,
+        content: msg.text,
+        timestamp: msg.timestamp,
+        isMe: msg.isMe
+      })));
+      
       console.log(`✅ Loaded ${formattedMessages.length} messages for ${groupName}`);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -143,65 +128,46 @@ export default function SportGroupChatScreen() {
     }
   }, [conversationId, userId, groupName]);
 
+  // Load messages once on mount only
   useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
+    if (conversationId && userId) {
+      loadMessages();
+    }
+  }, [conversationId, userId]); // Don't include loadMessages to avoid double load
 
-  // Real-time subscription
+  // Real-time subscription using messageService (updates cache automatically)
   useEffect(() => {
     if (!conversationId || !userId) return;
 
     console.log(`🔔 Setting up real-time subscription for: ${conversationId} (${groupName})`);
 
-    // Subscribe ONLY to THIS conversation's messages (no mixing!)
-    const channel = supabase
-      .channel(`sport-group-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        async (payload) => {
-          if (payload.new && typeof payload.new === 'object') {
-            const newMsg = payload.new as any;
-            
-            // Get sender name
-            const { data: senderData } = await supabase
-              .from('users')
-              .select('full_name')
-              .eq('id', newMsg.sender_id)
-              .single();
-
-            const message: Message = {
-              id: newMsg.id,
-              senderId: newMsg.sender_id,
-              senderName: senderData?.full_name || 'Unknown',
-              content: newMsg.content,
-              timestamp: new Date(newMsg.created_at),
-              isMe: newMsg.sender_id === userId
-            };
-
-            setMessages(prev => {
-              // Avoid duplicates
-              if (prev.some(m => m.id === message.id)) return prev;
-              return [...prev, message];
-            });
-            
-            // Scroll to bottom
-            setTimeout(() => {
-              flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-          }
-        }
-      )
-      .subscribe();
+    const channel = messageService.subscribeToMessages(
+      conversationId,
+      userId,
+      (newMsg) => {
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev, {
+            id: newMsg.id,
+            senderId: newMsg.userId,
+            senderName: newMsg.username,
+            content: newMsg.text,
+            timestamp: newMsg.timestamp,
+            isMe: newMsg.isMe
+          }];
+        });
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
 
     return () => {
       console.log(`🔕 Unsubscribing from: ${conversationId}`);
-      channel.unsubscribe();
+      messageService.unsubscribeFromMessages(channel);
     };
   }, [conversationId, userId, groupName]);
 
@@ -210,17 +176,8 @@ export default function SportGroupChatScreen() {
 
     setSending(true);
     try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: userId,
-          content: newMessage.trim(),
-          message_type: 'text'
-        });
-
-      if (error) throw error;
-
+      // Use messageService which updates cache automatically
+      await messageService.sendMessage(conversationId, userId, newMessage.trim());
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);

@@ -21,28 +21,34 @@ class UserAuthService {
   // Sign up a new user
   static async signUp(email: string, password: string, fullName: string, phone?: string) {
     try {
+      // Sign up with user metadata - the database trigger will create the profile automatically
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone || null,
+          },
+          emailRedirectTo: undefined, // Disable email confirmation redirect
+        }
       });
 
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create user profile in the database
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email,
-            full_name: fullName,
-            phone: phone || null,
-          });
-
-        if (profileError) throw profileError;
-
-        return { success: true, user: authData.user };
+        // Check if email confirmation is required
+        const needsEmailConfirmation = authData.user.identities?.length === 0;
+        
+        // Profile is automatically created by database trigger
+        return { 
+          success: true, 
+          user: authData.user,
+          needsEmailConfirmation 
+        };
       }
+
+      return { success: false, error: 'Sign up failed - no user returned' };
     } catch (error) {
       console.error('Sign up error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Sign up failed';

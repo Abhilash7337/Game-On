@@ -1,4 +1,5 @@
 import { Conversation, Message, supabase } from '@/src/common/services/supabase';
+import MessageCacheService from '@/src/common/services/messageCacheService';
 
 export class ChatService {
   // Get or create a direct conversation between two users
@@ -89,7 +90,7 @@ export class ChatService {
     }
   }
 
-  // Get messages for a conversation (optimized with JOIN)
+  // Get messages for a conversation (optimized with cache + delta fetch)
   static async getMessages(conversationId: string, limit = 50, offset = 0) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -100,6 +101,80 @@ export class ChatService {
         return { success: true, messages: [] };
       }
 
+      // For pagination (offset > 0), always fetch from DB
+      if (offset > 0) {
+        return this.fetchMessagesFromDB(conversationId, user.id, limit, offset);
+      }
+
+      // Try to get from cache first
+      const { messages: cachedMessages, lastMessageTimestamp, isCacheValid } = 
+        await MessageCacheService.getCachedMessages(conversationId);
+
+      // If cache is fresh and has messages, return cached data
+      if (isCacheValid && cachedMessages.length > 0) {
+        console.log(`⚡ [CHAT] Returning ${cachedMessages.length} cached messages for ${conversationId}`);
+        
+        // Ensure timestamps are Date objects (they might be strings from AsyncStorage)
+        const messagesWithDateObjects = cachedMessages.map(msg => ({
+          ...msg,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+        }));
+        
+        return { success: true, messages: messagesWithDateObjects, fromCache: true };
+      }
+
+      // Cache miss or stale - fetch from DB
+      // If we have cached messages, do delta fetch (only new messages)
+      if (lastMessageTimestamp && cachedMessages.length > 0) {
+        console.log(`🔄 [CHAT] Delta fetch: getting messages newer than ${lastMessageTimestamp}`);
+        const deltaResult = await this.fetchDeltaMessages(
+          conversationId, 
+          user.id, 
+          lastMessageTimestamp
+        );
+
+        if (deltaResult.success && deltaResult.newMessages && deltaResult.newMessages.length > 0) {
+          console.log(`✅ [CHAT] Delta fetch: found ${deltaResult.newMessages.length} new messages`);
+          
+          // Cache the new messages (append mode)
+          await MessageCacheService.cacheMessages(conversationId, deltaResult.newMessages, true);
+
+          // Return all messages (cached + new) - ensure timestamps are Date objects
+          const allMessages = [...cachedMessages, ...deltaResult.newMessages].map(msg => ({
+            ...msg,
+            timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+          }));
+
+          return { success: true, messages: allMessages, fromCache: false, deltaFetch: true };
+        }
+
+        // No new messages, return cached (even if stale) - ensure timestamps are Date objects
+        console.log(`✅ [CHAT] Delta fetch: no new messages, returning ${cachedMessages.length} cached`);
+        const messagesWithDateObjects = cachedMessages.map(msg => ({
+          ...msg,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+        }));
+        return { success: true, messages: messagesWithDateObjects, fromCache: true };
+      }
+
+      // Full fetch from DB and cache
+      console.log(`📥 [CHAT] Full fetch from DB for ${conversationId}`);
+      return this.fetchMessagesFromDB(conversationId, user.id, limit, offset, true);
+    } catch (error) {
+      console.error('Get messages error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to get messages' };
+    }
+  }
+
+  // Fetch messages from database
+  private static async fetchMessagesFromDB(
+    conversationId: string, 
+    userId: string, 
+    limit: number, 
+    offset: number,
+    shouldCache = false
+  ) {
+    try {
       // Use JOIN to get messages with sender names in a single query
       const { data, error } = await supabase
         .from('messages')
@@ -111,7 +186,7 @@ export class ChatService {
           message_type,
           metadata,
           created_at,
-          users!messages_sender_id_fkey(full_name)
+          users!messages_sender_id_fkey(id, full_name, email)
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
@@ -129,16 +204,66 @@ export class ChatService {
         messageType: msg.message_type,
         metadata: msg.metadata,
         timestamp: new Date(msg.created_at),
-        isMe: msg.sender_id === user.id
+        isMe: msg.sender_id === userId
       }));
 
       // Reverse to show oldest first (for chat display)
       messages.reverse();
 
-      return { success: true, messages };
+      // Cache if requested and it's the initial fetch
+      if (shouldCache && offset === 0 && messages.length > 0) {
+        await MessageCacheService.cacheMessages(conversationId, messages);
+        console.log(`💾 [CHAT] Cached ${messages.length} messages for ${conversationId}`);
+      }
+
+      return { success: true, messages, fromCache: false };
     } catch (error) {
-      console.error('Get messages error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Failed to get messages' };
+      console.error('Fetch messages from DB error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch messages' };
+    }
+  }
+
+  // Fetch only new messages since last cache timestamp (delta fetch)
+  private static async fetchDeltaMessages(
+    conversationId: string,
+    userId: string,
+    lastFetchedAt: string
+  ) {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          conversation_id,
+          sender_id,
+          content,
+          message_type,
+          metadata,
+          created_at,
+          users!messages_sender_id_fkey(id, full_name, email)
+        `)
+        .eq('conversation_id', conversationId)
+        .gt('created_at', lastFetchedAt)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const newMessages: Message[] = (data || []).map((msg: any) => ({
+        id: msg.id,
+        conversationId: msg.conversation_id,
+        senderId: msg.sender_id,
+        senderName: (Array.isArray(msg.users) ? msg.users[0]?.full_name : msg.users?.full_name) || 'Unknown User',
+        content: msg.content,
+        messageType: msg.message_type,
+        metadata: msg.metadata,
+        timestamp: new Date(msg.created_at),
+        isMe: msg.sender_id === userId
+      }));
+
+      return { success: true, newMessages };
+    } catch (error) {
+      console.error('Fetch delta messages error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch delta messages' };
     }
   }
 
@@ -180,6 +305,9 @@ export class ChatService {
         timestamp: new Date(data.created_at),
         isMe: true
       };
+
+      // Add to cache (append mode)
+      await MessageCacheService.cacheMessages(conversationId, [message], true);
 
       return { success: true, message };
     } catch (error) {
@@ -393,3 +521,4 @@ export class ChatService {
     }
   }
 }
+

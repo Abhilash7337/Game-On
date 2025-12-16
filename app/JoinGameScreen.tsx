@@ -175,6 +175,11 @@ export default function JoinGameScreen() {
             friendAvatar: bookingDetails.host.avatar || '',
           }
         });
+        
+        // Reset state after navigation (in case user comes back)
+        setTimeout(() => {
+          setOpeningChat(false);
+        }, 500);
       } else {
         Alert.alert('Error', 'Failed to open chat');
         setOpeningChat(false);

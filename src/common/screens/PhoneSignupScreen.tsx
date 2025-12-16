@@ -247,21 +247,21 @@ export default function PhoneSignupScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
       
       <AppHeader 
-        title="Phone Signup"
-        subtitle="Quick and secure authentication"
-      >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBack}
-        >
-          <Ionicons name="arrow-back-outline" size={20} color="#fff" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </AppHeader>
+        title="GAME ON"
+        subtitle={
+          step === 'phone' 
+            ? 'Create your account with phone' 
+            : step === 'verification' 
+            ? 'Verify your code' 
+            : 'Complete your profile'
+        }
+        showBackButton={true}
+        onBackPress={handleBack}
+      />
 
       <KeyboardAvoidingView 
         style={styles.keyboardView}
@@ -274,29 +274,6 @@ export default function PhoneSignupScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.formContainer}>
-            {/* Progress Indicator */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View style={[
-                  styles.progressStep, 
-                  step === 'phone' || step === 'verification' || step === 'profile' ? styles.progressStepActive : null
-                ]} />
-                <View style={[
-                  styles.progressStep, 
-                  step === 'verification' || step === 'profile' ? styles.progressStepActive : null
-                ]} />
-                <View style={[
-                  styles.progressStep, 
-                  step === 'profile' ? styles.progressStepActive : null
-                ]} />
-              </View>
-              <View style={styles.progressLabels}>
-                <Text style={styles.progressLabel}>Phone</Text>
-                <Text style={styles.progressLabel}>Verify</Text>
-                <Text style={styles.progressLabel}>Profile</Text>
-              </View>
-            </View>
-
             {/* Step Content */}
             {step === 'phone' && renderPhoneStep()}
             {step === 'verification' && renderVerificationStep()}

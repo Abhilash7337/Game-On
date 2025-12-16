@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import MessageCacheService from '@/src/common/services/messageCacheService';
 
 export interface Message {
   id: string;
@@ -30,10 +31,76 @@ export interface FormattedMessage {
 
 class MessageService {
   /**
-   * Get all messages for a conversation
+   * Get all messages for a conversation (with caching support)
    */
   async getConversationMessages(conversationId: string, userId: string): Promise<FormattedMessage[]> {
     try {
+      // Try cache first
+      const { messages: cachedMessages, lastMessageTimestamp, isCacheValid } = 
+        await MessageCacheService.getCachedMessages(conversationId);
+
+      // If cache is fresh, return cached data
+      if (isCacheValid && cachedMessages.length > 0) {
+        console.log(`⚡ [GAME CHAT] Cache hit: ${cachedMessages.length} messages`);
+        return cachedMessages.map(msg => this.formatCachedMessage(msg, userId));
+      }
+
+      // Cache miss or stale - check for delta fetch
+      if (lastMessageTimestamp && cachedMessages.length > 0) {
+        console.log(`🔄 [GAME CHAT] Delta fetch since ${lastMessageTimestamp}`);
+        const { data: newMessages, error } = await supabase
+          .from('messages')
+          .select(`
+            id,
+            conversation_id,
+            sender_id,
+            content,
+            message_type,
+            metadata,
+            created_at,
+            sender:users!messages_sender_id_fkey (
+              full_name,
+              avatar
+            )
+          `)
+          .eq('conversation_id', conversationId)
+          .gt('created_at', lastMessageTimestamp)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        if (newMessages && newMessages.length > 0) {
+          console.log(`✅ [GAME CHAT] Found ${newMessages.length} new messages`);
+          
+          // Convert to standard Message format for caching
+          const formattedNewMessages = newMessages.map(msg => ({
+            id: msg.id,
+            conversationId: msg.conversation_id,
+            senderId: msg.sender_id,
+            senderName: (Array.isArray(msg.sender) ? msg.sender[0]?.full_name : msg.sender?.full_name) || 'Unknown',
+            content: msg.content,
+            messageType: msg.message_type as 'text' | 'image' | 'system' | 'score',
+            metadata: msg.metadata,
+            timestamp: new Date(msg.created_at),
+            isMe: msg.sender_id === userId
+          }));
+
+          // Cache new messages (append mode)
+          await MessageCacheService.cacheMessages(conversationId, formattedNewMessages, true);
+
+          // Return all messages
+          const allCached = cachedMessages.map(msg => this.formatCachedMessage(msg, userId));
+          const allNew = formattedNewMessages.map(msg => this.formatCachedMessage(msg, userId));
+          return [...allCached, ...allNew];
+        }
+
+        // No new messages, return cached
+        console.log(`✅ [GAME CHAT] No new messages, returning ${cachedMessages.length} cached`);
+        return cachedMessages.map(msg => this.formatCachedMessage(msg, userId));
+      }
+
+      // Full fetch from DB
+      console.log(`📥 [GAME CHAT] Full fetch from DB`);
       const { data, error } = await supabase
         .from('messages')
         .select(`
@@ -54,7 +121,26 @@ class MessageService {
 
       if (error) throw error;
 
-      return (data || []).map(msg => this.formatMessage(msg, userId));
+      // Convert to standard Message format
+      const formattedMessages = (data || []).map(msg => ({
+        id: msg.id,
+        conversationId: msg.conversation_id,
+        senderId: msg.sender_id,
+        senderName: (Array.isArray(msg.sender) ? msg.sender[0]?.full_name : msg.sender?.full_name) || 'Unknown',
+        content: msg.content,
+        messageType: msg.message_type as 'text' | 'image' | 'system' | 'score',
+        metadata: msg.metadata,
+        timestamp: new Date(msg.created_at),
+        isMe: msg.sender_id === userId
+      }));
+
+      // Cache the results
+      if (formattedMessages.length > 0) {
+        await MessageCacheService.cacheMessages(conversationId, formattedMessages);
+        console.log(`💾 [GAME CHAT] Cached ${formattedMessages.length} messages`);
+      }
+
+      return formattedMessages.map(msg => this.formatCachedMessage(msg, userId));
     } catch (error) {
       console.error('Error fetching messages:', error);
       throw error;
@@ -94,6 +180,22 @@ class MessageService {
         .single();
 
       if (error) throw error;
+
+      // Add to cache
+      if (data) {
+        const messageToCache = {
+          id: data.id,
+          conversationId: data.conversation_id,
+          senderId: data.sender_id,
+          senderName: (Array.isArray(data.sender) ? data.sender[0]?.full_name : data.sender?.full_name) || 'Unknown',
+          content: data.content,
+          messageType: data.message_type as 'text' | 'image' | 'system' | 'score',
+          metadata: data.metadata,
+          timestamp: new Date(data.created_at),
+          isMe: true
+        };
+        await MessageCacheService.cacheMessages(conversationId, [messageToCache], true);
+      }
 
       return data;
     } catch (error) {
@@ -257,17 +359,55 @@ class MessageService {
   }
 
   /**
-   * Mark messages as read
+   * Mark messages as read (debounced)
    */
-  async markAsRead(conversationId: string, userId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('conversation_participants')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('conversation_id', conversationId)
-        .eq('user_id', userId);
+  private markAsReadTimer: NodeJS.Timeout | null = null;
+  private readonly MARK_AS_READ_DEBOUNCE_MS = 2000;
 
-      if (error) throw error;
+  async markAsRead(conversationId: string, userId: string, immediate = false): Promise<void> {
+    try {
+      // If immediate, clear any pending timer and execute now
+      if (immediate) {
+        if (this.markAsReadTimer) {
+          clearTimeout(this.markAsReadTimer);
+          this.markAsReadTimer = null;
+        }
+
+        const { error } = await supabase
+          .from('conversation_participants')
+          .update({ last_read_at: new Date().toISOString() })
+          .eq('conversation_id', conversationId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+        return;
+      }
+
+      // Clear existing timer if any
+      if (this.markAsReadTimer) {
+        clearTimeout(this.markAsReadTimer);
+      }
+
+      // Set new debounced timer
+      return new Promise((resolve, reject) => {
+        this.markAsReadTimer = setTimeout(async () => {
+          try {
+            const { error } = await supabase
+              .from('conversation_participants')
+              .update({ last_read_at: new Date().toISOString() })
+              .eq('conversation_id', conversationId)
+              .eq('user_id', userId);
+
+            this.markAsReadTimer = null;
+
+            if (error) throw error;
+            resolve();
+          } catch (error) {
+            console.error('Error marking messages as read:', error);
+            reject(error);
+          }
+        }, this.MARK_AS_READ_DEBOUNCE_MS);
+      });
     } catch (error) {
       console.error('Error marking messages as read:', error);
       throw error;
@@ -290,6 +430,22 @@ class MessageService {
       userId: msg.sender_id,
       isMe: msg.sender_id === currentUserId,
       type: msg.message_type === 'text' ? 'message' : msg.message_type,
+      score: msg.metadata?.score
+    };
+  }
+
+  /**
+   * Format cached message for UI display (uses different structure)
+   */
+  private formatCachedMessage(msg: any, currentUserId: string): FormattedMessage {
+    return {
+      id: msg.id,
+      text: msg.content,
+      timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp),
+      username: msg.senderName || 'Unknown',
+      userId: msg.senderId,
+      isMe: msg.senderId === currentUserId,
+      type: msg.messageType === 'text' ? 'message' : msg.messageType,
       score: msg.metadata?.score
     };
   }

@@ -558,12 +558,23 @@ export default function VenueDetailsScreen() {
   // Refresh bookings when screen comes into focus (e.g., after making a booking)
   useFocusEffect(
     useCallback(() => {
+      // Check if we're returning from a successful booking with a date param
+      const bookedDate = params.bookedDate as string | undefined;
+      if (bookedDate) {
+        console.log('📅 [VENUE DETAILS] Returning from booking with date:', bookedDate);
+        const newDate = new Date(bookedDate);
+        if (!isNaN(newDate.getTime())) {
+          console.log('📅 [VENUE DETAILS] Switching to booked date:', newDate.toDateString());
+          setSelectedDate(newDate);
+        }
+      }
+
       // Reload bookings whenever the screen is focused
       if (bookingsLoaded) {
         console.log('🔄 [VENUE DETAILS] Screen focused - refreshing bookings...');
         preloadAllBookings();
       }
-    }, [bookingsLoaded])
+    }, [bookingsLoaded, params.bookedDate])
   );
 
   useEffect(() => {
@@ -1056,7 +1067,8 @@ export default function VenueDetailsScreen() {
                                   ownerId: venue.ownerId,
                                   court: court.name,
                                   courtId: court.uuid || court.id,
-                                  timeSlot: slot.time
+                                  timeSlot: slot.time,
+                                  bookingDate: selectedDate.toISOString().split('T')[0] // Pass selected date as YYYY-MM-DD
                                 }
                               });
                             } else if (slot.status === 'joining' || slot.status === 'last-spot') {

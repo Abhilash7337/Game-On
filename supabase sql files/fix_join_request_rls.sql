@@ -87,7 +87,7 @@ BEGIN
     SELECT 
       requester_id,
       'join_request_auto_rejected',
-      'Game Full',
+      'Game Full', 
       'The game is now full. Your join request has been automatically declined.'
     FROM public.join_requests
     WHERE booking_id = NEW.id AND status = 'rejected' AND responded_at >= NOW() - INTERVAL '1 second';

@@ -274,14 +274,6 @@ class DataPrefetchService {
       userCity: this.cache.userCity
     });
   }
-
-  /**
-   * Clear all cached data (force fresh fetch on next access)
-   */
-  clearCache(): void {
-    console.log('🗑️ [PREFETCH] Clearing cache...');
-    this.cache = null;
-  }
 }
 
 // Export singleton instance
