@@ -74,6 +74,7 @@ function CourtsScreenContent() {
 		distance?: string;
 		distanceKm?: number;
 		coordinates?: {latitude: number; longitude: number};
+		ownerId?: string;
 	}[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -196,6 +197,7 @@ function CourtsScreenContent() {
 								sportTypes: v.sportTypes,
 								distance: distanceText,
 								distanceKm,
+								ownerId: v.ownerId, // ✅ Include ownerId for booking
 							};
 						});
 						setRawVenues(venuesWithDistance);
@@ -256,6 +258,7 @@ function CourtsScreenContent() {
 							sportTypes: v.sportTypes,
 							distance: distanceText,
 							distanceKm, // ✅ NEW: Numeric distance for filtering
+							ownerId: v.ownerId, // ✅ Include ownerId for booking
 						};
 					});
 					
@@ -727,7 +730,15 @@ function CourtsScreenContent() {
 									activeOpacity={0.8}
 									onPress={(e) => {
 										e.stopPropagation();
-										router.push({ pathname: '/BookingFormScreen', params: { venueId: item.id } });
+										router.push({ 
+											pathname: '/BookingFormScreen', 
+											params: { 
+												venueId: item.id,
+												venueName: item.name,
+												venuePrice: item.price?.toString() || '500',
+												ownerId: item.ownerId || ''
+											} 
+										});
 									}}
 								>
 									<Text style={courtsStyles.bookBtnText}>Book Now</Text>
